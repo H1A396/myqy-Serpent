@@ -174,7 +174,7 @@ export function Viewer({
     <div className="viewer" role="dialog" aria-modal="true" aria-label={asset.displayName}>
       <div className="viewer-header">
         <div className="viewer-header-left">
-          <button className="button ghost" type="button" onClick={onClose}>
+          <button className="button viewer-close" type="button" onClick={onClose}>
             {t('关闭', 'Close')}
           </button>
           <span className="viewer-hints">
@@ -194,7 +194,7 @@ export function Viewer({
         </div>
         <div className="viewer-header-right">
           {allowDownload ? (
-            <a className="button" href={downloadUrl(libraryId, asset)} download>
+            <a className="button viewer-download" href={downloadUrl(libraryId, asset)} download>
               {t('下载原图', 'Download')}
             </a>
           ) : null}
@@ -247,7 +247,7 @@ export function Viewer({
               )}
             </p>
             {allowDownload ? (
-              <a className="button" href={downloadUrl(libraryId, asset)} download>
+              <a className="button viewer-download" href={downloadUrl(libraryId, asset)} download>
                 {t('下载原图', 'Download')}
               </a>
             ) : null}
