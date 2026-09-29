@@ -14,7 +14,7 @@
     "start": "node scripts/dev-start.mjs",
     "web:build": "vite build --config vite.web.config.ts",
     "web:dev": "vite --config vite.web.config.ts",
-    "prestart": "node scripts/ensure-native.mjs && node scripts/patch-dev-electron-name.mjs",
+    "prestart": "node scripts/ensure-native.mjs && node scripts/patch-dev-electron-name.mjs && node scripts/build-web.mjs",
     "start:forge": "electron-forge start",
     "start:multi": "node scripts/dev-start.mjs --multi",
     "prepackage": "node scripts/media-binaries.mjs ensure && node scripts/verify-ufbx-wasm.mjs",
