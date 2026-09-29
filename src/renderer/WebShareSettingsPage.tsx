@@ -7,12 +7,14 @@ import {
   type WebShareSettingsSnapshot,
 } from "../shared/web-share";
 import { useT } from "./i18n";
-import { SettingsCard, SettingsDisclosure } from "./ui/patterns";
+import { SettingsCard } from "./ui/patterns";
 import { Switch } from "./ui/primitives";
 
 interface WebShareSettingsPageProps {
   api?: SerpentWebShareSettingsApi;
 }
+
+type StatusTone = "running" | "pending" | "stopped" | "error";
 
 export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactNode {
   const t = useT();
@@ -90,6 +92,16 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
   const hasPassword = snapshot?.hasPassword ?? false;
   const libraries = snapshot?.libraries ?? [];
   const sharedLibraryId = snapshot?.preferences.sharedLibraryId ?? null;
+  const port = snapshot?.preferences.port ?? WEB_SHARE_DEFAULT_PORT;
+
+  const statusTone: StatusTone =
+    runtime?.status === "running"
+      ? "running"
+      : runtime?.status === "error"
+        ? "error"
+        : runtime?.status === "starting" || runtime?.status === "stopping"
+          ? "pending"
+          : "stopped";
   const statusLabel =
     runtime?.status === "running"
       ? t("settings.webShareStatusRunning")
@@ -100,6 +112,17 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
           : runtime?.status === "error"
             ? t("settings.webShareStatusError")
             : t("settings.webShareStatusStopped");
+  const statusDetail =
+    runtime?.status === "error"
+      ? runtime.message
+      : running
+        ? t("settings.webShareStatusRunningDetail")
+        : runtime?.status === "starting" || runtime?.status === "stopping"
+          ? statusLabel
+          : t("settings.webShareStatusStoppedDetail");
+  const addressLine = running
+    ? `${runtime.address} · ${t("settings.webShareConnections")}: ${runtime.connectedSessionCount}`
+    : `http://127.0.0.1:${port}`;
 
   return (
     <>
@@ -120,37 +143,13 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
         <div className="app-settings-action-row">
           <div className="app-settings-row-copy">
             <strong>{t("settings.webShareStatus")}</strong>
-            <span>
-              {running && runtime
-                ? `${runtime.address} · ${t("settings.webShareConnections")}: ${runtime.connectedSessionCount}`
-                : statusLabel}
-            </span>
+            <span>{statusDetail}</span>
           </div>
-          {running ? (
-            <button
-              className="primary-button"
-              disabled={busy}
-              onClick={() => void request({ type: "stop" })}
-              type="button"
-            >
-              {t("settings.webShareStop")}
-            </button>
-          ) : (
-            <button
-              className="primary-button"
-              disabled={busy || !enabled || !hasPassword}
-              onClick={() => void request({ type: "start" })}
-              type="button"
-            >
-              {t("settings.webShareStart")}
-            </button>
-          )}
+          <span className="web-share-status" data-state={statusTone}>
+            <span className="web-share-status-dot" aria-hidden="true" />
+            {statusLabel}
+          </span>
         </div>
-        {runtime?.status === "running" ? (
-          <div className="app-settings-row-copy">
-            <span>{t("settings.webShareTunnelHint")}</span>
-          </div>
-        ) : null}
         {!hasPassword ? (
           <div className="app-settings-row-copy">
             <span>{t("settings.webSharePasswordRequired")}</span>
@@ -245,40 +244,47 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             onCheckedChange={(next) => void request({ type: "set-allow-download", enabled: next })}
           />
         </div>
-        <SettingsDisclosure
-          defaultOpen={false}
-          hint={t("settings.webShareAdvancedHint")}
-          title={t("settings.webShareAdvanced")}
-        >
-          <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-port">
-            <span className="app-settings-row-copy">
-              <strong>{t("settings.webSharePort")}</strong>
-              <span>{t("settings.webSharePortHint")}</span>
-            </span>
-            <input
-              aria-label={t("settings.webSharePort")}
-              className="settings-number-input"
-              disabled={busy || running}
-              id="web-share-port"
-              max={65535}
-              min={1024}
-              onBlur={() => {
-                const port = Number(portDraft);
-                if (Number.isInteger(port) && port >= 1024 && port <= 65535) {
-                  void request({ type: "set-port", port });
-                } else if (snapshot) {
-                  setPortDraft(String(snapshot.preferences.port));
-                }
-              }}
-              onChange={(event) => setPortDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur();
-              }}
-              type="number"
-              value={portDraft}
-            />
-          </label>
-        </SettingsDisclosure>
+      </SettingsCard>
+
+      <SettingsCard>
+        <div className="app-settings-row app-settings-row-inline">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareConnectionTitle")}</strong>
+            <span>{addressLine}</span>
+          </span>
+        </div>
+        <div className="app-settings-row-copy">
+          <span>{t("settings.webShareTunnelHint")}</span>
+        </div>
+        <div className="app-settings-card-divider" />
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-port">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webSharePort")}</strong>
+            <span>{t("settings.webSharePortHint")}</span>
+          </span>
+          <input
+            aria-label={t("settings.webSharePort")}
+            className="settings-number-input"
+            disabled={busy || running}
+            id="web-share-port"
+            max={65535}
+            min={1024}
+            onBlur={() => {
+              const next = Number(portDraft);
+              if (Number.isInteger(next) && next >= 1024 && next <= 65535) {
+                void request({ type: "set-port", port: next });
+              } else if (snapshot) {
+                setPortDraft(String(snapshot.preferences.port));
+              }
+            }}
+            onChange={(event) => setPortDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            type="number"
+            value={portDraft}
+          />
+        </label>
       </SettingsCard>
     </>
   );

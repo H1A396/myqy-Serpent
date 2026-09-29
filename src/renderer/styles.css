@@ -7847,6 +7847,40 @@ select.ai-config-input.ai-config-languages {
   white-space: nowrap;
 }
 
+/* Web share status: a colored dot conveys running/stopped/pending/error. */
+.web-share-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.web-share-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--tertiary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tertiary) 24%, transparent);
+}
+
+.web-share-status[data-state="running"] .web-share-status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 24%, transparent);
+}
+
+.web-share-status[data-state="pending"] .web-share-status-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 24%, transparent);
+}
+
+.web-share-status[data-state="error"] .web-share-status-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 24%, transparent);
+}
+
 .app-settings-memory-chips {
   display: flex;
   flex-wrap: wrap;
