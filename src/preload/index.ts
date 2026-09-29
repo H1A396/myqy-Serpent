@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron';
+﻿import { contextBridge } from 'electron';
 
 import { appUpdate } from './bridge/app-update';
 import { automation } from './bridge/automation';
@@ -10,6 +10,7 @@ import {
 import { mcp } from './bridge/mcp';
 import { plugins } from './bridge/plugins';
 import { shell } from './bridge/shell';
+import { webShare } from './bridge/web-share';
 import { getE2eRequestCount } from './transport';
 import type { RendererRequest } from '../shared/protocol/requests';
 
@@ -45,6 +46,7 @@ contextBridge.exposeInMainWorld(
     appUpdate,
     automation,
     mcp,
+    webShare,
     plugins,
     ...(e2eEnabled ? { e2e: e2eDiagnostics } : {}),
   }),

@@ -85,6 +85,9 @@ export const AUTOMATION_SCRIPT_RECENT_OPEN_CHANNEL = 'serpent:automation:script-
 /** Renderer ↔ Main: device-level embedded MCP service settings. */
 export const MCP_SETTINGS_REQUEST_CHANNEL = 'serpent:mcp:settings-request' as const;
 export const MCP_SETTINGS_EVENT_CHANNEL = 'serpent:mcp:settings-event' as const;
+/** Renderer ↔ Main: device-level read-only web share settings. */
+export const WEB_SHARE_SETTINGS_REQUEST_CHANNEL = 'serpent:web-share:settings-request' as const;
+export const WEB_SHARE_SETTINGS_EVENT_CHANNEL = 'serpent:web-share:settings-event' as const;
 /** Critical confirmation child window: the preload exposes only these two calls. */
 export const CRITICAL_CONFIRMATION_GET_CHANNEL = 'serpent:critical-confirmation:get' as const;
 export const CRITICAL_CONFIRMATION_DECIDE_CHANNEL = 'serpent:critical-confirmation:decide' as const;

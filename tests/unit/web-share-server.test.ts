@@ -1,0 +1,313 @@
+import { createServer } from 'node:http';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import type {
+  AssetMetadataResult,
+  AssetSummary,
+  CollectionSummary,
+  ExtractedMetadataResult,
+  FolderBrowseEntry,
+  LinkedFolderSummary,
+  ManagedFolderSummary,
+  TagSummary,
+} from '../../src/shared/asset-types';
+import type {
+  WebShareAssetQuery,
+  WebShareDataProvider,
+} from '../../src/main/web-share-data';
+import { WebShareServer } from '../../src/main/web-share-server';
+import type { WebShareLibrarySummary } from '../../src/shared/web-share';
+
+function emptyAsset(): AssetSummary {
+  return {
+    assetId: 'asset-1',
+    locationKind: 'managed',
+    managedFolderId: null,
+    relativeFilePath: 'a.png',
+    displayName: 'a.png',
+    currentRevisionId: 'rev-1',
+    byteSize: 10,
+    modifiedAt: '2024-01-01T00:00:00.000Z',
+    availability: 'available',
+    rating: 0,
+    favorite: false,
+    deletedAt: null,
+    trashedFromPath: null,
+    trashedFromTombstoneId: null,
+    remainingDays: null,
+    thumbnailStatus: null,
+    thumbnailArtifactId: null,
+    mediaType: 'image',
+    width: 10,
+    height: 10,
+    durationMs: null,
+  };
+}
+
+class FakeDataProvider implements WebShareDataProvider {
+  public lastSearch: WebShareAssetQuery | undefined;
+
+  constructor(private readonly libraries: WebShareLibrarySummary[]) {}
+
+  async listLibraries(): Promise<WebShareLibrarySummary[]> {
+    return this.libraries;
+  }
+
+  async listFolders(libraryId: string): Promise<ManagedFolderSummary[]> {
+    if (libraryId !== 'lib-a') return [];
+    return [
+      {
+        folderId: 'folder-1',
+        parentFolderId: null,
+        name: 'Folder One',
+        relativePath: 'Folder One',
+        directAssetCount: 1,
+        childFolderCount: 0,
+      },
+    ];
+  }
+
+  async listLinkedFolders(): Promise<LinkedFolderSummary[]> {
+    return [];
+  }
+
+  async browseEntries(): Promise<FolderBrowseEntry[]> {
+    return [];
+  }
+
+  async searchAssets(input: WebShareAssetQuery): Promise<{ items: AssetSummary[]; total: number; offset: number }> {
+    this.lastSearch = input;
+    return { items: [emptyAsset()], total: 1, offset: input.offset ?? 0 };
+  }
+
+  async listAssets(input: {
+    libraryId: string;
+    folderId: string | null;
+    recursive: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ items: AssetSummary[]; total: number; offset: number }> {
+    return this.searchAssets({
+      libraryId: input.libraryId,
+      query: { clauses: [] },
+      scope: { kind: 'folder', folderId: input.folderId, recursive: input.recursive },
+      limit: input.limit,
+      offset: input.offset,
+    });
+  }
+
+  async listCollectionAssets(input: {
+    libraryId: string;
+    collectionId: string;
+    recursive: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ items: AssetSummary[]; total: number; offset: number }> {
+    return { items: [], total: 0, offset: input.offset ?? 0 };
+  }
+
+  async getAssetDetail(): Promise<{
+    asset: AssetSummary;
+    metadata: AssetMetadataResult;
+    extracted: ExtractedMetadataResult;
+  }> {
+    return {
+      asset: emptyAsset(),
+      metadata: {
+        assetId: 'asset-1',
+        description: null,
+        rating: 0,
+        favorite: false,
+        palette: null,
+        automaticPalette: [],
+        effectivePalette: [],
+        paletteSource: null,
+        sourcePageUrl: null,
+        author: null,
+        tags: [],
+        entityVersion: 0,
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
+      extracted: {
+        assetId: 'asset-1',
+        status: 'missing',
+        metadata: null,
+        metadataCompleteness: 'complete',
+        errorCode: null,
+      },
+    };
+  }
+
+  async listTags(): Promise<TagSummary[]> {
+    return [];
+  }
+
+  async listCollections(): Promise<CollectionSummary[]> {
+    return [];
+  }
+}
+
+async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      if (typeof address !== 'object' || address === null) {
+        probe.close(() => reject(new Error('No probe port.')));
+        return;
+      }
+      const { port } = address;
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+describe('WebShareServer', () => {
+  let userDataPath: string;
+  let server: WebShareServer;
+  let provider: FakeDataProvider;
+  let baseUrl: string;
+
+  beforeEach(async () => {
+    userDataPath = await mkdtemp(path.join(os.tmpdir(), 'serpent-web-share-'));
+    provider = new FakeDataProvider([
+      { libraryId: 'lib-a', displayName: 'Library A' },
+      { libraryId: 'lib-b', displayName: 'Library B' },
+    ]);
+    server = new WebShareServer({
+      userDataPath,
+      data: provider,
+      logger: { info: () => undefined, error: () => undefined },
+    });
+    const port = await getFreePort();
+    await server.setPort(port);
+    await server.setEnabled(true);
+    baseUrl = `http://127.0.0.1:${port}`;
+  });
+
+  afterEach(async () => {
+    await server.close();
+    await rm(userDataPath, { recursive: true, force: true });
+  });
+
+  async function login(password: string): Promise<{ status: number; cookie?: string }> {
+    const response = await fetch(`${baseUrl}/api/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const setCookie = response.headers.get('set-cookie');
+    return {
+      status: response.status,
+      ...(setCookie === null ? {} : { cookie: setCookie.split(';')[0]! }),
+    };
+  }
+
+  it('answers health without authentication', async () => {
+    const response = await fetch(`${baseUrl}/api/health`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ app: 'Serpent' });
+  });
+
+  it('rejects API access before a password is configured', async () => {
+    const response = await fetch(`${baseUrl}/api/state`);
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe('WEB_SHARE_PASSWORD_REQUIRED');
+  });
+
+  it('issues a session cookie for the configured password', async () => {
+    server.setPassword('correct horse battery');
+    expect((await login('wrong password')).status).toBe(401);
+    const { status, cookie } = await login('correct horse battery');
+    expect(status).toBe(200);
+    expect(cookie).toBeDefined();
+    const state = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie! } });
+    expect(state.status).toBe(200);
+    const body = (await state.json()) as { sharedLibraryId: string; library: { displayName: string } };
+    expect(body.sharedLibraryId).toBe('lib-a');
+    expect(body.library.displayName).toBe('Library A');
+  });
+
+  it('requires authentication for API routes', async () => {
+    server.setPassword('correct horse battery');
+    const response = await fetch(`${baseUrl}/api/state`);
+    expect(response.status).toBe(401);
+  });
+
+  it('serves only the shared library', async () => {
+    server.setPassword('correct horse battery');
+    server.setLibrary('lib-b');
+    const { cookie } = await login('correct horse battery');
+    const headers = { Cookie: cookie! };
+    expect((await fetch(`${baseUrl}/api/libraries/lib-b/folders`, { headers })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/libraries/lib-a/folders`, { headers })).status).toBe(404);
+  });
+
+  it('returns folders for the shared library', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/api/libraries/lib-a/folders`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { folders: Array<{ name: string }> };
+    expect(body.folders.map((folder) => folder.name)).toEqual(['Folder One']);
+  });
+
+  it('parses search query, filters and sort', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(
+      `${baseUrl}/api/libraries/lib-a/search?q=hero&format=png&tag=red,blue&favorite=yes&sort=name&order=desc&limit=10`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(200);
+    const captured = provider.lastSearch;
+    expect(captured?.query.clauses).toEqual([
+      { field: null, values: ['hero'], exclude: false },
+    ]);
+    const filters = captured?.filters ?? [];
+    expect(filters).toContainEqual({ field: 'format', values: ['png'], exclude: false });
+    expect(filters).toContainEqual({ field: 'tag', values: ['red', 'blue'], exclude: false, includeAi: true });
+    expect(filters).toContainEqual({ field: 'favorite', values: [], exclude: false });
+    expect(captured?.sort).toEqual({ field: 'name', order: 'desc' });
+    expect(captured?.limit).toBe(10);
+  });
+
+  it('rejects write methods on the API', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/api/libraries/lib-a/folders`, {
+      method: 'POST',
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(405);
+  });
+
+  it('invalidates sessions when the password changes', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    server.setPassword('a different password');
+    const response = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie! } });
+    expect(response.status).toBe(401);
+  });
+
+  it('throttles repeated wrong passwords', async () => {
+    server.setPassword('correct horse battery');
+    for (let attempt = 0; attempt < 5; attempt += 1) await login('nope');
+    const blocked = await login('correct horse battery');
+    expect(blocked.status).toBe(429);
+  });
+
+  it('reports a missing web client instead of serving files', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/`, { headers: { Cookie: cookie! } });
+    expect(response.status).toBe(503);
+  });
+});

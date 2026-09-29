@@ -187,6 +187,8 @@ import {
   OFFSCREEN_THUMBNAIL_FRAME_CHANNEL,
   MCP_SETTINGS_REQUEST_CHANNEL,
   MCP_SETTINGS_EVENT_CHANNEL,
+  WEB_SHARE_SETTINGS_REQUEST_CHANNEL,
+  WEB_SHARE_SETTINGS_EVENT_CHANNEL,
 } from "../shared/protocol/channels";
 import {
   createAutomationCommandGateway,
@@ -234,6 +236,14 @@ import {
   mcpSettingsSnapshotSchema,
   type McpSettingsRequest,
 } from '../shared/mcp';
+import { WebShareServer, WebShareServerError } from './web-share-server';
+import { WorkerBackedWebShareData } from './web-share-data';
+import {
+  webShareSettingsRequestSchema,
+  webShareSettingsResponseSchema,
+  webShareSettingsSnapshotSchema,
+  type WebShareSettingsRequest,
+} from '../shared/web-share';
 import { registerAutomationScriptIpc } from './automation-script-ipc';
 import { AutomationScriptFileService } from './automation-script-file-service';
 import {
@@ -673,6 +683,7 @@ let appLogPath: string | undefined;
 let appUpdateService: AppUpdateService | undefined;
 let automationExecutionJournal: AutomationExecutionJournal | undefined;
 let embeddedMcpServer: EmbeddedMcpServer | undefined;
+let webShareServer: WebShareServer | undefined;
 let automationCommandGateway: AutomationCommandGateway | undefined;
 let mcpPermissionPolicyStore: McpPermissionPolicyStore | undefined;
 let mcpOperationChallengeStore: McpOperationChallengeStore | undefined;
@@ -4890,6 +4901,74 @@ async function startApplication(): Promise<void> {
       });
     }
   });
+
+  // Read-only web share: a loopback HTTP server a tunnel (FRP) can expose to
+  // friends. Construction failure only disables the feature, never the app.
+  if (workerClient && logger) {
+    try {
+      webShareServer = new WebShareServer({
+        userDataPath: app.getPath('userData'),
+        data: new WorkerBackedWebShareData(workerClient),
+        logger,
+      });
+      webShareServer.onSnapshot((snapshot) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(
+            WEB_SHARE_SETTINGS_EVENT_CHANNEL,
+            webShareSettingsSnapshotSchema.parse(snapshot),
+          );
+        }
+      });
+    } catch (error) {
+      logger.error('web-share.construction-failed', error);
+      webShareServer = undefined;
+    }
+    ipcMain.handle(WEB_SHARE_SETTINGS_REQUEST_CHANNEL, async (event, input: unknown) => {
+      const server = webShareServer;
+      const response = (value: unknown) => webShareSettingsResponseSchema.parse(value);
+      if (!server || !mainWindow || event.sender !== mainWindow.webContents) {
+        return response({
+          ok: false,
+          code: 'WEB_SHARE_SETTINGS_UNAVAILABLE',
+          message: 'Web share settings are unavailable.',
+          ...(server === undefined ? {} : { snapshot: server.snapshot() }),
+        });
+      }
+      const parsed = webShareSettingsRequestSchema.safeParse(input);
+      if (!parsed.success) {
+        return response({
+          ok: false,
+          code: 'WEB_SHARE_INVALID_REQUEST',
+          message: 'The web share settings request is invalid.',
+          snapshot: server.snapshot(),
+        });
+      }
+      const request: WebShareSettingsRequest = parsed.data;
+      try {
+        if (request.type === 'get') {
+          await server.refreshLibraries();
+          return response({ ok: true, snapshot: server.snapshot() });
+        }
+        if (request.type === 'enable') return response({ ok: true, snapshot: await server.setEnabled(request.enabled) });
+        if (request.type === 'set-port') return response({ ok: true, snapshot: await server.setPort(request.port) });
+        if (request.type === 'set-allow-download') return response({ ok: true, snapshot: server.setAllowDownload(request.enabled) });
+        if (request.type === 'set-library') return response({ ok: true, snapshot: server.setLibrary(request.libraryId) });
+        if (request.type === 'set-password') return response({ ok: true, snapshot: server.setPassword(request.password) });
+        if (request.type === 'clear-password') return response({ ok: true, snapshot: server.clearPassword() });
+        if (request.type === 'start') return response({ ok: true, snapshot: await server.start() });
+        return response({ ok: true, snapshot: await server.stop() });
+      } catch (error) {
+        const code = error instanceof WebShareServerError ? error.code : 'WEB_SHARE_START_FAILED';
+        logger?.error('web-share.settings', error, { code });
+        return response({
+          ok: false,
+          code,
+          message: error instanceof WebShareServerError ? error.message : 'The web share operation failed.',
+          snapshot: server.snapshot(),
+        });
+      }
+    });
+  }
   // Global user-scoped plugins have an application lifetime and must be set up
   // before recent-library restore, including when no library can be reopened.
   await pluginActivationCoordinator?.refreshGlobal();
@@ -5938,6 +6017,11 @@ async function startApplication(): Promise<void> {
   } catch (error) {
     logger?.error('mcp.server.initialize', error);
   }
+  try {
+    await webShareServer?.initialize();
+  } catch (error) {
+    logger?.error('web-share.initialize', error);
+  }
   windowsTray = createWindowsTray({
     getMainWindow: () => mainWindow,
     onQuit: () => app.quit(),
@@ -6037,7 +6121,8 @@ if (!hasSingleInstanceLock) {
     }
 
     const mcpClose = embeddedMcpServer?.close() ?? Promise.resolve();
-    void Promise.all([mcpClose])
+    const webShareClose = webShareServer?.close() ?? Promise.resolve();
+    void Promise.all([mcpClose, webShareClose])
       .catch((error: unknown) => {
         logger?.error("automation.mcp.close", error);
       })
