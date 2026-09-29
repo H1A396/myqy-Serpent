@@ -5,6 +5,10 @@
 .daimon/
 .worktrees/
 .vscode/
+.vs/
+.idea/
+*.suo
+*.user
 skills-lock.json
 
 node_modules/
@@ -52,3 +56,6 @@ AGENTS.md
 CLAUDE.md
 .beads/
 .github/
+
+# 本机环境速查（含本机真实隧道 ID、个人域名与端口），只留在本机，不发布到任何远程仓库
+docs/Cloudflare使用方法.md
