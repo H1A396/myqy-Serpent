@@ -501,12 +501,13 @@ export function App() {
           ) : null}
         </div>
 
-        <div className="crumbs">
-          {scopeLabel(scope, folders, collections, libraryName)} · {total}
-        </div>
-
         <div className="content">
-          <div className="grid-scroll">
+          <div className="content-left">
+            <div className="crumbs">
+              {scopeLabel(scope, folders, collections, libraryName)} · {total}
+            </div>
+
+            <div className="grid-scroll">
             {assets.length === 0 && !loading ? (
               <p className="empty">{t('没有匹配的资产。', 'No matching assets.')}</p>
             ) : (
@@ -576,6 +577,7 @@ export function App() {
                 ) : null}
               </>
             )}
+            </div>
           </div>
 
           {selectedAsset !== undefined ? (
