@@ -47,24 +47,54 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
     libraryId: string;
     assetId: string;
   }): Promise<ResolvedMedia | null> {
-    const result = await this.#request({
-      type: 'media.get-thumbnail-artifact',
-      libraryId: input.libraryId,
-      assetId: input.assetId,
-    });
-    if (result.ok && result.type === 'media.thumbnail-artifact') {
-      return { absolutePath: result.filePath, mimeType: mimeForPath(result.filePath) };
-    }
-    return this.#generateThumbnail(input.libraryId, input.assetId);
+    const artifactId = await this.#resolveThumbnailArtifactId(input.libraryId, input.assetId);
+    if (artifactId === null) return null;
+    return this.#resolveArtifactPath(input.libraryId, artifactId, 'preview');
   }
 
   /**
-   * A share visitor may be the first person to look at an asset, so the
-   * thumbnail artifact can still be absent. Generate it on demand the same way
-   * the desktop viewer does; this only writes a derived cache artifact and
-   * never touches the user's asset or metadata.
+   * Resolve an artifact id to an absolute path through the same Worker command
+   * the desktop protocol uses. The Worker's `media.thumbnail-artifact.filePath`
+   * is relative to `.serpent/artifacts` and must never be served directly:
+   * `media.get-artifact-paths` is the boundary that both resolves the absolute
+   * path and re-validates containment (Serpent-0cc23f).
    */
-  async #generateThumbnail(libraryId: string, assetId: string): Promise<ResolvedMedia | null> {
+  async #resolveArtifactPath(
+    libraryId: string,
+    artifactId: string,
+    usage: 'preview' | 'proxy',
+  ): Promise<ResolvedMedia | null> {
+    const paths = await this.#request({
+      type: 'media.get-artifact-paths',
+      libraryId,
+      artifactIds: [artifactId],
+      usage,
+    });
+    if (!paths.ok || paths.type !== 'media.artifact-paths') return null;
+    const entry = paths.entries.find((candidate) => candidate.artifactId === artifactId);
+    return entry === undefined
+      ? null
+      : { absolutePath: entry.absolutePath, mimeType: mimeForPath(entry.absolutePath) };
+  }
+
+  /**
+   * `media.get-thumbnail-artifact` carries the artifact id (and a
+   * library-relative `filePath` we deliberately ignore). A share visitor may
+   * also be the first person to look at an asset, so fall back to generating
+   * the derived artifact the same way the desktop viewer does; this only writes
+   * a derived cache artifact and never touches the user's asset or metadata.
+   */
+  async #resolveThumbnailArtifactId(libraryId: string, assetId: string): Promise<string | null> {
+    const result = await this.#request({
+      type: 'media.get-thumbnail-artifact',
+      libraryId,
+      assetId,
+    });
+    if (result.ok && result.type === 'media.thumbnail-artifact') return result.artifactId;
+    return this.#generateThumbnailArtifactId(libraryId, assetId);
+  }
+
+  async #generateThumbnailArtifactId(libraryId: string, assetId: string): Promise<string | null> {
     try {
       const generated = await this.#request({
         type: 'media.generate-thumbnail',
@@ -78,19 +108,7 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
       ) {
         return null;
       }
-      const paths = await this.#request({
-        type: 'media.get-artifact-paths',
-        libraryId,
-        artifactIds: [generated.artifactId],
-        usage: 'preview',
-      });
-      if (!paths.ok || paths.type !== 'media.artifact-paths') return null;
-      const entry = paths.entries.find(
-        (candidate) => candidate.artifactId === generated.artifactId,
-      );
-      return entry === undefined
-        ? null
-        : { absolutePath: entry.absolutePath, mimeType: mimeForPath(entry.absolutePath) };
+      return generated.artifactId;
     } catch {
       // Slow/failed generation (e.g. a video poster still running) is reported
       // as "not ready" and the client retries.
@@ -118,15 +136,6 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
     artifactId: string;
     kind: 'preview' | 'proxy';
   }): Promise<ResolvedMedia | null> {
-    const result = await this.#request({
-      type: 'media.get-artifact-paths',
-      libraryId: input.libraryId,
-      artifactIds: [input.artifactId],
-      usage: input.kind,
-    });
-    if (!result.ok || result.type !== 'media.artifact-paths') return null;
-    const entry = result.entries.find((candidate) => candidate.artifactId === input.artifactId);
-    if (entry === undefined) return null;
-    return { absolutePath: entry.absolutePath, mimeType: mimeForPath(entry.absolutePath) };
+    return this.#resolveArtifactPath(input.libraryId, input.artifactId, input.kind);
   }
 }

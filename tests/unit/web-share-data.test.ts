@@ -151,7 +151,8 @@ describe('WorkerBackedWebShareMedia', () => {
           ok: true,
           type: 'media.thumbnail-artifact',
           artifactId: 'art-1',
-          filePath: 'X:/library/.serpent/artifacts/thumb.webp',
+          // Library-relative, exactly as the Worker reports it.
+          filePath: 'art-1.webp',
           width: 10,
           height: 10,
         };
@@ -170,13 +171,19 @@ describe('WorkerBackedWebShareMedia', () => {
         return {
           ok: true,
           type: 'media.artifact-paths',
-          entries: [{ artifactId: 'proxy-1', absolutePath: 'X:/library/.serpent/artifacts/proxy.webm' }],
+          entries: command.artifactIds.map((artifactId) => ({
+            artifactId,
+            absolutePath: artifactId.startsWith('proxy')
+              ? `X:/library/.serpent/artifacts/${artifactId}.webm`
+              : `X:/library/.serpent/artifacts/${artifactId}.webp`,
+          })),
         };
       }
       throw new Error(`unexpected ${command.type}`);
     });
     const media = new WorkerBackedWebShareMedia(client);
     expect(await media.resolveThumbnail({ libraryId: 'lib-a', assetId: 'asset-1' })).toMatchObject({
+      absolutePath: 'X:/library/.serpent/artifacts/art-1.webp',
       mimeType: 'image/webp',
     });
     expect(
@@ -185,6 +192,41 @@ describe('WorkerBackedWebShareMedia', () => {
     expect(
       await media.resolveArtifact({ libraryId: 'lib-a', artifactId: 'proxy-1', kind: 'proxy' }),
     ).toMatchObject({ mimeType: 'video/webm' });
+  });
+
+  it('never serves the Worker thumbnail filePath as an absolute path', async () => {
+    // Regression: media.get-thumbnail-artifact.filePath is relative to
+    // .serpent/artifacts; treating it as absolute made every already-generated
+    // thumbnail 404 in the browser (only freshly generated ones rendered).
+    const client = new FakeWorkerClient((command) => {
+      if (command.type === 'media.get-thumbnail-artifact') {
+        return {
+          ok: true,
+          type: 'media.thumbnail-artifact',
+          artifactId: 'existing-1',
+          filePath: 'existing-1.webp',
+          width: 512,
+          height: 512,
+        };
+      }
+      if (command.type === 'media.get-artifact-paths') {
+        return {
+          ok: true,
+          type: 'media.artifact-paths',
+          entries: [
+            {
+              artifactId: 'existing-1',
+              absolutePath: 'X:/library/.serpent/artifacts/existing-1.webp',
+            },
+          ],
+        };
+      }
+      throw new Error(`unexpected ${command.type}`);
+    });
+    const media = new WorkerBackedWebShareMedia(client);
+    const resolved = await media.resolveThumbnail({ libraryId: 'lib-a', assetId: 'asset-1' });
+    expect(resolved?.absolutePath).toBe('X:/library/.serpent/artifacts/existing-1.webp');
+    expect(resolved?.absolutePath).not.toBe('existing-1.webp');
   });
 
   it('returns null when an artifact is absent', async () => {

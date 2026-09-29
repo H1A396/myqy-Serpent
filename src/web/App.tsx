@@ -207,6 +207,7 @@ export function App() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [detail, setDetail] = useState<AssetDetail | null>(null);
   const requestIdRef = useRef(0);
+  const detailRequestIdRef = useRef(0);
 
   const libraryId = state?.sharedLibraryId ?? null;
 
@@ -280,6 +281,7 @@ export function App() {
         setTotal(result.total);
         setAssets((previous) => (offset === 0 ? result.items : [...previous, ...result.items]));
         if (offset === 0) {
+          detailRequestIdRef.current += 1;
           setSelectedIndex(null);
           setDetail(null);
         }
@@ -299,18 +301,25 @@ export function App() {
   }, [phase, loadPage]);
 
   const selectAsset = useCallback(
-    async (index: number) => {
+    (index: number) => {
+      // Re-clicking the current card must not refetch or reflow the panel.
+      if (index === selectedIndex) return;
       setSelectedIndex(index);
       setDetail(null);
       const asset = assets[index];
       if (libraryId === null || asset === undefined) return;
-      try {
-        setDetail(await api.asset(libraryId, asset.assetId));
-      } catch {
-        setDetail(null);
-      }
+      const detailRequestId = detailRequestIdRef.current + 1;
+      detailRequestIdRef.current = detailRequestId;
+      void (async () => {
+        try {
+          const next = await api.asset(libraryId, asset.assetId);
+          if (detailRequestIdRef.current === detailRequestId) setDetail(next);
+        } catch {
+          if (detailRequestIdRef.current === detailRequestId) setDetail(null);
+        }
+      })();
     },
-    [assets, libraryId],
+    [assets, libraryId, selectedIndex],
   );
 
   const handleLogin = useCallback(
@@ -384,6 +393,7 @@ export function App() {
   }
 
   const libraryName = state.library?.displayName ?? 'Serpent';
+  const selectedAsset = selectedIndex === null ? undefined : assets[selectedIndex];
 
   return (
     <div className="app">
@@ -567,12 +577,14 @@ export function App() {
             )}
           </div>
 
-          {detail !== null ? (
+          {selectedAsset !== undefined ? (
             <DetailPanel
               libraryId={libraryId}
+              summary={selectedAsset}
               detail={detail}
               allowDownload={state.allowDownload}
               onClose={() => {
+                detailRequestIdRef.current += 1;
                 setDetail(null);
                 setSelectedIndex(null);
               }}
