@@ -40,6 +40,7 @@ export type AppSettingsCategoryId =
   | "browse"
   | "ai"
   | "mcp"
+  | "webShare"
   | "plugins"
   | "safety"
   | "sync";
@@ -59,6 +60,7 @@ export type AppSettingsCategory = {
     | "settings.categoryBrowse"
     | "settings.categoryAi"
     | "settings.categoryMcp"
+    | "settings.categoryWebShare"
     | "settings.categoryPlugins"
     | "settings.categorySync";
 };
@@ -93,6 +95,11 @@ export const APP_SETTINGS_CATEGORIES: readonly AppSettingsCategory[] = [
     id: "mcp",
     icon: "globe",
     labelKey: "settings.categoryMcp",
+  },
+  {
+    id: "webShare",
+    icon: "external-link",
+    labelKey: "settings.categoryWebShare",
   },
   {
     id: "plugins",

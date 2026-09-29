@@ -171,6 +171,7 @@ import { useT, useLocale, translateForLocale, type AppLocale } from "./i18n";
 import type { AiApiFormat } from "../shared/ai-endpoints";
 import { DEFAULT_AI_API_FORMAT, DEFAULT_AI_MODELS } from "../shared/ai-endpoints";
 import type { SerpentMcpSettingsApi } from "../shared/mcp";
+import type { SerpentWebShareSettingsApi } from "../shared/web-share";
 import type { HistoryStatus } from "../shared/protocol/responses";
 import { isEditableTextTarget } from "../shared/edit-context-menu";
 import type { SearchQuery } from "../shared/asset-types";
@@ -650,6 +651,7 @@ type RendererWindow = Window & {
     automation?: SerpentAutomationScriptApi;
     plugins?: SerpentPluginManagerApi;
     mcp?: SerpentMcpSettingsApi;
+    webShare?: SerpentWebShareSettingsApi;
     e2e?: {
       getRequestCount: (type: string) => number;
     };
@@ -14949,6 +14951,7 @@ function AppInner() {
         pluginContributionRefreshKey={pluginContributionRefreshKey}
         libraryId={library?.libraryId}
         mcpApi={(window as RendererWindow).serpent?.mcp}
+        webShareApi={(window as RendererWindow).serpent?.webShare}
         open={appSettingsOpen}
         showCardSyncStatus={canvasPrefs.fields.badgeSync}
         onShowCardSyncStatusChange={(checked) => {

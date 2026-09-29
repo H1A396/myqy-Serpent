@@ -9,6 +9,7 @@ import {
   GeneralSettingsPage,
 } from "./AppSettingsPages";
 import { McpSettingsPage } from "./McpSettingsPage";
+import { WebShareSettingsPage } from "./WebShareSettingsPage";
 import { PluginSettingsPage } from "./PluginSettingsPage";
 import { PluginCommunityPage } from "./PluginCommunityPage";
 import { SyncSettingsPage, type SyncServerSettingsCallbacks } from "./SyncSettingsPage";
@@ -27,6 +28,7 @@ import { iconActionAttrs } from "./icon-action-attrs";
 import { useT } from "./i18n";
 import type { SerpentPluginManagerApi } from "../shared/plugin-manager-api";
 import type { SerpentMcpSettingsApi } from "../shared/mcp";
+import type { SerpentWebShareSettingsApi } from "../shared/web-share";
 import { DialogShell } from "./ui/patterns";
 
 export interface AppSettingsDialogProps {
@@ -57,6 +59,7 @@ export interface AppSettingsDialogProps {
   pluginContributionRefreshKey?: string | null;
   libraryId?: string;
   mcpApi?: SerpentMcpSettingsApi;
+  webShareApi?: SerpentWebShareSettingsApi;
   syncServerCallbacks: SyncServerSettingsCallbacks;
   showCardSyncStatus: boolean;
   onShowCardSyncStatusChange: (checked: boolean) => void;
@@ -95,6 +98,7 @@ export function AppSettingsDialog({
   pluginContributionRefreshKey,
   libraryId,
   mcpApi,
+  webShareApi,
   syncServerCallbacks,
   showCardSyncStatus,
   onShowCardSyncStatusChange,
@@ -273,6 +277,7 @@ export function AppSettingsDialog({
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "mcp" ? <McpSettingsPage api={mcpApi} onOpenAppLog={onOpenAppLog} /> : null}
+            {!showingPluginSettings && activeCategory === "webShare" ? <WebShareSettingsPage api={webShareApi} /> : null}
             {!showingPluginSettings && !showingCommunity && activeCategory === "plugins" ? (
               <PluginSettingsPage
                 api={pluginApi}
