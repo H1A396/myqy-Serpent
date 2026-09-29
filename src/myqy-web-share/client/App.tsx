@@ -26,7 +26,6 @@ interface TreeItem {
   name: string;
   parentId: string | null;
   count: number;
-  order: number;
 }
 
 /** Indented, collapsible navigation tree (folders / collections). */
@@ -51,7 +50,11 @@ function SidebarTree({
       else bucket.push(item);
     }
     for (const bucket of map.values()) {
-      bucket.sort((left, right) => left.order - right.order || left.name.localeCompare(right.name));
+      // Match the desktop's default sidebar order: name ascending with the same
+      // numeric/case-insensitive collation.
+      bucket.sort((left, right) =>
+        left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' }),
+      );
     }
     return map;
   }, [items]);
@@ -152,7 +155,6 @@ function folderTreeItems(folders: readonly ManagedFolderSummary[]): TreeItem[] {
     name: folder.name,
     parentId: folder.parentFolderId,
     count: folder.directAssetCount,
-    order: 0,
   }));
 }
 
@@ -162,7 +164,6 @@ function collectionTreeItems(collections: readonly CollectionSummary[]): TreeIte
     name: collection.name,
     parentId: collection.parentId,
     count: collection.assetCount,
-    order: collection.position,
   }));
 }
 
