@@ -4907,11 +4907,20 @@ async function startApplication(): Promise<void> {
   // friends. Construction failure only disables the feature, never the app.
   if (workerClient && logger) {
     try {
+      const packagedWebRoot = path.join(process.resourcesPath, 'web');
+      const devWebRoot = path.join(app.getAppPath(), 'dist', 'web');
+      const staticRootDir =
+        app.isPackaged && existsSync(path.join(packagedWebRoot, 'index.html'))
+          ? packagedWebRoot
+          : existsSync(path.join(devWebRoot, 'index.html'))
+            ? devWebRoot
+            : null;
       webShareServer = new WebShareServer({
         userDataPath: app.getPath('userData'),
         data: new WorkerBackedWebShareData(workerClient),
         media: new WorkerBackedWebShareMedia(workerClient),
         mediaGuard: (libraryId) => !isLibraryMediaReadBlocked(libraryId),
+        staticRootDir,
         logger,
       });
       webShareServer.onSnapshot((snapshot) => {

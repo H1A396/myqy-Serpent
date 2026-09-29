@@ -1,5 +1,5 @@
-import { createServer } from 'node:http';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createServer, request as httpRequest } from 'node:http';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -186,6 +186,22 @@ async function getFreePort(): Promise<number> {
       const { port } = address;
       probe.close(() => resolve(port));
     });
+  });
+}
+
+/** Send an unnormalized request path that fetch() would rewrite. */
+function rawGet(origin: string, rawPath: string): Promise<{ status: number }> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(origin);
+    const request = httpRequest(
+      { host: url.hostname, port: url.port, path: rawPath, method: 'GET' },
+      (response) => {
+        response.resume();
+        response.on('end', () => resolve({ status: response.statusCode ?? 0 }));
+      },
+    );
+    request.on('error', reject);
+    request.end();
   });
 }
 
@@ -405,5 +421,40 @@ describe('WebShareServer', () => {
       headers: { Cookie: cookie! },
     });
     expect(response.status).toBe(404);
+  });
+
+  it('serves the built web client and falls back to index.html', async () => {
+    const staticRoot = path.join(userDataPath, 'web');
+    await mkdir(staticRoot, { recursive: true });
+    await writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>Serpent</title>');
+    await writeFile(path.join(staticRoot, 'app.js'), 'console.log(1);');
+    const port = await getFreePort();
+    const staticServer = new WebShareServer({
+      userDataPath: path.join(userDataPath, 'static-data'),
+      data: provider,
+      staticRootDir: staticRoot,
+      logger: { info: () => undefined, error: () => undefined },
+    });
+    await staticServer.setPort(port);
+    await staticServer.setEnabled(true);
+    try {
+      const origin = `http://127.0.0.1:${port}`;
+      const index = await fetch(`${origin}/`);
+      expect(index.status).toBe(200);
+      expect(await index.text()).toContain('Serpent');
+
+      const asset = await fetch(`${origin}/app.js`);
+      expect(asset.status).toBe(200);
+      expect(asset.headers.get('content-type')).toContain('javascript');
+
+      const fallback = await fetch(`${origin}/some/deep/path`);
+      expect(fallback.status).toBe(200);
+      expect(await fallback.text()).toContain('Serpent');
+
+      const traversal = await rawGet(origin, '/..%2f..%2fpackage.json');
+      expect(traversal.status).toBe(400);
+    } finally {
+      await staticServer.close();
+    }
   });
 });

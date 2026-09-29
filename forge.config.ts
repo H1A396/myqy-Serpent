@@ -59,6 +59,9 @@ const config: ForgeConfig = {
       // the app bundle (Contents/Resources/extension) for manual loading.
       // Rebuild it so the package always carries the current sources.
       runNodeGate('scripts/build-extension.mjs', []);
+      // The read-only web share client ships as an extra resource and is
+      // served by the loopback share server.
+      runNodeGate('scripts/build-web.mjs', []);
     },
     postPackage: async (_forgeConfig, packageResult) => {
       nativeMediaPlatform(packageResult.platform, packageResult.arch);
@@ -123,6 +126,9 @@ const config: ForgeConfig = {
       // Serpent.app/Contents/Resources/extension (macOS) or
       // resources/extension (Windows) so users can load it unpacked.
       'dist/extension',
+      // Read-only web share client, served by the embedded share server from
+      // <resources>/web.
+      'dist/web',
       'assets/icons/app-dock.png',
       'assets/icons/app.png',
       'assets/icons/app.ico',
