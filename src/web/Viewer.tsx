@@ -1,8 +1,113 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { AssetSummary } from '../shared/asset-types';
 import { downloadUrl, sourceUrl } from './api';
 import { t } from './i18n';
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 8;
+
+/** Zoomable/pannable image that loads the original source only in the viewer. */
+function ZoomImage({ src, alt }: { src: string; alt: string }): ReactNode {
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const scaleRef = useRef(scale);
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  const reset = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
+
+  const zoomBy = useCallback((factor: number, originX?: number, originY?: number) => {
+    const current = scaleRef.current;
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current * factor));
+    if (next === MIN_SCALE) {
+      setScale(MIN_SCALE);
+      setOffset({ x: 0, y: 0 });
+      return;
+    }
+    const element = imageRef.current;
+    if (element !== null && originX !== undefined && originY !== undefined) {
+      const rect = element.getBoundingClientRect();
+      const ratio = next / current;
+      const cx = originX - (rect.left + rect.width / 2);
+      const cy = originY - (rect.top + rect.height / 2);
+      setOffset((previous) => ({
+        x: previous.x - cx * (ratio - 1),
+        y: previous.y - cy * (ratio - 1),
+      }));
+    }
+    setScale(next);
+  }, []);
+
+  // React attaches onWheel passively, so preventDefault needs a native listener.
+  useEffect(() => {
+    const element = imageRef.current;
+    if (element === null) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      zoomBy(event.deltaY < 0 ? 1.15 : 1 / 1.15, event.clientX, event.clientY);
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, [zoomBy]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === '+' || event.key === '=') zoomBy(1.25);
+      else if (event.key === '-') zoomBy(1 / 1.25);
+      else if (event.key === '0') reset();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [reset, zoomBy]);
+
+  return (
+    <div className="zoom-stage">
+      <img
+        alt={alt}
+        draggable={false}
+        ref={imageRef}
+        src={src}
+        style={{
+          cursor: scale > 1 ? 'grab' : 'zoom-in',
+          transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+        }}
+        onDoubleClick={() => (scale > 1 ? reset() : setScale(2))}
+        onPointerDown={(event) => {
+          if (scale <= 1) return;
+          dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          if (drag === null) return;
+          setOffset({
+            x: drag.ox + (event.clientX - drag.x),
+            y: drag.oy + (event.clientY - drag.y),
+          });
+        }}
+        onPointerUp={() => {
+          dragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+      />
+      {scale > 1 ? (
+        <button className="zoom-reset" type="button" onClick={reset}>
+          {t('重置缩放', 'Reset zoom')} · {Math.round(scale * 100)}%
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 export function Viewer({
   libraryId,
@@ -23,12 +128,9 @@ export function Viewer({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-        return;
-      }
-      if (event.key === 'ArrowRight' && index + 1 < assets.length) onNavigate(index + 1);
-      if (event.key === 'ArrowLeft' && index > 0) onNavigate(index - 1);
+      if (event.key === 'Escape') onClose();
+      else if (event.key === 'ArrowRight' && index + 1 < assets.length) onNavigate(index + 1);
+      else if (event.key === 'ArrowLeft' && index > 0) onNavigate(index - 1);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -36,6 +138,8 @@ export function Viewer({
 
   if (asset === undefined) return null;
   const src = sourceUrl(libraryId, asset);
+  const hasPrevious = index > 0;
+  const hasNext = index + 1 < assets.length;
 
   return (
     <div className="viewer" role="dialog" aria-modal="true" aria-label={asset.displayName}>
@@ -44,7 +148,7 @@ export function Viewer({
           {t('关闭', 'Close')}
         </button>
         <span className="viewer-title">{asset.displayName}</span>
-        <span className="count">
+        <span className="viewer-counter">
           {index + 1} / {assets.length}
         </span>
         {allowDownload ? (
@@ -53,13 +157,39 @@ export function Viewer({
           </a>
         ) : null}
       </div>
+
       <div className="viewer-body">
+        {hasPrevious ? (
+          <button
+            aria-label={t('上一张', 'Previous')}
+            className="viewer-nav viewer-nav-prev"
+            type="button"
+            onClick={() => onNavigate(index - 1)}
+          >
+            <svg aria-hidden="true" height="20" viewBox="0 0 20 20" width="20">
+              <path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
+        {hasNext ? (
+          <button
+            aria-label={t('下一张', 'Next')}
+            className="viewer-nav viewer-nav-next"
+            type="button"
+            onClick={() => onNavigate(index + 1)}
+          >
+            <svg aria-hidden="true" height="20" viewBox="0 0 20 20" width="20">
+              <path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : null}
+
         {asset.mediaType === 'image' ? (
-          <img src={src} alt={asset.displayName} />
+          <ZoomImage key={asset.assetId} src={src} alt={asset.displayName} />
         ) : asset.mediaType === 'video' ? (
-          <video src={src} controls autoPlay playsInline />
+          <video key={asset.assetId} src={src} controls autoPlay playsInline />
         ) : asset.mediaType === 'audio' ? (
-          <audio src={src} controls autoPlay />
+          <audio key={asset.assetId} src={src} controls autoPlay />
         ) : (
           <div className="viewer-fallback">
             <p>

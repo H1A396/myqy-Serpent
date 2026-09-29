@@ -160,7 +160,24 @@ export class WorkerBackedWebShareData implements WebShareDataProvider {
     if (!result.ok || result.type !== 'asset.search.result') {
       throw new WebShareDataError('WEB_SHARE_SEARCH_FAILED');
     }
+    this.#notifyVisible(input.libraryId, result.items.map((asset) => asset.assetId));
     return { items: result.items, total: result.total, offset: result.offset };
+  }
+
+  /**
+   * Tell the Worker which assets a visitor is actually looking at so their
+   * thumbnails (and video posters) are generated first. Best-effort and
+   * fire-and-forget: it only schedules derived cache work.
+   */
+  #notifyVisible(libraryId: string, assetIds: readonly string[]): void {
+    if (assetIds.length === 0) return;
+    void this.#client
+      .request({
+        type: 'asset.thumbnail.visible-window',
+        libraryId,
+        assetIds: assetIds.slice(0, 300),
+      })
+      .catch(() => undefined);
   }
 
   async listAssets(input: {

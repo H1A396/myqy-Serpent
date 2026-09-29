@@ -198,4 +198,42 @@ describe('WorkerBackedWebShareMedia', () => {
       await media.resolveArtifact({ libraryId: 'lib-a', artifactId: 'missing', kind: 'preview' }),
     ).toBeNull();
   });
+
+  it('generates a missing thumbnail on demand and resolves its path', async () => {
+    const client = new FakeWorkerClient((command) => {
+      if (command.type === 'media.get-thumbnail-artifact') {
+        return { ok: false, error: createPublicError('ASSET_NOT_FOUND') };
+      }
+      if (command.type === 'media.generate-thumbnail') {
+        return { ok: true, type: 'media.thumbnail.generated', assetId: 'asset-1', artifactId: 'art-new' };
+      }
+      if (command.type === 'media.get-artifact-paths') {
+        return {
+          ok: true,
+          type: 'media.artifact-paths',
+          entries: [{ artifactId: 'art-new', absolutePath: 'X:/library/.serpent/artifacts/new.webp' }],
+        };
+      }
+      throw new Error(`unexpected ${command.type}`);
+    });
+    const media = new WorkerBackedWebShareMedia(client);
+    expect(await media.resolveThumbnail({ libraryId: 'lib-a', assetId: 'asset-1' })).toMatchObject({
+      mimeType: 'image/webp',
+      absolutePath: 'X:/library/.serpent/artifacts/new.webp',
+    });
+  });
+
+  it('reports a thumbnail as unavailable when generation yields no artifact', async () => {
+    const client = new FakeWorkerClient((command) => {
+      if (command.type === 'media.get-thumbnail-artifact') {
+        return { ok: false, error: createPublicError('ASSET_NOT_FOUND') };
+      }
+      if (command.type === 'media.generate-thumbnail') {
+        return { ok: true, type: 'media.thumbnail.generated', assetId: 'asset-1' };
+      }
+      throw new Error(`unexpected ${command.type}`);
+    });
+    const media = new WorkerBackedWebShareMedia(client);
+    expect(await media.resolveThumbnail({ libraryId: 'lib-a', assetId: 'asset-1' })).toBeNull();
+  });
 });

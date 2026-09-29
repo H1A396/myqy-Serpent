@@ -52,8 +52,50 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
       libraryId: input.libraryId,
       assetId: input.assetId,
     });
-    if (!result.ok || result.type !== 'media.thumbnail-artifact') return null;
-    return { absolutePath: result.filePath, mimeType: mimeForPath(result.filePath) };
+    if (result.ok && result.type === 'media.thumbnail-artifact') {
+      return { absolutePath: result.filePath, mimeType: mimeForPath(result.filePath) };
+    }
+    return this.#generateThumbnail(input.libraryId, input.assetId);
+  }
+
+  /**
+   * A share visitor may be the first person to look at an asset, so the
+   * thumbnail artifact can still be absent. Generate it on demand the same way
+   * the desktop viewer does; this only writes a derived cache artifact and
+   * never touches the user's asset or metadata.
+   */
+  async #generateThumbnail(libraryId: string, assetId: string): Promise<ResolvedMedia | null> {
+    try {
+      const generated = await this.#request({
+        type: 'media.generate-thumbnail',
+        libraryId,
+        assetId,
+      });
+      if (
+        !generated.ok
+        || generated.type !== 'media.thumbnail.generated'
+        || generated.artifactId === undefined
+      ) {
+        return null;
+      }
+      const paths = await this.#request({
+        type: 'media.get-artifact-paths',
+        libraryId,
+        artifactIds: [generated.artifactId],
+        usage: 'preview',
+      });
+      if (!paths.ok || paths.type !== 'media.artifact-paths') return null;
+      const entry = paths.entries.find(
+        (candidate) => candidate.artifactId === generated.artifactId,
+      );
+      return entry === undefined
+        ? null
+        : { absolutePath: entry.absolutePath, mimeType: mimeForPath(entry.absolutePath) };
+    } catch {
+      // Slow/failed generation (e.g. a video poster still running) is reported
+      // as "not ready" and the client retries.
+      return null;
+    }
   }
 
   async resolveSource(input: {

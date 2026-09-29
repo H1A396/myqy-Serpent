@@ -5,7 +5,6 @@ import {
   api,
   ApiError,
   thumbnailUrl,
-  sourceUrl,
   type AssetDetail,
   type WebShareState,
 } from './api';
@@ -15,31 +14,162 @@ import { t } from './i18n';
 import { Viewer } from './Viewer';
 
 const PAGE_SIZE = 100;
+const THUMBNAIL_RETRY_LIMIT = 6;
 
 type Scope =
   | { kind: 'all' }
   | { kind: 'folder'; folderId: string }
   | { kind: 'collection'; collectionId: string };
 
-function folderDepth(
-  folder: ManagedFolderSummary,
-  byId: Map<string, ManagedFolderSummary>,
-): number {
-  let depth = 0;
-  let current = folder.parentFolderId;
-  while (current !== null && depth < 16) {
-    const parent = byId.get(current);
-    if (parent === undefined) break;
-    depth += 1;
-    current = parent.parentFolderId;
+interface TreeItem {
+  id: string;
+  name: string;
+  parentId: string | null;
+  count: number;
+  order: number;
+}
+
+/** Indented, collapsible navigation tree (folders / collections). */
+function SidebarTree({
+  items,
+  activeId,
+  emptyLabel,
+  onSelect,
+}: {
+  items: readonly TreeItem[];
+  activeId: string | null;
+  emptyLabel: string;
+  onSelect: (id: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+
+  const childrenOf = useMemo(() => {
+    const map = new Map<string | null, TreeItem[]>();
+    for (const item of items) {
+      const bucket = map.get(item.parentId);
+      if (bucket === undefined) map.set(item.parentId, [item]);
+      else bucket.push(item);
+    }
+    for (const bucket of map.values()) {
+      bucket.sort((left, right) => left.order - right.order || left.name.localeCompare(right.name));
+    }
+    return map;
+  }, [items]);
+
+  const rows = useMemo(() => {
+    const output: Array<{ item: TreeItem; depth: number; hasChildren: boolean }> = [];
+    const walk = (parentId: string | null, depth: number) => {
+      for (const item of childrenOf.get(parentId) ?? []) {
+        const children = childrenOf.get(item.id) ?? [];
+        output.push({ item, depth, hasChildren: children.length > 0 });
+        if (children.length > 0 && !collapsed.has(item.id)) walk(item.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return output;
+  }, [childrenOf, collapsed]);
+
+  if (items.length === 0) return <p className="nav-empty">{emptyLabel}</p>;
+
+  return (
+    <>
+      {rows.map(({ item, depth, hasChildren }) => {
+        const isCollapsed = collapsed.has(item.id);
+        return (
+          <div className="nav-row" key={item.id} style={{ paddingLeft: `${depth * 14}px` }}>
+            {hasChildren ? (
+              <button
+                aria-label={isCollapsed ? t('展开', 'Expand') : t('折叠', 'Collapse')}
+                aria-expanded={!isCollapsed}
+                className={`tree-toggle${isCollapsed ? ' is-collapsed' : ''}`}
+                onClick={() => {
+                  setCollapsed((previous) => {
+                    const next = new Set(previous);
+                    if (next.has(item.id)) next.delete(item.id);
+                    else next.add(item.id);
+                    return next;
+                  });
+                }}
+                type="button"
+              >
+                <svg aria-hidden="true" height="10" viewBox="0 0 10 10" width="10">
+                  <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                </svg>
+              </button>
+            ) : (
+              <span className="tree-toggle-spacer" />
+            )}
+            <button
+              className="nav-item"
+              type="button"
+              aria-current={activeId === item.id}
+              onClick={() => onSelect(item.id)}
+              title={item.name}
+            >
+              <span className="nav-item-name">{item.name}</span>
+              <span className="count">{item.count}</span>
+            </button>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Thumbnail tile. A share visitor can be the first to request an asset whose
+ * thumbnail has not been generated yet, so a failed load is retried with a
+ * backoff while the Worker produces the artifact. The original file is never
+ * requested here; it is only fetched by the viewer.
+ */
+function Thumb({ url, alt }: { url: string; alt: string }) {
+  const [attempt, setAttempt] = useState(0);
+  const [exhausted, setExhausted] = useState(false);
+  const extension = alt.includes('.') ? alt.split('.').pop() : '';
+
+  if (exhausted) {
+    return <span className="placeholder">{(extension ?? '').toUpperCase() || '?'}</span>;
   }
-  return depth;
+  return (
+    <img
+      alt={alt}
+      loading="lazy"
+      src={attempt === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}retry=${attempt}`}
+      onError={() => {
+        if (attempt >= THUMBNAIL_RETRY_LIMIT) {
+          setExhausted(true);
+          return;
+        }
+        window.setTimeout(() => setAttempt((value) => value + 1), 800 + attempt * 700);
+      }}
+    />
+  );
+}
+
+function folderTreeItems(folders: readonly ManagedFolderSummary[]): TreeItem[] {
+  return folders.map((folder) => ({
+    id: folder.folderId,
+    name: folder.name,
+    parentId: folder.parentFolderId,
+    count: folder.directAssetCount,
+    order: 0,
+  }));
+}
+
+function collectionTreeItems(collections: readonly CollectionSummary[]): TreeItem[] {
+  return collections.map((collection) => ({
+    id: collection.collectionId,
+    name: collection.name,
+    parentId: collection.parentId,
+    count: collection.assetCount,
+    order: collection.position,
+  }));
 }
 
 function scopeLabel(
   scope: Scope,
-  folders: ManagedFolderSummary[],
-  collections: CollectionSummary[],
+  folders: readonly ManagedFolderSummary[],
+  collections: readonly CollectionSummary[],
   libraryName: string,
 ): string {
   if (scope.kind === 'all') return libraryName;
@@ -80,16 +210,15 @@ export function App() {
 
   const libraryId = state?.sharedLibraryId ?? null;
 
-  // Bootstrap: probe the session, then load navigation data.
   useEffect(() => {
     void (async () => {
       try {
         const next = await api.state();
         setState(next);
         setPhase('ready');
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) setPhase('login');
-        else setPhase('login');
+      } catch {
+        // Missing/expired session (401) or no password configured (409).
+        setPhase('login');
       }
     })();
   }, []);
@@ -191,8 +320,7 @@ export function App() {
       setLoginError('');
       try {
         await api.login(password);
-        const next = await api.state();
-        setState(next);
+        setState(await api.state());
         setPhase('ready');
         setPassword('');
       } catch (error) {
@@ -208,12 +336,8 @@ export function App() {
     [password],
   );
 
-  const folderList = useMemo(() => {
-    const byId = new Map(folders.map((folder) => [folder.folderId, folder]));
-    return [...folders]
-      .map((folder) => ({ folder, depth: folderDepth(folder, byId) }))
-      .sort((left, right) => left.depth - right.depth || left.folder.name.localeCompare(right.folder.name));
-  }, [folders]);
+  const folderItems = useMemo(() => folderTreeItems(folders), [folders]);
+  const collectionItems = useMemo(() => collectionTreeItems(collections), [collections]);
 
   if (phase === 'loading') {
     return (
@@ -279,57 +403,37 @@ export function App() {
 
         <div className="nav-group">
           <h2>{t('资源库', 'Library')}</h2>
-          <button
-            className="nav-item"
-            type="button"
-            aria-current={scope.kind === 'all'}
-            onClick={() => setScope({ kind: 'all' })}
-          >
-            <span>{t('全部资产', 'All assets')}</span>
-          </button>
+          <div className="nav-row">
+            <span className="tree-toggle-spacer" />
+            <button
+              className="nav-item"
+              type="button"
+              aria-current={scope.kind === 'all'}
+              onClick={() => setScope({ kind: 'all' })}
+            >
+              <span className="nav-item-name">{t('全部资产', 'All assets')}</span>
+            </button>
+          </div>
         </div>
 
         <div className="nav-group">
           <h2>{t('文件夹', 'Folders')}</h2>
-          {folderList.length === 0 ? (
-            <p className="nav-empty">{t('暂无文件夹', 'No folders')}</p>
-          ) : (
-            folderList.map(({ folder, depth }) => (
-              <button
-                className="nav-item"
-                key={folder.folderId}
-                type="button"
-                style={{ paddingLeft: `${8 + depth * 12}px` }}
-                aria-current={scope.kind === 'folder' && scope.folderId === folder.folderId}
-                onClick={() => setScope({ kind: 'folder', folderId: folder.folderId })}
-              >
-                <span>{folder.name}</span>
-                <span className="count">{folder.directAssetCount}</span>
-              </button>
-            ))
-          )}
+          <SidebarTree
+            items={folderItems}
+            activeId={scope.kind === 'folder' ? scope.folderId : null}
+            emptyLabel={t('暂无文件夹', 'No folders')}
+            onSelect={(folderId) => setScope({ kind: 'folder', folderId })}
+          />
         </div>
 
         <div className="nav-group">
           <h2>{t('合集', 'Collections')}</h2>
-          {collections.length === 0 ? (
-            <p className="nav-empty">{t('暂无合集', 'No collections')}</p>
-          ) : (
-            collections.map((collection) => (
-              <button
-                className="nav-item"
-                key={collection.collectionId}
-                type="button"
-                aria-current={
-                  scope.kind === 'collection' && scope.collectionId === collection.collectionId
-                }
-                onClick={() => setScope({ kind: 'collection', collectionId: collection.collectionId })}
-              >
-                <span>{collection.name}</span>
-                <span className="count">{collection.assetCount}</span>
-              </button>
-            ))
-          )}
+          <SidebarTree
+            items={collectionItems}
+            activeId={scope.kind === 'collection' ? scope.collectionId : null}
+            emptyLabel={t('暂无合集', 'No collections')}
+            onSelect={(collectionId) => setScope({ kind: 'collection', collectionId })}
+          />
         </div>
       </nav>
 
@@ -375,7 +479,7 @@ export function App() {
             </select>
           ) : null}
           {scope.kind === 'folder' ? (
-            <label className="nav-item" style={{ width: 'auto', gap: 6 }}>
+            <label className="checkbox-inline">
               <input
                 type="checkbox"
                 checked={recursive}
@@ -397,38 +501,55 @@ export function App() {
             ) : (
               <>
                 <div className="grid">
-                  {assets.map((asset, index) => {
-                    const source =
-                      asset.thumbnailArtifactId !== null
-                        ? thumbnailUrl(libraryId, asset.assetId)
-                        : asset.mediaType === 'image'
-                          ? sourceUrl(libraryId, asset)
-                          : null;
-                    return (
-                      <button
-                        className="card"
-                        key={asset.assetId}
-                        type="button"
-                        data-selected={selectedIndex === index ? 'true' : undefined}
-                        onClick={() => void selectAsset(index)}
-                        onDoubleClick={() => setViewerIndex(index)}
-                      >
-                        <span className="card-thumb">
-                          {source !== null ? (
-                            <img loading="lazy" src={source} alt={asset.displayName} />
-                          ) : (
-                            <span className="placeholder">
-                              {asset.relativeFilePath.split('.').pop() ?? '?'}
-                            </span>
-                          )}
-                          <span className="card-badge">{formatBytes(asset.byteSize)}</span>
-                        </span>
-                        <span className="card-caption" title={asset.displayName}>
-                          {asset.displayName}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {assets.map((asset, index) => (
+                    <div
+                      className="card"
+                      key={asset.assetId}
+                      data-selected={selectedIndex === index ? 'true' : undefined}
+                      onClick={() => void selectAsset(index)}
+                      onDoubleClick={() => setViewerIndex(index)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') setViewerIndex(index);
+                        if (event.key === ' ') {
+                          event.preventDefault();
+                          void selectAsset(index);
+                        }
+                      }}
+                    >
+                      <span className="card-thumb">
+                        <Thumb
+                          url={thumbnailUrl(libraryId, asset.assetId)}
+                          alt={asset.displayName}
+                        />
+                        <span className="card-badge">{formatBytes(asset.byteSize)}</span>
+                        <button
+                          aria-label={t('放大查看', 'Open viewer')}
+                          className="card-open"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setViewerIndex(index);
+                          }}
+                          title={t('放大查看', 'Open viewer')}
+                          type="button"
+                        >
+                          <svg aria-hidden="true" height="13" viewBox="0 0 14 14" width="13">
+                            <path
+                              d="M5 2H2v3M9 2h3v3M5 12H2V9M9 12h3V9"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+                      </span>
+                      <span className="card-caption" title={asset.displayName}>
+                        {asset.displayName}
+                      </span>
+                    </div>
+                  ))}
                 </div>
                 {assets.length < total ? (
                   <div className="load-more">
