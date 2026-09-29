@@ -36,11 +36,13 @@ describe("app-settings-sections (Serpent-97l / Serpent-9es / Serpent-i07)", () =
       "browse",
       "ai",
       "mcp",
+      "webShare",
       "plugins",
       "sync",
     ]);
     expect(isAppSettingsCategoryId("assets")).toBe(true);
     expect(isAppSettingsCategoryId("ai")).toBe(true);
+    expect(isAppSettingsCategoryId("webShare")).toBe(true);
     expect(isAppSettingsCategoryId("plugins")).toBe(true);
     expect(isAppSettingsCategoryId("sync")).toBe(true);
     expect(isAppSettingsCategoryId("internal-telemetry")).toBe(false);
