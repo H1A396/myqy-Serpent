@@ -376,6 +376,7 @@ import {
   type PendingAssetReveal,
 } from "./pending-asset-reveal";
 import { resolveInspectorTagTarget } from "./inspector-tag-target";
+import type { InspectorEditDraft } from "./inspector-pending-edits";
 import { useBatchActions } from "./useBatchActions";
 import { useShellFileActions } from "./use-shell-file-actions";
 import { useInspectorMultiEdit } from "./use-inspector-multi-edit";
@@ -1562,6 +1563,23 @@ function AppInner() {
   const [editFavorite, setEditFavorite] = useState(false);
   const [editSourceUrl, setEditSourceUrl] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
+  // Serpent-cb40bb: mirror the Inspector edit drafts so a background-derived
+  // metadata refresh can preserve a field the user is still editing instead of
+  // resetting it to the freshly loaded row.
+  const inspectorEditDraftRef = useRef<InspectorEditDraft>({
+    description: "",
+    rating: 0,
+    favorite: false,
+    sourcePageUrl: "",
+    author: "",
+  });
+  inspectorEditDraftRef.current = {
+    description: editDescription,
+    rating: editRating,
+    favorite: editFavorite,
+    sourcePageUrl: editSourceUrl,
+    author: editAuthor,
+  };
   // REQ-SELECT-004: UE-style multi-select Inspector model (null when <2 selected).
   const selectedAssetIdsRef = useRef(selectedAssetIds);
   useEffect(() => {
@@ -2132,6 +2150,7 @@ function AppInner() {
     selectedAssetIdsRef,
     metadataByAssetRef,
     metadataConflictAssetIdsRef,
+    editDraftRef: inspectorEditDraftRef,
     assetMetadata,
     setAssetMetadata,
     setVersionConflict,
@@ -4909,7 +4928,9 @@ function AppInner() {
                 selectedAssetIdRef.current === event.assetId &&
                 isEffectLibraryCurrent()
               ) {
-                applyLoadedMetadata(event.assetId, result.value);
+                applyLoadedMetadata(event.assetId, result.value, {
+                  preservePendingEdits: true,
+                });
               }
             })
             .catch(() => undefined);

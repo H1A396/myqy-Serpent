@@ -21,6 +21,10 @@ import type { RendererLibrarySummary } from "../shared/protocol/responses";
 import { LibraryOperationError, toMessage } from "./error-utils";
 import { useLocale, useT } from "./i18n";
 import { resolveInspectorDescription } from "./inspector-description";
+import {
+  resolveInspectorPendingEdits,
+  type InspectorEditDraft,
+} from "./inspector-pending-edits";
 
 export type InspectorAiContent = {
   assetId: string;
@@ -38,6 +42,11 @@ export type UseInspectorAssetMetadataParams = {
   selectedAssetIdsRef: MutableRefObject<readonly string[]>;
   metadataByAssetRef: MutableRefObject<Map<string, AssetMetadataResult>>;
   metadataConflictAssetIdsRef: MutableRefObject<Set<string>>;
+  /**
+   * Current Inspector edit-field drafts (Serpent-cb40bb). Read when a
+   * background-derived refresh must not clobber an in-progress edit.
+   */
+  editDraftRef: MutableRefObject<InspectorEditDraft>;
   assetMetadata: AssetMetadataResult | null;
   setAssetMetadata: Dispatch<SetStateAction<AssetMetadataResult | null>>;
   setVersionConflict: Dispatch<SetStateAction<boolean>>;
@@ -71,7 +80,19 @@ export type UseInspectorAssetMetadataResult = {
   applyLoadedMetadata: (
     targetAssetId: string,
     metadata: AssetMetadataResult,
+    options?: ApplyLoadedMetadataOptions,
   ) => void;
+};
+
+export type ApplyLoadedMetadataOptions = {
+  /**
+   * Palette / EXIF-metadata extraction completed in the background while the
+   * user may be mid-edit. Keep draft values for any field the user has locally
+   * changed since it was last loaded, and only adopt the freshly extracted
+   * values for untouched fields. Without this a background refresh resets the
+   * Inspector and discards uncommitted typing (Serpent-cb40bb).
+   */
+  preservePendingEdits?: boolean;
 };
 
 export function useInspectorAssetMetadata({
@@ -82,6 +103,7 @@ export function useInspectorAssetMetadata({
   selectedAssetIdsRef,
   metadataByAssetRef,
   metadataConflictAssetIdsRef,
+  editDraftRef,
   assetMetadata,
   setAssetMetadata,
   setVersionConflict,
@@ -103,7 +125,15 @@ export function useInspectorAssetMetadata({
   const metadataSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const applyLoadedMetadata = useCallback(
-    (targetAssetId: string, metadata: AssetMetadataResult) => {
+    (
+      targetAssetId: string,
+      metadata: AssetMetadataResult,
+      options?: ApplyLoadedMetadataOptions,
+    ) => {
+      const previous = metadataByAssetRef.current.get(targetAssetId);
+      const pending = options?.preservePendingEdits
+        ? resolveInspectorPendingEdits(previous, editDraftRef.current)
+        : undefined;
       metadataByAssetRef.current.set(targetAssetId, metadata);
       metadataConflictAssetIdsRef.current.delete(targetAssetId);
       if (selectedAssetIdRef.current !== targetAssetId) return;
@@ -114,19 +144,22 @@ export function useInspectorAssetMetadata({
         aiContentRef.current?.assetId === targetAssetId
           ? aiContentRef.current
           : null;
-      const description = resolveInspectorDescription(
-        metadata.description,
-        ai?.description,
-      );
-      setEditDescription(description.value);
-      setDescriptionIsAi(description.fromAi);
-      setEditRating(metadata.rating);
-      setEditFavorite(metadata.favorite);
-      setEditSourceUrl(metadata.sourcePageUrl ?? "");
-      setEditAuthor(metadata.author ?? "");
+      if (!pending?.description) {
+        const description = resolveInspectorDescription(
+          metadata.description,
+          ai?.description,
+        );
+        setEditDescription(description.value);
+        setDescriptionIsAi(description.fromAi);
+      }
+      if (!pending?.rating) setEditRating(metadata.rating);
+      if (!pending?.favorite) setEditFavorite(metadata.favorite);
+      if (!pending?.sourcePageUrl) setEditSourceUrl(metadata.sourcePageUrl ?? "");
+      if (!pending?.author) setEditAuthor(metadata.author ?? "");
     },
     [
       aiContentRef,
+      editDraftRef,
       metadataByAssetRef,
       metadataConflictAssetIdsRef,
       selectedAssetIdRef,
