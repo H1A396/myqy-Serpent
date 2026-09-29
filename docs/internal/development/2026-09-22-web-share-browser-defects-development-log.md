@@ -57,3 +57,30 @@ npm run web:build
 ```
 
 未执行：真实 Electron / packaged / Windows 的浏览器联调与 Computer Use 视觉验收；查看器适配为纯 CSS 修复，需在真实浏览器中目视确认。WEB-SHARE-001 人类验收保持"不通过"，待用户复验。
+
+## 追加：网格卡片对齐/居中与大图查看器交互（`Serpent-43cbe0`）
+
+用户在打包版复验后继续提出 8 条，已全部实现：
+
+- **网格卡片高度不齐 / 缩略图不居中**：根因是 `.card-thumb` 作为 flex item 的 `min-height: auto` 被图片固有高度撑开，压过 `aspect-ratio: 1`，卡片高度随图片比例变化。修复：`.card-thumb` 加 `min-height: 0` 与 `overflow: hidden`，正方形生效后所有卡片等高、文件名对齐，缩略图按 `object-fit: cover` 填满（用户选 cover）。
+- **查看器标题栏**：改为 `1fr auto 1fr` 网格——左：关闭按钮 + 操作提示（滚轮缩放 · 左键拖动 · 双击缩放）；中：文件名，下一行居中显示页数；右：下载原图。标题栏加 `--ui-surface-overlay` 背景与底部分隔线，解决关闭/下载按钮叠在模糊背景上看不清的问题。
+- **点击空白退出**：`.viewer-body` 增加背景点击处理，点图片以外的空白（左右/上下）退出查看器；点图片、按钮、视频/音频、拖动结束的点击不退出（`ZoomImage` 通过 `dragMovedRef` 上报是否发生平移）。
+- 放大到没有空白区域时仍可用关闭按钮或 Esc 退出（`Esc` 已有）。
+
+验证：
+
+```text
+npx vitest run --config vitest.config.ts tests/unit/web-share-data.test.ts tests/unit/web-share-app.test.tsx tests/unit/web-share-viewer.test.tsx tests/unit/web-share-server.test.ts
+通过：4 个文件，32 passed（新增查看器空白点击关闭 / 点图片不关闭 / 标题栏名称与页数）。
+
+npm run typecheck
+通过（退出码 0）。
+
+npm run lint
+0 errors（5 个既有 warning，均不在本次改动文件）。
+
+npm run web:build
+通过，产物 dist/web（index-8KZZGTR0.css / index-DfBUqG_1.js）。
+```
+
+真实浏览器与 packaged 目视验收仍待用户复验。

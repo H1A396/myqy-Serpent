@@ -7,8 +7,20 @@ import { t } from './i18n';
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
 
-/** Zoomable/pannable image that loads the original source only in the viewer. */
-function ZoomImage({ src, alt }: { src: string; alt: string }): ReactNode {
+/**
+ * Zoomable/pannable image that loads the original source only in the viewer.
+ * `dragMovedRef` records whether the current gesture actually panned, so the
+ * viewer's background-click handler can ignore the click that ends a drag.
+ */
+function ZoomImage({
+  src,
+  alt,
+  dragMovedRef,
+}: {
+  src: string;
+  alt: string;
+  dragMovedRef: { current: boolean };
+}): ReactNode {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -81,6 +93,7 @@ function ZoomImage({ src, alt }: { src: string; alt: string }): ReactNode {
         }}
         onDoubleClick={() => (scale > 1 ? reset() : setScale(2))}
         onPointerDown={(event) => {
+          dragMovedRef.current = false;
           if (scale <= 1) return;
           dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -88,6 +101,7 @@ function ZoomImage({ src, alt }: { src: string; alt: string }): ReactNode {
         onPointerMove={(event) => {
           const drag = dragRef.current;
           if (drag === null) return;
+          dragMovedRef.current = true;
           setOffset({
             x: drag.ox + (event.clientX - drag.x),
             y: drag.oy + (event.clientY - drag.y),
@@ -125,6 +139,7 @@ export function Viewer({
   onNavigate: (index: number) => void;
 }) {
   const asset = assets[index];
+  const dragMovedRef = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -136,6 +151,20 @@ export function Viewer({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [assets.length, index, onClose, onNavigate]);
 
+  // Clicking the empty area around the media exits the viewer, matching the
+  // desktop viewer. Clicks on the media, controls or a pan gesture are ignored.
+  const handleBackgroundClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const moved = dragMovedRef.current;
+      dragMovedRef.current = false;
+      if (moved) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('img, video, audio, button, a, .viewer-fallback')) return;
+      onClose();
+    },
+    [onClose],
+  );
+
   if (asset === undefined) return null;
   const src = sourceUrl(libraryId, asset);
   const hasPrevious = index > 0;
@@ -144,21 +173,35 @@ export function Viewer({
   return (
     <div className="viewer" role="dialog" aria-modal="true" aria-label={asset.displayName}>
       <div className="viewer-header">
-        <button className="button ghost" type="button" onClick={onClose}>
-          {t('关闭', 'Close')}
-        </button>
-        <span className="viewer-title">{asset.displayName}</span>
-        <span className="viewer-counter">
-          {index + 1} / {assets.length}
-        </span>
-        {allowDownload ? (
-          <a className="button ghost" href={downloadUrl(libraryId, asset)} download>
-            {t('下载原图', 'Download')}
-          </a>
-        ) : null}
+        <div className="viewer-header-left">
+          <button className="button ghost" type="button" onClick={onClose}>
+            {t('关闭', 'Close')}
+          </button>
+          <span className="viewer-hints">
+            {t(
+              '滚轮缩放 · 左键拖动 · 双击缩放',
+              'Scroll to zoom · Drag to pan · Double-click to zoom',
+            )}
+          </span>
+        </div>
+        <div className="viewer-header-center">
+          <span className="viewer-title" title={asset.displayName}>
+            {asset.displayName}
+          </span>
+          <span className="viewer-counter">
+            {index + 1} / {assets.length}
+          </span>
+        </div>
+        <div className="viewer-header-right">
+          {allowDownload ? (
+            <a className="button" href={downloadUrl(libraryId, asset)} download>
+              {t('下载原图', 'Download')}
+            </a>
+          ) : null}
+        </div>
       </div>
 
-      <div className="viewer-body">
+      <div className="viewer-body" onClick={handleBackgroundClick}>
         {hasPrevious ? (
           <button
             aria-label={t('上一张', 'Previous')}
@@ -185,7 +228,12 @@ export function Viewer({
         ) : null}
 
         {asset.mediaType === 'image' ? (
-          <ZoomImage key={asset.assetId} src={src} alt={asset.displayName} />
+          <ZoomImage
+            key={asset.assetId}
+            src={src}
+            alt={asset.displayName}
+            dragMovedRef={dragMovedRef}
+          />
         ) : asset.mediaType === 'video' ? (
           <video key={asset.assetId} src={src} controls autoPlay playsInline />
         ) : asset.mediaType === 'audio' ? (
