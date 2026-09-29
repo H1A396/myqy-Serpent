@@ -1282,7 +1282,7 @@ export const zhCN = {
     webShareTunnelHint: "在隧道客户端中把上面的本地地址映射到公网域名，朋友即可通过浏览器只读浏览。",
     webSharePasswordTitle: "分享密码",
     webSharePasswordHint: "朋友打开分享链接时需要输入该密码。修改密码会让已登录的访客退出。",
-    webSharePasswordPlaceholder: "至少 8 位",
+    webSharePasswordPlaceholder: "至少 4 位",
     webSharePasswordSet: "设置密码",
     webSharePasswordClear: "清除密码",
     webSharePasswordSetNotice: "密码已更新，已登录的访客需要重新输入。",

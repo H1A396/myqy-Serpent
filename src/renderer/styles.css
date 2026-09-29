@@ -7826,6 +7826,27 @@ select.ai-config-input.ai-config-languages {
   gap: 3px;
 }
 
+/* Web share password row: keep the action buttons on a single line instead of
+   squeezing their labels into wrapped characters. */
+.web-share-password-row {
+  flex-wrap: wrap;
+}
+
+.web-share-password-row .app-settings-row-copy {
+  flex: 1 1 200px;
+}
+
+.web-share-password-row .text-field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.web-share-password-row .primary-button,
+.web-share-password-row .secondary-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .app-settings-memory-chips {
   display: flex;
   flex-wrap: wrap;

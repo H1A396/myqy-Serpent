@@ -19,6 +19,8 @@ export const WEB_SHARE_MIN_PORT = 1_024;
 export const WEB_SHARE_MAX_PORT = 65_535;
 export const WEB_SHARE_SESSION_COOKIE = 'serpent_web_share' as const;
 export const WEB_SHARE_SESSION_TTL_MS = 12 * 60 * 60 * 1_000;
+/** Minimum share-password length; kept low because the tunnel is opt-in. */
+export const WEB_SHARE_MIN_PASSWORD_LENGTH = 4;
 
 export const webShareServerPreferencesSchema = z.strictObject({
   enabled: z.boolean(),
@@ -74,7 +76,10 @@ export const webShareSettingsSnapshotSchema = z.strictObject({
 });
 export type WebShareSettingsSnapshot = z.infer<typeof webShareSettingsSnapshotSchema>;
 
-export const webSharePasswordSchema = z.string().min(8).max(128);
+export const webSharePasswordSchema = z
+  .string()
+  .min(WEB_SHARE_MIN_PASSWORD_LENGTH)
+  .max(128);
 
 export const webShareSettingsRequestSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('get') }),

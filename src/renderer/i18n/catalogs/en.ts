@@ -1301,7 +1301,7 @@ export const en = {
     webShareTunnelHint: "Point your tunnel client at the local address above; friends can then browse read-only in a browser.",
     webSharePasswordTitle: "Share password",
     webSharePasswordHint: "Friends enter this password to open the share link. Changing it signs out existing visitors.",
-    webSharePasswordPlaceholder: "At least 8 characters",
+    webSharePasswordPlaceholder: "At least 4 characters",
     webSharePasswordSet: "Set password",
     webSharePasswordClear: "Clear password",
     webSharePasswordSetNotice: "Password updated. Existing visitors must sign in again.",

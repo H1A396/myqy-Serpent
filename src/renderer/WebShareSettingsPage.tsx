@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import {
   WEB_SHARE_DEFAULT_PORT,
+  WEB_SHARE_MIN_PASSWORD_LENGTH,
   type SerpentWebShareSettingsApi,
   type WebShareSettingsSnapshot,
 } from "../shared/web-share";
@@ -160,7 +161,7 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       </SettingsCard>
 
       <SettingsCard>
-        <div className="app-settings-action-row">
+        <div className="app-settings-action-row web-share-password-row">
           <div className="app-settings-row-copy">
             <strong>{t("settings.webSharePasswordTitle")}</strong>
             <span>{t("settings.webSharePasswordHint")}</span>
@@ -177,7 +178,7 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
           />
           <button
             className="primary-button"
-            disabled={busy || passwordDraft.length < 8}
+            disabled={busy || passwordDraft.length < WEB_SHARE_MIN_PASSWORD_LENGTH}
             onClick={() => {
               void request({ type: "set-password", password: passwordDraft }, t("settings.webSharePasswordSetNotice"));
               setPasswordDraft("");
