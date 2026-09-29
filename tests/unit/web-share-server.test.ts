@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -20,6 +20,7 @@ import type {
   WebShareDataProvider,
 } from '../../src/main/web-share-data';
 import { WebShareServer } from '../../src/main/web-share-server';
+import type { ResolvedMedia, WebShareMediaResolver } from '../../src/main/web-share-media';
 import type { WebShareLibrarySummary } from '../../src/shared/web-share';
 
 function emptyAsset(): AssetSummary {
@@ -151,6 +152,27 @@ class FakeDataProvider implements WebShareDataProvider {
   }
 }
 
+class FakeMediaResolver implements WebShareMediaResolver {
+  constructor(private readonly paths: Record<string, string>) {}
+
+  async resolveThumbnail(input: { libraryId: string; assetId: string }): Promise<ResolvedMedia | null> {
+    return this.#resolve('thumbnail', input.assetId, 'image/webp');
+  }
+
+  async resolveSource(input: { libraryId: string; assetId: string; revisionId: string }): Promise<ResolvedMedia | null> {
+    return this.#resolve('source', input.assetId, 'video/mp4');
+  }
+
+  async resolveArtifact(input: { libraryId: string; artifactId: string; kind: 'preview' | 'proxy' }): Promise<ResolvedMedia | null> {
+    return this.#resolve('preview', input.artifactId, 'video/webm');
+  }
+
+  #resolve(kind: string, id: string, mimeType: string): ResolvedMedia | null {
+    const absolutePath = this.paths[`${kind}:${id}`];
+    return absolutePath === undefined ? null : { absolutePath, mimeType };
+  }
+}
+
 async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const probe = createServer();
@@ -172,9 +194,18 @@ describe('WebShareServer', () => {
   let server: WebShareServer;
   let provider: FakeDataProvider;
   let baseUrl: string;
+  let mediaPaths: Record<string, string>;
 
   beforeEach(async () => {
     userDataPath = await mkdtemp(path.join(os.tmpdir(), 'serpent-web-share-'));
+    mediaPaths = {
+      'thumbnail:asset-1': path.join(userDataPath, 'thumb.webp'),
+      'source:asset-1': path.join(userDataPath, 'clip.mp4'),
+      'preview:art-1': path.join(userDataPath, 'preview.webm'),
+    };
+    await writeFile(mediaPaths['thumbnail:asset-1']!, Buffer.from('thumb-bytes'));
+    await writeFile(mediaPaths['source:asset-1']!, Buffer.from('0123456789'));
+    await writeFile(mediaPaths['preview:art-1']!, Buffer.from('preview-bytes'));
     provider = new FakeDataProvider([
       { libraryId: 'lib-a', displayName: 'Library A' },
       { libraryId: 'lib-b', displayName: 'Library B' },
@@ -182,6 +213,7 @@ describe('WebShareServer', () => {
     server = new WebShareServer({
       userDataPath,
       data: provider,
+      media: new FakeMediaResolver(mediaPaths),
       logger: { info: () => undefined, error: () => undefined },
     });
     const port = await getFreePort();
@@ -309,5 +341,69 @@ describe('WebShareServer', () => {
     const { cookie } = await login('correct horse battery');
     const response = await fetch(`${baseUrl}/`, { headers: { Cookie: cookie! } });
     expect(response.status).toBe(503);
+  });
+
+  it('requires authentication for media', async () => {
+    server.setPassword('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/thumbnail/lib-a/asset-1`);
+    expect(response.status).toBe(401);
+  });
+
+  it('serves a thumbnail for the shared library', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/thumbnail/lib-a/asset-1`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(await response.text()).toBe('thumb-bytes');
+  });
+
+  it('serves source byte ranges', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/source/lib-a/asset-1?revision=rev-1`, {
+      headers: { Cookie: cookie!, Range: 'bytes=0-3' },
+    });
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-range')).toBe('bytes 0-3/10');
+    expect(await response.text()).toBe('0123');
+  });
+
+  it('gates explicit downloads behind the preference', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    server.setAllowDownload(false);
+    const blocked = await fetch(
+      `${baseUrl}/media/source/lib-a/asset-1?revision=rev-1&download=1`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(blocked.status).toBe(403);
+    server.setAllowDownload(true);
+    const allowed = await fetch(
+      `${baseUrl}/media/source/lib-a/asset-1?revision=rev-1&download=1`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('content-disposition')).toContain('attachment');
+  });
+
+  it('rejects media from a non-shared library', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/thumbnail/lib-b/asset-1`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 404 for media the Worker cannot resolve', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/thumbnail/lib-a/unknown`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(404);
   });
 });

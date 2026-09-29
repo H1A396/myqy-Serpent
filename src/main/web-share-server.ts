@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
+import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -26,7 +27,9 @@ import {
   WebShareSessionSigner,
 } from './web-share-auth';
 import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
+import type { ResolvedMedia, WebShareMediaResolver } from './web-share-media';
 import { WebShareSettingsStore } from './web-share-settings-store';
+import { parseByteRange } from './artifact-response';
 
 export interface WebShareLogger {
   info(scope: string, message: string, context?: Record<string, unknown>): void;
@@ -37,6 +40,10 @@ export interface WebShareServerOptions {
   data: WebShareDataProvider;
   userDataPath: string;
   logger: WebShareLogger;
+  /** Resolves thumbnail/source/artifact bytes; absent disables media routes. */
+  media?: WebShareMediaResolver;
+  /** Main-owned fence: returns false while a library must not be read. */
+  mediaGuard?: (libraryId: string) => boolean;
   /** Built web client directory. When absent only the API is served. */
   staticRootDir?: string | null;
   now?: () => number;
@@ -95,6 +102,8 @@ const SECURITY_HEADERS: Readonly<Record<string, string>> = {
  */
 export class WebShareServer {
   readonly #data: WebShareDataProvider;
+  readonly #media: WebShareMediaResolver | undefined;
+  readonly #mediaGuard: ((libraryId: string) => boolean) | undefined;
   readonly #logger: WebShareLogger;
   readonly #store: WebShareSettingsStore;
   readonly #throttle = new WebShareLoginThrottle();
@@ -111,6 +120,8 @@ export class WebShareServer {
 
   constructor(options: WebShareServerOptions) {
     this.#data = options.data;
+    this.#media = options.media;
+    this.#mediaGuard = options.mediaGuard;
     this.#logger = options.logger;
     this.#store = new WebShareSettingsStore(options.userDataPath);
     this.#now = options.now ?? Date.now;
@@ -371,9 +382,13 @@ export class WebShareServer {
       return;
     }
 
-    if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/') || pathname.startsWith('/media/')) {
       if (!this.#authorize(request, response)) {
         request.resume();
+        return;
+      }
+      if (pathname.startsWith('/media/')) {
+        await this.#handleMedia(request, response, url, pathname);
         return;
       }
       await this.#handleApi(request, response, url, pathname);
@@ -629,6 +644,132 @@ export class WebShareServer {
     };
   }
 
+  async #handleMedia(
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+    pathname: string,
+  ): Promise<void> {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      writeJson(response, 405, { error: 'Method not allowed.', code: 'WEB_SHARE_METHOD_NOT_ALLOWED' });
+      return;
+    }
+    const media = this.#media;
+    if (media === undefined) {
+      writeJson(response, 503, { error: 'Media is unavailable.', code: 'WEB_SHARE_MEDIA_UNAVAILABLE' });
+      return;
+    }
+    const segments = pathname.split('/').filter((segment) => segment.length > 0);
+    // segments[0] === 'media'
+    if (segments.length !== 4) {
+      writeJson(response, 404, { error: 'Not found.', code: 'WEB_SHARE_NOT_FOUND' });
+      return;
+    }
+    const kind = segments[1]!;
+    const libraryId = decodeURIComponent(segments[2]!);
+    const identifier = decodeURIComponent(segments[3]!);
+    if (!this.#isSharedLibrary(libraryId)) {
+      writeJson(response, 404, { error: 'Library not shared.', code: 'WEB_SHARE_LIBRARY_NOT_SHARED' });
+      return;
+    }
+    if (this.#mediaGuard !== undefined && !this.#mediaGuard(libraryId)) {
+      writeJson(response, 410, { error: 'Library unavailable.', code: 'WEB_SHARE_LIBRARY_UNAVAILABLE' });
+      return;
+    }
+
+    let resolved: ResolvedMedia | null;
+    if (kind === 'thumbnail') {
+      resolved = await media.resolveThumbnail({ libraryId, assetId: identifier });
+    } else if (kind === 'source') {
+      const revisionId = url.searchParams.get('revision');
+      if (revisionId === null || revisionId === '') {
+        writeJson(response, 400, { error: 'A revision is required.', code: 'WEB_SHARE_REVISION_REQUIRED' });
+        return;
+      }
+      resolved = await media.resolveSource({ libraryId, assetId: identifier, revisionId });
+    } else if (kind === 'preview' || kind === 'proxy') {
+      resolved = await media.resolveArtifact({ libraryId, artifactId: identifier, kind });
+    } else {
+      writeJson(response, 404, { error: 'Not found.', code: 'WEB_SHARE_NOT_FOUND' });
+      return;
+    }
+
+    if (resolved === null) {
+      writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      return;
+    }
+    const download = kind === 'source' && url.searchParams.get('download') === '1';
+    if (download && !this.#store.preferences.allowDownload) {
+      writeJson(response, 403, { error: 'Downloading is disabled.', code: 'WEB_SHARE_DOWNLOAD_DISABLED' });
+      return;
+    }
+    await this.#streamResolved(request, response, resolved, {
+      download,
+      cacheable: kind === 'thumbnail',
+    });
+  }
+
+  async #streamResolved(
+    request: IncomingMessage,
+    response: ServerResponse,
+    resolved: ResolvedMedia,
+    options: { download: boolean; cacheable: boolean },
+  ): Promise<void> {
+    let size: number;
+    try {
+      const info = await stat(resolved.absolutePath);
+      if (!info.isFile()) throw new Error('not a file');
+      size = info.size;
+    } catch {
+      writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      return;
+    }
+
+    response.setHeader('Content-Type', resolved.mimeType);
+    response.setHeader('Accept-Ranges', 'bytes');
+    response.setHeader(
+      'Cache-Control',
+      options.cacheable ? 'public, max-age=3600' : 'private, max-age=0, must-revalidate',
+    );
+    if (options.download) {
+      response.setHeader('Content-Disposition', contentDisposition(path.basename(resolved.absolutePath)));
+    }
+
+    const rangeHeader = request.headers.range;
+    const range = rangeHeader === undefined ? null : parseByteRange(rangeHeader, size);
+    if (rangeHeader !== undefined && range === null) {
+      response.statusCode = 416;
+      response.setHeader('Content-Range', `bytes */${size}`);
+      response.end();
+      return;
+    }
+
+    const start = range?.start ?? 0;
+    const end = range?.end ?? size - 1;
+    response.statusCode = range === null ? 200 : 206;
+    if (range !== null) response.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+    response.setHeader('Content-Length', String(end - start + 1));
+
+    if (request.method === 'HEAD') {
+      response.end();
+      return;
+    }
+
+    const stream = createReadStream(resolved.absolutePath, { start, end });
+    stream.on('error', (error) => {
+      this.#logger.error('web-share.media-stream', error);
+      if (!response.headersSent) {
+        writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      } else {
+        response.destroy();
+      }
+    });
+    response.on('close', () => {
+      if (!response.writableFinished) stream.destroy();
+    });
+    stream.pipe(response);
+  }
+
   async #serveStatic(
     request: IncomingMessage,
     response: ServerResponse,
@@ -756,6 +897,11 @@ function sessionCookie(token: string): string {
 
 function clearSessionCookie(): string {
   return `${WEB_SHARE_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+function contentDisposition(filename: string): string {
+  const fallback = filename.replace(/[^\x20-\x7e]/gu, '_').replace(/["\\]/gu, '_') || 'download';
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 function writeJson(response: ServerResponse, status: number, body: unknown): void {

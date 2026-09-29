@@ -238,6 +238,7 @@ import {
 } from '../shared/mcp';
 import { WebShareServer, WebShareServerError } from './web-share-server';
 import { WorkerBackedWebShareData } from './web-share-data';
+import { WorkerBackedWebShareMedia } from './web-share-media';
 import {
   webShareSettingsRequestSchema,
   webShareSettingsResponseSchema,
@@ -4909,6 +4910,8 @@ async function startApplication(): Promise<void> {
       webShareServer = new WebShareServer({
         userDataPath: app.getPath('userData'),
         data: new WorkerBackedWebShareData(workerClient),
+        media: new WorkerBackedWebShareMedia(workerClient),
+        mediaGuard: (libraryId) => !isLibraryMediaReadBlocked(libraryId),
         logger,
       });
       webShareServer.onSnapshot((snapshot) => {
