@@ -9,8 +9,8 @@ import {
   type FilterClause,
   type SearchScope,
   type SortDefinition,
-} from '../shared/asset-types';
-import { parseSearchExpression } from '../shared/search-expression';
+} from '../../shared/asset-types';
+import { parseSearchExpression } from '../../shared/search-expression';
 import {
   WEB_SHARE_SESSION_COOKIE,
   WEB_SHARE_SESSION_TTL_MS,
@@ -19,7 +19,7 @@ import {
   type WebShareRuntimeState,
   type WebShareServerPreferences,
   type WebShareSettingsSnapshot,
-} from '../shared/web-share';
+} from '../../shared/web-share';
 import {
   createWebSharePasswordRecord,
   verifyWebSharePassword,
@@ -29,7 +29,7 @@ import {
 import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
 import type { ResolvedMedia, WebShareMediaResolver } from './web-share-media';
 import { WebShareSettingsStore } from './web-share-settings-store';
-import { parseByteRange } from './artifact-response';
+import { parseByteRange } from '../../main/artifact-response';
 
 export interface WebShareLogger {
   info(scope: string, message: string, context?: Record<string, unknown>): void;

@@ -18,9 +18,9 @@ import type {
 import type {
   WebShareAssetQuery,
   WebShareDataProvider,
-} from '../../src/main/web-share-data';
-import { WebShareServer } from '../../src/main/web-share-server';
-import type { ResolvedMedia, WebShareMediaResolver } from '../../src/main/web-share-media';
+} from '../../src/myqy-web-share/server/web-share-data';
+import { WebShareServer } from '../../src/myqy-web-share/server/web-share-server';
+import type { ResolvedMedia, WebShareMediaResolver } from '../../src/myqy-web-share/server/web-share-media';
 import type { WebShareLibrarySummary } from '../../src/shared/web-share';
 
 function emptyAsset(): AssetSummary {

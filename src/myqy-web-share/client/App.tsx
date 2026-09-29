@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { AssetSummary, CollectionSummary, ManagedFolderSummary, TagSummary } from '../shared/asset-types';
+import type { AssetSummary, CollectionSummary, ManagedFolderSummary, TagSummary } from '../../shared/asset-types';
 import {
   api,
   ApiError,

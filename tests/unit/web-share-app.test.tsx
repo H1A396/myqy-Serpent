@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AssetSummary } from '../../src/shared/asset-types';
-import type { AssetDetail } from '../../src/web/api';
+import type { AssetDetail } from '../../src/myqy-web-share/client/api';
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
@@ -19,7 +19,7 @@ const { apiMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../src/web/api', () => ({
+vi.mock('../../src/myqy-web-share/client/api', () => ({
   api: apiMock,
   ApiError: class ApiError extends Error {
     readonly status = 0;
@@ -31,7 +31,7 @@ vi.mock('../../src/web/api', () => ({
   downloadUrl: () => '/media/download',
 }));
 
-import { App } from '../../src/web/App';
+import { App } from '../../src/myqy-web-share/client/App';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

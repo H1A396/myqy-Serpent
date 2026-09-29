@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import type { AssetSummary } from '../shared/asset-types';
+import type { AssetSummary } from '../../shared/asset-types';
 import { downloadUrl, sourceUrl } from './api';
 import { t } from './i18n';
 

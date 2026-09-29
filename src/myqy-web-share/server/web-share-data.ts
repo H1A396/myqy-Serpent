@@ -11,15 +11,15 @@ import {
   type SearchScope,
   type SortDefinition,
   type TagSummary,
-} from '../shared/asset-types';
-import type { WorkerCommand } from '../shared/protocol/requests';
-import { workerResultSchema, type WorkerResult } from '../shared/protocol/responses';
+} from '../../shared/asset-types';
+import type { WorkerCommand } from '../../shared/protocol/requests';
+import { workerResultSchema, type WorkerResult } from '../../shared/protocol/responses';
 import {
   webShareAssetDetailSchema,
   type WebShareAssetDetail,
   type WebShareLibrarySummary,
   type WebShareSearchResult,
-} from '../shared/web-share';
+} from '../../shared/web-share';
 
 /**
  * Structural Worker surface the web share needs. Kept as an interface so the

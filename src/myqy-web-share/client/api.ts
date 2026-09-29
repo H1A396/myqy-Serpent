@@ -3,7 +3,7 @@ import type {
   CollectionSummary,
   ManagedFolderSummary,
   TagSummary,
-} from '../shared/asset-types';
+} from '../../shared/asset-types';
 
 export interface WebShareState {
   app: string;

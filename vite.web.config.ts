@@ -13,7 +13,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
  * Electron-only renderer modules.
  */
 export default defineConfig({
-  root: path.resolve(projectRoot, 'src/web'),
+  root: path.resolve(projectRoot, 'src/myqy-web-share/client'),
   base: './',
   plugins: [react()],
   build: {

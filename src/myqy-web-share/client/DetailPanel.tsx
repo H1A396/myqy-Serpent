@@ -1,4 +1,4 @@
-import type { AssetSummary } from '../shared/asset-types';
+import type { AssetSummary } from '../../shared/asset-types';
 import type { AssetDetail } from './api';
 import { downloadUrl } from './api';
 import { formatBytes, formatDate, formatDimensions, formatDuration, stars } from './format';

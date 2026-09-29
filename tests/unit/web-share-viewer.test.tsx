@@ -5,12 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AssetSummary } from '../../src/shared/asset-types';
 
-vi.mock('../../src/web/api', () => ({
+vi.mock('../../src/myqy-web-share/client/api', () => ({
   sourceUrl: () => '/media/source',
   downloadUrl: () => '/media/download',
 }));
 
-import { Viewer } from '../../src/web/Viewer';
+import { Viewer } from '../../src/myqy-web-share/client/Viewer';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

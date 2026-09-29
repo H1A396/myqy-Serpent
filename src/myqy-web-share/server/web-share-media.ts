@@ -1,6 +1,6 @@
-import { artifactProtocolMimeForExtension } from '../shared/media-formats';
-import type { WorkerCommand } from '../shared/protocol/requests';
-import { workerResultSchema, type WorkerResult } from '../shared/protocol/responses';
+import { artifactProtocolMimeForExtension } from '../../shared/media-formats';
+import type { WorkerCommand } from '../../shared/protocol/requests';
+import { workerResultSchema, type WorkerResult } from '../../shared/protocol/responses';
 import type { WebShareWorkerClient } from './web-share-data';
 
 export interface ResolvedMedia {

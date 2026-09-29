@@ -6,8 +6,8 @@ import {
   WebShareDataError,
   WorkerBackedWebShareData,
   type WebShareWorkerClient,
-} from '../../src/main/web-share-data';
-import { WorkerBackedWebShareMedia } from '../../src/main/web-share-media';
+} from '../../src/myqy-web-share/server/web-share-data';
+import { WorkerBackedWebShareMedia } from '../../src/myqy-web-share/server/web-share-media';
 
 class FakeWorkerClient implements WebShareWorkerClient {
   readonly commands: WorkerCommand[] = [];

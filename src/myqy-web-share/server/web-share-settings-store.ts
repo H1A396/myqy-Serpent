@@ -7,8 +7,8 @@ import {
   WEB_SHARE_DEFAULT_PORT,
   webShareServerPreferencesSchema,
   type WebShareServerPreferences,
-} from '../shared/web-share';
-import { readAtomicJsonFile, writeAtomicJsonFile } from './atomic-json-file';
+} from '../../shared/web-share';
+import { readAtomicJsonFile, writeAtomicJsonFile } from '../../main/atomic-json-file';
 
 const passwordRecordSchema = z.strictObject({
   salt: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/u),

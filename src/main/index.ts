@@ -236,9 +236,9 @@ import {
   mcpSettingsSnapshotSchema,
   type McpSettingsRequest,
 } from '../shared/mcp';
-import { WebShareServer, WebShareServerError } from './web-share-server';
-import { WorkerBackedWebShareData } from './web-share-data';
-import { WorkerBackedWebShareMedia } from './web-share-media';
+import { WebShareServer, WebShareServerError } from '../myqy-web-share/server/web-share-server';
+import { WorkerBackedWebShareData } from '../myqy-web-share/server/web-share-data';
+import { WorkerBackedWebShareMedia } from '../myqy-web-share/server/web-share-media';
 import {
   webShareSettingsRequestSchema,
   webShareSettingsResponseSchema,
