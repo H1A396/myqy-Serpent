@@ -15,12 +15,17 @@ import type {
   ManagedFolderSummary,
   TagSummary,
 } from '../../src/shared/asset-types';
+import { WebShareDataError } from '../../src/myqy-web-share/server/web-share-data';
 import type {
   WebShareAssetQuery,
   WebShareDataProvider,
 } from '../../src/myqy-web-share/server/web-share-data';
 import { WebShareServer } from '../../src/myqy-web-share/server/web-share-server';
 import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from '../../src/myqy-web-share/server/web-share-media';
+import {
+  WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
+  WEB_SHARE_DERIVATIVE_QUALITY,
+} from '../../src/shared/web-share';
 import type { WebShareLibrarySummary } from '../../src/shared/web-share';
 
 function emptyAsset(): AssetSummary {
@@ -111,11 +116,14 @@ class FakeDataProvider implements WebShareDataProvider {
     return { items: [], total: 0, offset: input.offset ?? 0 };
   }
 
-  async getAssetDetail(): Promise<{
+  async getAssetDetail(input?: { libraryId: string; assetId: string }): Promise<{
     asset: AssetSummary;
     metadata: AssetMetadataResult;
     extracted: ExtractedMetadataResult;
   }> {
+    if (input?.assetId === 'missing') {
+      throw new WebShareDataError('WEB_SHARE_ASSET_NOT_FOUND');
+    }
     return {
       asset: emptyAsset(),
       metadata: {
@@ -174,7 +182,16 @@ class FakeMediaResolver implements WebShareMediaResolver {
     format: 'webp' | 'jpeg' | 'png';
     maxEdge: number;
     quality: number;
+    fullSize: boolean;
+    progressive: boolean;
   }): Promise<ResolvedDerivative | null> {
+    this.lastDerivative = {
+      format: input.format,
+      maxEdge: input.maxEdge,
+      quality: input.quality,
+      fullSize: input.fullSize,
+      progressive: input.progressive,
+    };
     const resolved = this.#resolve('view', input.assetId, `image/${input.format}`);
     if (resolved === null) return null;
     return {
@@ -184,6 +201,37 @@ class FakeMediaResolver implements WebShareMediaResolver {
       },
     };
   }
+
+  async resolveThumbnailDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    sharpen: boolean;
+    maxBytes: number;
+  }): Promise<ResolvedDerivative | null> {
+    if (this.thumbnailDerivativeUnavailable) return null;
+    const resolved = this.#resolve('thumbview', input.assetId, `image/${input.format}`);
+    if (resolved === null) return null;
+    return {
+      ...resolved,
+      cleanup: () => {
+        this.derivativeCleanupCount += 1;
+      },
+    };
+  }
+
+  /** Simulates a still-generating thumbnail that forces the artifact fallback. */
+  thumbnailDerivativeUnavailable = false;
+
+  /** Parameters of the last viewer derivative the server requested. */
+  lastDerivative: {
+    format: string;
+    maxEdge: number;
+    quality: number;
+    fullSize: boolean;
+    progressive: boolean;
+  } | null = null;
 
   /** Number of times a served derivative reported itself as discarded. */
   derivativeCleanupCount = 0;
@@ -238,11 +286,13 @@ describe('WebShareServer', () => {
     userDataPath = await mkdtemp(path.join(os.tmpdir(), 'serpent-web-share-'));
     mediaPaths = {
       'thumbnail:asset-1': path.join(userDataPath, 'thumb.webp'),
+      'thumbview:asset-1': path.join(userDataPath, 'thumb-128.webp'),
       'source:asset-1': path.join(userDataPath, 'clip.mp4'),
       'preview:art-1': path.join(userDataPath, 'preview.webm'),
       'view:asset-1': path.join(userDataPath, 'derivative.webp'),
     };
     await writeFile(mediaPaths['thumbnail:asset-1']!, Buffer.from('thumb-bytes'));
+    await writeFile(mediaPaths['thumbview:asset-1']!, Buffer.from('thumb-128-bytes'));
     await writeFile(mediaPaths['source:asset-1']!, Buffer.from('0123456789'));
     await writeFile(mediaPaths['preview:art-1']!, Buffer.from('preview-bytes'));
     await writeFile(mediaPaths['view:asset-1']!, Buffer.from('derivative-bytes'));
@@ -268,11 +318,14 @@ describe('WebShareServer', () => {
     await rm(userDataPath, { recursive: true, force: true });
   });
 
-  async function login(password: string): Promise<{ status: number; cookie?: string }> {
+  async function login(
+    password: string,
+    username = 'tester',
+  ): Promise<{ status: number; cookie?: string }> {
     const response = await fetch(`${baseUrl}/api/session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
     const setCookie = response.headers.get('set-cookie');
     return {
@@ -287,10 +340,120 @@ describe('WebShareServer', () => {
     expect(await response.json()).toEqual({ app: 'Serpent' });
   });
 
-  it('rejects API access before a password is configured', async () => {
+  it('reports whether a password is required, and reveals debug only locally', async () => {
+    const response = await fetch(`${baseUrl}/api/config`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      app: 'Serpent',
+      requiresPassword: false,
+      debug: true,
+    });
+  });
+
+  it('hides debug from a request that came through a tunnel', async () => {
+    const response = await new Promise<{ body: unknown }>((resolve, reject) => {
+      const request = httpRequest(
+        {
+          host: '127.0.0.1',
+          port: Number(new URL(baseUrl).port),
+          path: '/api/config',
+          method: 'GET',
+          headers: { 'cf-connecting-ip': '203.0.113.9' },
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () =>
+            resolve({ body: JSON.parse(Buffer.concat(chunks).toString('utf8')) }),
+          );
+        },
+      );
+      request.on('error', reject);
+      request.end();
+    });
+    expect((response.body as { debug: boolean }).debug).toBe(false);
+  });
+
+  it('requires a session even when no password is configured', async () => {
     const response = await fetch(`${baseUrl}/api/state`);
-    expect(response.status).toBe(409);
-    expect((await response.json()).code).toBe('WEB_SHARE_PASSWORD_REQUIRED');
+    expect(response.status).toBe(401);
+    expect((await response.json()).code).toBe('WEB_SHARE_UNAUTHORIZED');
+  });
+
+  it('signs a visitor in with only a username when no password is set', async () => {
+    const { status, cookie } = await login('', 'alice');
+    expect(status).toBe(200);
+    const state = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie! } });
+    expect(state.status).toBe(200);
+    const body = (await state.json()) as { username: string; requiresPassword: boolean };
+    expect(body.username).toBe('alice');
+    expect(body.requiresPassword).toBe(false);
+  });
+
+  it("stores a visitor's own likes and ratings without touching the library", async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery', 'bob');
+    const headers = { Cookie: cookie!, 'Content-Type': 'application/json' };
+
+    const before = await fetch(`${baseUrl}/api/libraries/lib-a/assets/asset-1`, { headers });
+    expect(((await before.json()) as { marks: unknown }).marks).toEqual({ favorite: false, rating: 0 });
+
+    const updated = await fetch(`${baseUrl}/api/libraries/lib-a/assets/asset-1/marks`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ favorite: true, rating: 4 }),
+    });
+    expect(updated.status).toBe(200);
+    expect(((await updated.json()) as { marks: unknown }).marks).toEqual({ favorite: true, rating: 4 });
+
+    const fetched = await fetch(`${baseUrl}/api/libraries/lib-a/assets/asset-1/marks`, { headers });
+    expect(fetched.status).toBe(200);
+    expect(((await fetched.json()) as { marks: unknown }).marks).toEqual({
+      favorite: true,
+      rating: 4,
+    });
+
+    // A different visitor sees their own empty marks, never bob's.
+    const other = await login('correct horse battery', 'carol');
+    const otherDetail = await fetch(`${baseUrl}/api/libraries/lib-a/assets/asset-1`, {
+      headers: { Cookie: other.cookie! },
+    });
+    expect(((await otherDetail.json()) as { marks: unknown }).marks).toEqual({
+      favorite: false,
+      rating: 0,
+    });
+
+    // The operator's records panel sees bob's mark with the asset name.
+    const bob = server.listVisitors().find((visitor) => visitor.username === 'bob');
+    expect(bob?.marks).toHaveLength(1);
+    expect(bob?.marks[0]).toMatchObject({
+      assetId: 'asset-1',
+      favorite: true,
+      rating: 4,
+      assetName: 'a.png',
+    });
+  });
+
+  it('rejects a mark for an asset that is not in the shared library', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery', 'bob');
+    const response = await fetch(`${baseUrl}/api/libraries/lib-a/assets/missing/marks`, {
+      method: 'PUT',
+      headers: { Cookie: cookie!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ favorite: true }),
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it('rejects an empty mark payload', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery', 'bob');
+    const response = await fetch(`${baseUrl}/api/libraries/lib-a/assets/asset-1/marks`, {
+      method: 'PUT',
+      headers: { Cookie: cookie!, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(400);
   });
 
   it('issues a session cookie for the configured password', async () => {
@@ -390,7 +553,7 @@ describe('WebShareServer', () => {
     expect(response.status).toBe(401);
   });
 
-  it('serves a thumbnail for the shared library', async () => {
+  it('serves a downscaled, cacheable thumbnail for the shared library', async () => {
     server.setPassword('correct horse battery');
     const { cookie } = await login('correct horse battery');
     const response = await fetch(`${baseUrl}/media/thumbnail/lib-a/asset-1`, {
@@ -398,6 +561,20 @@ describe('WebShareServer', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/webp');
+    // Grid thumbnails are the bounded derivative, cached like the card artifact.
+    expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+    expect(await response.text()).toBe('thumb-128-bytes');
+  });
+
+  it('falls back to the card artifact when the thumbnail derivative is not ready', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.thumbnailDerivativeUnavailable = true;
+    const response = await fetch(`${baseUrl}/media/thumbnail/lib-a/asset-1`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
     expect(await response.text()).toBe('thumb-bytes');
   });
 
@@ -435,12 +612,14 @@ describe('WebShareServer', () => {
     const { cookie } = await login('correct horse battery');
     media.derivativeCleanupCount = 0;
     const response = await fetch(
-      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&format=jpeg`,
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1`,
       { headers: { Cookie: cookie! } },
     );
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('image/jpeg');
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    // The on-screen image is the bounded WebP.
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    // The on-screen image is reusable in the visitor's own browser.
+    expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
     expect(await response.text()).toBe('derivative-bytes');
     // Discarding is bound to the response 'close' event, which fires once the
     // body has been flushed.
@@ -456,15 +635,36 @@ describe('WebShareServer', () => {
     expect(response.status).toBe(400);
   });
 
-  it('rejects an unknown derivative format instead of falling back', async () => {
+
+  it('re-encodes the download as a full-resolution JPEG at the configured quality', async () => {
     server.setPassword('correct horse battery');
     const { cookie } = await login('correct horse battery');
     const response = await fetch(
-      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&format=tiff`,
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1`,
       { headers: { Cookie: cookie! } },
     );
-    expect(response.status).toBe(400);
-    expect((await response.json()).code).toBe('WEB_SHARE_DERIVATIVE_FORMAT_UNSUPPORTED');
+    expect(response.status).toBe(200);
+    expect(media.lastDerivative).toMatchObject({
+      format: 'jpeg',
+      fullSize: true,
+      progressive: false,
+      quality: WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
+    });
+  });
+
+  it('keeps the on-screen viewer derivative bounded and fullSize=false', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(200);
+    expect(media.lastDerivative).toMatchObject({
+      format: 'webp',
+      fullSize: false,
+      quality: WEB_SHARE_DERIVATIVE_QUALITY,
+    });
   });
 
   it('gates derivative downloads behind the preference and always cleans up', async () => {
@@ -477,8 +677,9 @@ describe('WebShareServer', () => {
       { headers: { Cookie: cookie! } },
     );
     expect(blocked.status).toBe(403);
-    // A refused download still must not leak the temporary file.
-    await vi.waitFor(() => expect(media.derivativeCleanupCount).toBe(1));
+    // The download is refused before any derivative is encoded, so there is
+    // nothing to leak and nothing to clean up.
+    expect(media.derivativeCleanupCount).toBe(0);
     server.setAllowDownload(true);
     const allowed = await fetch(
       `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1`,
@@ -486,6 +687,8 @@ describe('WebShareServer', () => {
     );
     expect(allowed.status).toBe(200);
     expect(allowed.headers.get('content-disposition')).toContain('attachment');
+    // A download must not be replayed from a browser cache.
+    expect(allowed.headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('rejects media from a non-shared library', async () => {

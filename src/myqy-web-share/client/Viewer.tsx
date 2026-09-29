@@ -1,19 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { AssetSummary } from '../../shared/asset-types';
-import type { WebShareDerivativeFormat } from '../../shared/web-share';
-import { downloadUrl, sourceUrl, viewUrl } from './api';
+import { downloadUrl, sourceUrl, viewUrl, type VisitorMarks } from './api';
 import { t } from './i18n';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
-
-/** Download choices for an image. Every entry re-encodes the original. */
-const IMAGE_DOWNLOAD_FORMATS: ReadonlyArray<{ format: WebShareDerivativeFormat; label: string }> = [
-  { format: 'jpeg', label: 'JPG' },
-  { format: 'webp', label: 'WebP' },
-  { format: 'png', label: 'PNG' },
-];
 
 /**
  * Zoomable/pannable image that loads the original source only in the viewer.
@@ -31,6 +23,9 @@ function ZoomImage({
 }): ReactNode {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  // The only zoom gesture is the wheel, so the pointer is a grab hand — never a
+  // magnifier. `grabbing` shows while a pan drag is in progress.
+  const [dragging, setDragging] = useState(false);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const scaleRef = useRef(scale);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
@@ -96,7 +91,7 @@ function ZoomImage({
         ref={imageRef}
         src={src}
         style={{
-          cursor: scale > 1 ? 'grab' : 'zoom-in',
+          cursor: dragging ? 'grabbing' : 'grab',
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
         }}
         onDoubleClick={() => (scale > 1 ? reset() : setScale(2))}
@@ -105,6 +100,7 @@ function ZoomImage({
           if (scale <= 1) return;
           dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
           event.currentTarget.setPointerCapture(event.pointerId);
+          setDragging(true);
         }}
         onPointerMove={(event) => {
           const drag = dragRef.current;
@@ -117,9 +113,11 @@ function ZoomImage({
         }}
         onPointerUp={() => {
           dragRef.current = null;
+          setDragging(false);
         }}
         onPointerCancel={() => {
           dragRef.current = null;
+          setDragging(false);
         }}
       />
       {scale > 1 ? (
@@ -132,84 +130,20 @@ function ZoomImage({
 }
 
 /**
- * Download control: the original plus bounded re-encodes. Every option is an
- * `<a download>` so the browser owns the save, and each format is encoded from
- * the original — never from the WebP the viewer displays.
+ * Download control for formats the viewer cannot render: only the original.
+ * The re-encoded JPEG "Download" is offered for images in the header.
  */
-function DownloadMenu({
+function FallbackDownload({
   libraryId,
   asset,
 }: {
   libraryId: string;
   asset: AssetSummary;
 }): ReactNode {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocumentPointerDown = (event: PointerEvent) => {
-      const container = containerRef.current;
-      if (container !== null && event.target instanceof Node && container.contains(event.target)) {
-        return;
-      }
-      setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', onDocumentPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onDocumentPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  const isImage = asset.mediaType === 'image';
-
   return (
-    <div className="download-menu" ref={containerRef}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="button viewer-download"
-        type="button"
-        onClick={() => setOpen((previous) => !previous)}
-      >
-        {t('下载', 'Download')}
-      </button>
-      {open ? (
-        <div className="download-menu-surface" role="menu">
-          <a
-            className="download-menu-item"
-            href={downloadUrl(libraryId, asset)}
-            download
-            role="menuitem"
-            onClick={() => setOpen(false)}
-          >
-            {t('原图', 'Original')}
-          </a>
-          {isImage
-            ? IMAGE_DOWNLOAD_FORMATS.map((entry) => (
-                <a
-                  className="download-menu-item"
-                  download
-                  href={viewUrl(libraryId, asset, { format: entry.format, download: true })}
-                  key={entry.format}
-                  role="menuitem"
-                  onClick={() => setOpen(false)}
-                >
-                  {entry.label}
-                </a>
-              ))
-            : null}
-        </div>
-      ) : null}
-    </div>
+    <a className="button" href={downloadUrl(libraryId, asset)} download>
+      {t('下载原图', 'Download original')}
+    </a>
   );
 }
 
@@ -218,6 +152,8 @@ export function Viewer({
   assets,
   index,
   allowDownload,
+  marks,
+  onMarksChange,
   onClose,
   onNavigate,
 }: {
@@ -225,6 +161,8 @@ export function Viewer({
   assets: readonly AssetSummary[];
   index: number;
   allowDownload: boolean;
+  marks: VisitorMarks;
+  onMarksChange: (patch: { favorite?: boolean; rating?: number }) => void;
   onClose: () => void;
   onNavigate: (index: number) => void;
 }) {
@@ -286,7 +224,31 @@ export function Viewer({
           </span>
         </div>
         <div className="viewer-header-right">
-          {allowDownload ? <DownloadMenu libraryId={libraryId} asset={asset} /> : null}
+          <button
+            aria-pressed={marks.favorite}
+            className="button viewer-like"
+            type="button"
+            title={marks.favorite ? t('取消喜欢', 'Unlike') : t('喜欢', 'Like')}
+            onClick={() => onMarksChange({ favorite: !marks.favorite })}
+          >
+            {marks.favorite ? '★' : '☆'} {t('喜欢', 'Like')}
+          </button>
+          {allowDownload ? (
+            <>
+              {asset.mediaType === 'image' ? (
+                <a
+                  className="button"
+                  href={viewUrl(libraryId, asset, { download: true })}
+                  download
+                >
+                  {t('下载', 'Download')}
+                </a>
+              ) : null}
+              <a className="button download-original" href={downloadUrl(libraryId, asset)} download>
+                {t('下载原图', 'Download original')}
+              </a>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -335,7 +297,7 @@ export function Viewer({
                 'This format cannot be previewed in the browser. Download it to open locally.',
               )}
             </p>
-            {allowDownload ? <DownloadMenu libraryId={libraryId} asset={asset} /> : null}
+            {allowDownload ? <FallbackDownload libraryId={libraryId} asset={asset} /> : null}
           </div>
         )}
       </div>

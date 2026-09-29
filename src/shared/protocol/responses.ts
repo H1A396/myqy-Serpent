@@ -1898,6 +1898,37 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     width: z.number().int().positive(),
     height: z.number().int().positive(),
   }),
+  // Absolute path of a freshly encoded, bounded web-share thumbnail. The file
+  // lives in the Worker's temporary directory and is deleted by Main after
+  // streaming.
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('media.share-thumbnail'),
+    absolutePath: nonBlankString,
+    mimeType: nonBlankString,
+    byteSize: z.number().int().nonnegative(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    /** `true` when the file is a persistent cache hit (do not delete it). */
+    cached: z.boolean(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('web-share.thumbnails.generated'),
+    generated: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('web-share.targets'),
+    assetIds: z.array(nonBlankString).max(200_000),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('web-share.pruned'),
+    removed: z.number().int().nonnegative(),
+  }),
   z.strictObject({
     ok: z.literal(true),
     type: z.literal('media.thumbnail-artifact'),

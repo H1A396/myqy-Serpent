@@ -7881,6 +7881,53 @@ select.ai-config-input.ai-config-languages {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 24%, transparent);
 }
 
+.web-share-visitors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.web-share-visitor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.web-share-visitor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.web-share-visitor-head span,
+.web-share-visitor-agent,
+.web-share-visitor-mark {
+  color: var(--secondary);
+  font-size: calc(12px * var(--ui-font-scale));
+}
+
+.web-share-visitor-agent {
+  color: var(--tertiary);
+  word-break: break-all;
+}
+
+.web-share-visitor-mark {
+  display: flex;
+  gap: 10px;
+}
+
+.web-share-visitor-asset {
+  color: var(--text);
+}
+
 .app-settings-memory-chips {
   display: flex;
   flex-wrap: wrap;

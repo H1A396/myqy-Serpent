@@ -4,7 +4,12 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import {
+  WEB_SHARE_DEFAULT_DOWNLOAD_PROGRESSIVE,
+  WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
   WEB_SHARE_DEFAULT_PORT,
+  WEB_SHARE_DEFAULT_THUMBNAIL_EDGE,
+  WEB_SHARE_DEFAULT_THUMBNAIL_MAX_KB,
+  WEB_SHARE_DEFAULT_THUMBNAIL_SHARPEN,
   webShareServerPreferencesSchema,
   type WebShareServerPreferences,
 } from '../../shared/web-share';
@@ -23,6 +28,11 @@ const persistedWebShareSettingsSchema = z.strictObject({
     port: z.number().int().min(1024).max(65_535),
     allowDownload: z.boolean(),
     sharedLibraryId: z.string().min(1).max(255).nullable().optional(),
+    thumbnailEdge: z.union([z.literal(128), z.literal(256)]).optional(),
+    thumbnailSharpen: z.boolean().optional(),
+    thumbnailMaxKb: z.number().int().min(4).max(2048).optional(),
+    downloadQuality: z.number().int().min(1).max(100).optional(),
+    downloadProgressive: z.boolean().optional(),
   }),
   /** Absent until the operator sets a share password. */
   password: passwordRecordSchema.nullable().optional(),
@@ -35,6 +45,11 @@ const DEFAULT_PREFERENCES: WebShareServerPreferences = {
   port: WEB_SHARE_DEFAULT_PORT,
   allowDownload: true,
   sharedLibraryId: null,
+  thumbnailEdge: WEB_SHARE_DEFAULT_THUMBNAIL_EDGE,
+  thumbnailSharpen: WEB_SHARE_DEFAULT_THUMBNAIL_SHARPEN,
+  thumbnailMaxKb: WEB_SHARE_DEFAULT_THUMBNAIL_MAX_KB,
+  downloadQuality: WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
+  downloadProgressive: WEB_SHARE_DEFAULT_DOWNLOAD_PROGRESSIVE,
 };
 
 const SESSION_SECRET_BYTES = 32;

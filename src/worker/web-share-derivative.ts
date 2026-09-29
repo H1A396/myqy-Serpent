@@ -1,19 +1,20 @@
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { LibraryServiceError, type LibraryService } from './library-service';
+import { LibraryServiceError } from './library-service';
 
 /**
  * Bounded image derivative for the read-only web share.
  *
- * A library that holds ComfyUI output frequently contains 10�?0 MB PNGs. A
+ * A library that holds ComfyUI output frequently contains 10–30 MB PNGs. A
  * visitor behind a slow tunnel cannot pull those, so the share viewer asks for
  * a re-encoded copy instead: the Worker produces it here, Main streams it, and
  * Main deletes it. Three deliberate properties:
  *
- * - **The original is the only input.** Every format is encoded from the source
- *   pixels. Re-encoding a WebP derivative into JPEG would layer two lossy
- *   generations and look worse than the WebP at a similar size.
+ * - **The caller supplies the source.** The viewer derives from the original
+ *   revision (resolved and re-validated by the handler, so a stale share link
+ *   cannot encode a superseded revision); the grid derives from the cached card
+ *   thumbnail instead of re-decoding a multi-megapixel original per tile.
  * - **Nothing lands in the library.** The output goes to the OS temporary
  *   directory, never `.serpent/artifacts`. Files written there without a
  *   `revision_artifacts` row are deleted by the orphan scan five minutes later,
@@ -37,12 +38,13 @@ export interface ShareDerivativeResult {
 }
 
 export interface ShareDerivativeRequest {
-  libraryId: string;
-  assetId: string;
-  revisionId: string;
   format: ShareDerivativeFormat;
   maxEdge: number;
   quality: number;
+  /** Keep the original resolution (the "Download" JPEG re-encode). */
+  fullSize: boolean;
+  /** Progressive/continuous JPEG encoding. */
+  progressive: boolean;
 }
 
 interface EncodedDerivative {
@@ -61,7 +63,12 @@ interface DerivativeSharpInstance {
     withoutEnlargement: boolean;
   }): DerivativeSharpInstance;
   webp(options: { quality: number; effort?: number }): DerivativeSharpInstance;
-  jpeg(options?: { quality?: number }): DerivativeSharpInstance;
+  jpeg(options?: {
+    quality?: number;
+    progressive?: boolean;
+    chromaSubsampling?: string;
+    optimizeCoding?: boolean;
+  }): DerivativeSharpInstance;
   png?(options?: { quality?: number }): DerivativeSharpInstance;
   toFile(filePath: string): Promise<unknown>;
 }
@@ -82,18 +89,25 @@ const EXTENSION_BY_FORMAT: Record<ShareDerivativeFormat, string> = {
 
 function encode(
   pipeline: DerivativeSharpInstance,
-  format: ShareDerivativeFormat,
-  quality: number,
+  request: ShareDerivativeRequest,
 ): DerivativeSharpInstance {
-  if (format === 'webp') return pipeline.webp({ quality });
+  if (request.format === 'webp') return pipeline.webp({ quality: request.quality });
   // JPEG has no alpha; the source is composited over white so a transparent
-  // PNG does not turn black in the derivative.
-  if (format === 'jpeg') return pipeline.jpeg({ quality });
+  // PNG does not turn black in the derivative. 4:4:4 keeps coloured edges crisp
+  // (matches a Photoshop quality-10 save); progressive is opt-in.
+  if (request.format === 'jpeg') {
+    return pipeline.jpeg({
+      quality: request.quality,
+      progressive: request.progressive,
+      chromaSubsampling: '4:4:4',
+      optimizeCoding: true,
+    });
+  }
   // PNG is lossless: `quality` cannot bound its size, so only the resize does.
   if (pipeline.png === undefined) {
     throw new Error('This Sharp build cannot encode PNG derivatives.');
   }
-  return pipeline.png({ quality });
+  return pipeline.png({ quality: request.quality });
 }
 
 /**
@@ -103,18 +117,12 @@ function encode(
  * been streamed (or failed).
  */
 export async function createShareDerivative(options: {
-  libraryService: LibraryService;
+  /** Absolute path of the pixels to encode; the caller owns path validation. */
+  sourceAbsolutePath: string;
   sharpFactory: DerivativeSharpFactory;
   request: ShareDerivativeRequest;
 }): Promise<ShareDerivativeResult> {
-  const { libraryService, sharpFactory, request } = options;
-  // Resolves the absolute source path and re-validates that the revision is
-  // still current, so a stale share link cannot encode a superseded revision.
-  const source = libraryService.getCurrentMediaSource(
-    request.libraryId,
-    request.assetId,
-    request.revisionId,
-  );
+  const { sourceAbsolutePath, sharpFactory, request } = options;
 
   const stageDir = mkdtempSync(path.join(tmpdir(), 'serpent-share-derivative-'));
   const outputPath = path.join(stageDir, `derivative.${EXTENSION_BY_FORMAT[request.format]}`);
@@ -124,17 +132,17 @@ export async function createShareDerivative(options: {
 
   let encoded: EncodedDerivative;
   try {
-    const pipeline = sharpFactory(source.absolutePath)
-      // Honour EXIF orientation before the size bound so the derivative
-      // matches what the source viewer shows.
-      .rotate()
-      .resize({
-        width: request.maxEdge,
-        height: request.maxEdge,
-        fit: 'inside',
-        withoutEnlargement: true,
-      });
-    const output = await encode(pipeline, request.format, request.quality).toFile(outputPath);
+    // Honour EXIF orientation first so the derivative matches the source view.
+    const rotated = sharpFactory(sourceAbsolutePath).rotate();
+    const pipeline = request.fullSize
+      ? rotated
+      : rotated.resize({
+          width: request.maxEdge,
+          height: request.maxEdge,
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+    const output = await encode(pipeline, request).toFile(outputPath);
     const dimensions = output as { width?: unknown; height?: unknown } | null;
     if (
       dimensions === null

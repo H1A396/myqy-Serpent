@@ -240,10 +240,12 @@ import { WebShareServer, WebShareServerError } from '../myqy-web-share/server/we
 import { WorkerBackedWebShareData } from '../myqy-web-share/server/web-share-data';
 import { WorkerBackedWebShareMedia } from '../myqy-web-share/server/web-share-media';
 import {
+  WEB_SHARE_VISITOR_LIST_LIMIT,
   webShareSettingsRequestSchema,
   webShareSettingsResponseSchema,
   webShareSettingsSnapshotSchema,
   type WebShareSettingsRequest,
+  type WebShareVisitorSummary,
 } from '../shared/web-share';
 import { registerAutomationScriptIpc } from './automation-script-ipc';
 import { AutomationScriptFileService } from './automation-script-file-service';
@@ -685,6 +687,160 @@ let appUpdateService: AppUpdateService | undefined;
 let automationExecutionJournal: AutomationExecutionJournal | undefined;
 let embeddedMcpServer: EmbeddedMcpServer | undefined;
 let webShareServer: WebShareServer | undefined;
+
+/** Both share-thumbnail edges are always cached; the setting only picks one. */
+const WEB_SHARE_THUMBNAIL_EDGES = [128, 256] as const;
+const WEB_SHARE_SWEEP_BATCH = 200;
+let webShareThumbnailSweepActive = false;
+const webSharePendingThumbnailAssets = new Map<string, Set<string>>();
+let webShareThumbnailFlushTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Main drives the sweep so the settings panel can show live progress. */
+async function runWebShareThumbnailSweep(server: WebShareServer): Promise<void> {
+  const client = workerClient;
+  const libraryId = server.resolvedSharedLibraryId();
+  if (webShareThumbnailSweepActive || client === undefined || libraryId === null) return;
+  webShareThumbnailSweepActive = true;
+  const sharpen = server.preferences.thumbnailSharpen;
+  const maxBytes = server.preferences.thumbnailMaxKb * 1024;
+  try {
+    const listed = await client.request({ type: 'web-share.list-targets', libraryId });
+    if (!listed.ok || listed.type !== 'web-share.targets') {
+      server.setThumbnailProgress(null);
+      return;
+    }
+    const assetIds = listed.assetIds;
+    let generated = 0;
+    let skipped = 0;
+    let failed = 0;
+    server.setThumbnailProgress({ active: true, total: assetIds.length, generated, skipped, failed });
+    for (let offset = 0; offset < assetIds.length; offset += WEB_SHARE_SWEEP_BATCH) {
+      const chunk = assetIds.slice(offset, offset + WEB_SHARE_SWEEP_BATCH);
+      const result = await client.request({
+        type: 'web-share.generate-thumbnails',
+        libraryId,
+        assetIds: chunk,
+        edges: [...WEB_SHARE_THUMBNAIL_EDGES],
+        sharpen,
+        maxBytes,
+      });
+      if (result.ok && result.type === 'web-share.thumbnails.generated') {
+        generated += result.generated;
+        skipped += result.skipped;
+        failed += result.failed;
+      }
+      server.setThumbnailProgress({ active: true, total: assetIds.length, generated, skipped, failed });
+    }
+    await client.request({ type: 'web-share.prune-thumbnails', libraryId });
+    server.setThumbnailProgress({ active: false, total: assetIds.length, generated, skipped, failed });
+  } catch (error) {
+    logger?.error('web-share.thumbnail-sweep', error);
+    server.setThumbnailProgress(null);
+  } finally {
+    webShareThumbnailSweepActive = false;
+  }
+}
+
+/** After an import, warm the share tiles for the currently-shared library only. */
+function scheduleWebShareThumbnailGeneration(libraryId: string, assetId: string): void {
+  const pending = webSharePendingThumbnailAssets.get(libraryId) ?? new Set<string>();
+  pending.add(assetId);
+  webSharePendingThumbnailAssets.set(libraryId, pending);
+  if (webShareThumbnailFlushTimer !== undefined) return;
+  webShareThumbnailFlushTimer = setTimeout(() => {
+    webShareThumbnailFlushTimer = undefined;
+    void flushWebShareThumbnailGeneration();
+  }, 300);
+}
+
+async function flushWebShareThumbnailGeneration(): Promise<void> {
+  const client = workerClient;
+  const server = webShareServer;
+  const libraryId = server?.resolvedSharedLibraryId() ?? null;
+  const pending = libraryId === null ? undefined : webSharePendingThumbnailAssets.get(libraryId);
+  webSharePendingThumbnailAssets.clear();
+  if (client === undefined || server === undefined || libraryId === null) return;
+  if (pending === undefined || pending.size === 0) return;
+  try {
+    await client.request({
+      type: 'web-share.generate-thumbnails',
+      libraryId,
+      assetIds: [...pending].slice(0, 500),
+      edges: [...WEB_SHARE_THUMBNAIL_EDGES],
+      sharpen: server.preferences.thumbnailSharpen,
+      maxBytes: server.preferences.thumbnailMaxKb * 1024,
+    });
+  } catch (error) {
+    logger?.error('web-share.thumbnail-autogen', error);
+  }
+}
+
+/** The "delete thumbnails" button: drop every cached share tile. */
+async function deleteWebShareThumbnails(server: WebShareServer): Promise<void> {
+  const client = workerClient;
+  const libraryId = server.resolvedSharedLibraryId();
+  if (client === undefined || libraryId === null) return;
+  try {
+    await client.request({ type: 'web-share.delete-thumbnails', libraryId });
+    server.setThumbnailProgress(null);
+  } catch (error) {
+    logger?.error('web-share.thumbnail-delete', error);
+  }
+}
+
+function csvCell(value: string | number | boolean | null): string {
+  const text = value === null ? '' : String(value);
+  return /[",\r\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/** One row per visitor mark; a visitor with no marks still gets one row. */
+function webShareVisitorsToCsv(visitors: readonly WebShareVisitorSummary[]): string {
+  const header = [
+    'visitorId',
+    'username',
+    'firstSeenAt',
+    'lastSeenAt',
+    'accesses',
+    'lastIp',
+    'lastUserAgent',
+    'libraryId',
+    'assetId',
+    'favorite',
+    'rating',
+    'markUpdatedAt',
+  ];
+  const rows: string[] = [header.join(',')];
+  for (const visitor of visitors) {
+    const base = [
+      visitor.visitorId,
+      visitor.username,
+      visitor.firstSeenAt,
+      visitor.lastSeenAt,
+      visitor.accesses,
+      visitor.lastIp,
+      visitor.lastUserAgent,
+    ];
+    if (visitor.marks.length === 0) {
+      rows.push([...base, '', '', '', '', ''].map(csvCell).join(','));
+      continue;
+    }
+    for (const mark of visitor.marks) {
+      rows.push(
+        [
+          ...base,
+          mark.libraryId,
+          mark.assetId,
+          mark.favorite,
+          mark.rating,
+          mark.updatedAt,
+        ]
+          .map(csvCell)
+          .join(','),
+      );
+    }
+  }
+  return `${rows.join('\r\n')}\r\n`;
+}
 let automationCommandGateway: AutomationCommandGateway | undefined;
 let mcpPermissionPolicyStore: McpPermissionPolicyStore | undefined;
 let mcpOperationChallengeStore: McpOperationChallengeStore | undefined;
@@ -4965,8 +5121,48 @@ async function startApplication(): Promise<void> {
         if (request.type === 'set-port') return response({ ok: true, snapshot: await server.setPort(request.port) });
         if (request.type === 'set-allow-download') return response({ ok: true, snapshot: server.setAllowDownload(request.enabled) });
         if (request.type === 'set-library') return response({ ok: true, snapshot: server.setLibrary(request.libraryId) });
+        if (request.type === 'set-thumbnail-edge') return response({ ok: true, snapshot: server.setThumbnailEdge(request.edge) });
+        if (request.type === 'set-thumbnail-sharpen') return response({ ok: true, snapshot: server.setThumbnailSharpen(request.enabled) });
+        if (request.type === 'set-thumbnail-max-kb') return response({ ok: true, snapshot: server.setThumbnailMaxKb(request.maxKb) });
+        if (request.type === 'set-download-quality') return response({ ok: true, snapshot: server.setDownloadQuality(request.quality) });
+        if (request.type === 'set-download-progressive') return response({ ok: true, snapshot: server.setDownloadProgressive(request.enabled) });
+        if (request.type === 'delete-thumbnails') {
+          void deleteWebShareThumbnails(server);
+          return response({ ok: true, snapshot: server.snapshot() });
+        }
+        if (request.type === 'regenerate-thumbnails') {
+          void runWebShareThumbnailSweep(server);
+          return response({ ok: true, snapshot: server.snapshot() });
+        }
         if (request.type === 'set-password') return response({ ok: true, snapshot: server.setPassword(request.password) });
         if (request.type === 'clear-password') return response({ ok: true, snapshot: server.clearPassword() });
+        if (request.type === 'list-visitors') {
+          return response({
+            ok: true,
+            visitors: server.listVisitors().slice(0, WEB_SHARE_VISITOR_LIST_LIMIT),
+          });
+        }
+        if (request.type === 'export-visitors') {
+          const visitors = server.listVisitors();
+          const extension = request.format === 'csv' ? 'csv' : 'json';
+          const picked = await dialog.showSaveDialog(mainWindow, {
+            title: 'Export visitor records',
+            defaultPath: `serpent-web-share-visitors.${extension}`,
+            filters:
+              request.format === 'csv'
+                ? [{ name: 'CSV', extensions: ['csv'] }]
+                : [{ name: 'JSON', extensions: ['json'] }],
+          });
+          if (picked.canceled || picked.filePath === undefined) {
+            return response({ ok: true, exportedPath: null });
+          }
+          const contents =
+            request.format === 'csv'
+              ? webShareVisitorsToCsv(visitors)
+              : JSON.stringify({ exportedAt: new Date().toISOString(), visitors }, null, 2);
+          writeFileSync(picked.filePath, contents, 'utf8');
+          return response({ ok: true, exportedPath: picked.filePath });
+        }
         if (request.type === 'start') return response({ ok: true, snapshot: await server.start() });
         return response({ ok: true, snapshot: await server.stop() });
       } catch (error) {
@@ -5061,6 +5257,15 @@ async function startApplication(): Promise<void> {
       // every completion produced 304 background `media.get-asset-drag-infos`
       // requests in a pure browse profile; the first screen is warmed by the
       // browse response itself and anything else resolves on demand.
+    }
+    // Import-time auto-generation of the share-only tiles, but only for the
+    // library that is currently shared (batched; see flush… above).
+    if (
+      event.type === "asset.thumbnail.ready" &&
+      webShareServer !== undefined &&
+      event.libraryId === webShareServer.resolvedSharedLibraryId()
+    ) {
+      scheduleWebShareThumbnailGeneration(event.libraryId, event.assetId);
     }
     sendToLiveWebContents(mainWindow?.webContents, THUMBNAIL_CHANNEL, event);
   });

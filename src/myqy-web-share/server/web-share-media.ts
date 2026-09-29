@@ -35,6 +35,21 @@ export interface WebShareMediaResolver {
     format: 'webp' | 'jpeg' | 'png';
     maxEdge: number;
     quality: number;
+    fullSize: boolean;
+    progressive: boolean;
+  }): Promise<ResolvedDerivative | null>;
+  /**
+   * Bounded downscale of the library's cached card thumbnail (never the
+   * original), for grid tiles on a slow tunnel. `null` means "not ready yet":
+   * the client retries, and the server falls back to the card artifact.
+   */
+  resolveThumbnailDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    sharpen: boolean;
+    maxBytes: number;
   }): Promise<ResolvedDerivative | null>;
 }
 
@@ -167,6 +182,8 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
     format: 'webp' | 'jpeg' | 'png';
     maxEdge: number;
     quality: number;
+    fullSize: boolean;
+    progressive: boolean;
   }): Promise<ResolvedDerivative | null> {
     const result = await this.#request({
       type: 'media.get-share-derivative',
@@ -176,6 +193,8 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
       format: input.format,
       maxEdge: input.maxEdge,
       quality: input.quality,
+      fullSize: input.fullSize,
+      progressive: input.progressive,
     });
     if (!result.ok || result.type !== 'media.share-derivative') return null;
     return {
@@ -189,5 +208,43 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
         rmSync(path.dirname(result.absolutePath), { force: true, recursive: true });
       },
     };
+  }
+
+  /**
+   * Downscale the cached card thumbnail to a small edge for the grid. Unlike
+   * `resolveDerivative` this decodes a ≤512 px artifact instead of the original,
+   * so a page of tiles does not re-decode multi-megapixel sources.
+   */
+  async resolveThumbnailDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    sharpen: boolean;
+    maxBytes: number;
+  }): Promise<ResolvedDerivative | null> {
+    try {
+      const result = await this.#request({
+        type: 'media.get-share-thumbnail',
+        libraryId: input.libraryId,
+        assetId: input.assetId,
+        format: input.format,
+        maxEdge: input.maxEdge,
+        sharpen: input.sharpen,
+        maxBytes: input.maxBytes,
+      });
+      if (!result.ok || result.type !== 'media.share-thumbnail') return null;
+      // The Worker's result is the persistent share-thumbnail cache file, so
+      // cleanup is a no-op: deleting it would defeat the cache.
+      return {
+        absolutePath: result.absolutePath,
+        mimeType: result.mimeType,
+        cleanup: () => undefined,
+      };
+    } catch {
+      // A still-generating poster or an undecodable asset is reported as "not
+      // ready"; the server falls back to the raw card artifact.
+      return null;
+    }
   }
 }

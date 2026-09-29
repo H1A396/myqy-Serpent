@@ -6,6 +6,7 @@ import {
   ApiError,
   thumbnailUrl,
   type AssetDetail,
+  type VisitorMarks,
   type WebShareState,
 } from './api';
 import { DetailPanel } from './DetailPanel';
@@ -15,6 +16,15 @@ import { Viewer } from './Viewer';
 
 const PAGE_SIZE = 100;
 const THUMBNAIL_RETRY_LIMIT = 6;
+const SKELETON_TILES = 12;
+const SEARCH_CACHE_LIMIT = 24;
+
+/** Stable identity for one (library, scope, sort, filters, query) listing. */
+function searchCacheKey(parts: readonly unknown[]): string {
+  return parts
+    .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)))
+    .join('\u0001');
+}
 
 type Scope =
   | { kind: 'all' }
@@ -183,7 +193,10 @@ function scopeLabel(
 export function App() {
   const [phase, setPhase] = useState<'loading' | 'login' | 'ready'>('loading');
   const [state, setState] = useState<WebShareState | null>(null);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [debugAllowed, setDebugAllowed] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
@@ -207,19 +220,45 @@ export function App() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [detail, setDetail] = useState<AssetDetail | null>(null);
+  /** The visitor's own marks, keyed by asset id. */
+  const [marksByAsset, setMarksByAsset] = useState<Record<string, VisitorMarks>>({});
   const requestIdRef = useRef(0);
   const detailRequestIdRef = useRef(0);
+  /** Last listing per key, so switching a collection back is instant. */
+  const searchCacheRef = useRef(new Map<string, { items: AssetSummary[]; total: number }>());
+  // Test-only, and only from a direct local browser: `?debug=1` plus the server
+  // confirming the request did not arrive through a tunnel.
+  const debugMode =
+    debugAllowed &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('debug') === '1';
+  /**
+   * Assets the visitor has edited this session. A late-arriving mark read (the
+   * initial GET or a detail response) must never overwrite a fresh local edit,
+   * and a stale response must not supersede a newer click.
+   */
+  const mutatedAssetsRef = useRef(new Set<string>());
+  const markRequestSeqRef = useRef<Record<string, number>>({});
 
   const libraryId = state?.sharedLibraryId ?? null;
 
   useEffect(() => {
     void (async () => {
+      // The login screen needs to know whether a password is configured before
+      // it can render the right fields; /api/config is unauthenticated.
+      try {
+        const config = await api.config();
+        setRequiresPassword(config.requiresPassword);
+        setDebugAllowed(config.debug === true);
+      } catch {
+        // Older share server without /api/config: assume username-only.
+      }
       try {
         const next = await api.state();
         setState(next);
         setPhase('ready');
       } catch {
-        // Missing/expired session (401) or no password configured (409).
+        // Missing or expired session.
         setPhase('login');
       }
     })();
@@ -282,6 +321,25 @@ export function App() {
         setTotal(result.total);
         setAssets((previous) => (offset === 0 ? result.items : [...previous, ...result.items]));
         if (offset === 0) {
+          // Cache the fresh first page (stale-while-revalidate reads it back).
+          const key = searchCacheKey([
+            libraryId,
+            searchScope,
+            sort,
+            order,
+            tagFilter,
+            rating,
+            favorite,
+            debouncedQuery,
+          ]);
+          const cache = searchCacheRef.current;
+          cache.delete(key);
+          cache.set(key, { items: result.items, total: result.total });
+          while (cache.size > SEARCH_CACHE_LIMIT) {
+            const oldest = cache.keys().next().value;
+            if (oldest === undefined) break;
+            cache.delete(oldest);
+          }
           detailRequestIdRef.current += 1;
           setSelectedIndex(null);
           setDetail(null);
@@ -296,10 +354,34 @@ export function App() {
   );
 
   useEffect(() => {
-    if (phase !== 'ready') return;
+    if (phase !== 'ready' || libraryId === null) return;
+    // Switch the grid the instant the scope/sort changes: show the cached
+    // listing if we have one, otherwise a skeleton — never freeze the previous
+    // collection while the request is in flight. The fetch below then refreshes
+    // in the background (stale-while-revalidate).
+    detailRequestIdRef.current += 1;
+    const key = searchCacheKey([
+      libraryId,
+      searchScope,
+      sort,
+      order,
+      tagFilter,
+      rating,
+      favorite,
+      debouncedQuery,
+    ]);
+    const cached = searchCacheRef.current.get(key);
+    // This effect is the one place that reacts to a changed listing key, so
+    // swapping the view here is intentional (not a render-phase anti-pattern).
+    /* eslint-disable react-hooks/set-state-in-effect -- scope-key transition */
+    setSelectedIndex(null);
+    setDetail(null);
+    setAssets(cached?.items ?? []);
+    setTotal(cached?.total ?? 0);
+    /* eslint-enable react-hooks/set-state-in-effect */
     const timer = window.setTimeout(() => void loadPage(0), 0);
     return () => window.clearTimeout(timer);
-  }, [phase, loadPage]);
+  }, [phase, libraryId, searchScope, sort, order, tagFilter, rating, favorite, debouncedQuery, loadPage]);
 
   const selectAsset = useCallback(
     (index: number) => {
@@ -314,7 +396,12 @@ export function App() {
       void (async () => {
         try {
           const next = await api.asset(libraryId, asset.assetId);
-          if (detailRequestIdRef.current === detailRequestId) setDetail(next);
+          if (detailRequestIdRef.current !== detailRequestId) return;
+          setDetail(next);
+          if (next.marks !== undefined && !mutatedAssetsRef.current.has(asset.assetId)) {
+            const marks = next.marks;
+            setMarksByAsset((previous) => ({ ...previous, [asset.assetId]: marks }));
+          }
         } catch {
           if (detailRequestIdRef.current === detailRequestId) setDetail(null);
         }
@@ -323,28 +410,126 @@ export function App() {
     [assets, libraryId, selectedIndex],
   );
 
+  /** Optimistically set the visitor's mark, then reconcile with the server. */
+  const updateMarks = useCallback(
+    async (assetId: string, patch: { favorite?: boolean; rating?: number }) => {
+      if (libraryId === null) return;
+      mutatedAssetsRef.current.add(assetId);
+      const seq = (markRequestSeqRef.current[assetId] ?? 0) + 1;
+      markRequestSeqRef.current[assetId] = seq;
+      const previous = marksByAsset[assetId] ?? { favorite: false, rating: 0 };
+      setMarksByAsset((current) => ({ ...current, [assetId]: { ...previous, ...patch } }));
+      try {
+        const result = await api.setMarks(libraryId, assetId, patch);
+        // A newer click already superseded this response; keep its state.
+        if (markRequestSeqRef.current[assetId] !== seq) return;
+        setMarksByAsset((current) => ({ ...current, [assetId]: result.marks }));
+      } catch {
+        if (markRequestSeqRef.current[assetId] !== seq) return;
+        setMarksByAsset((current) => ({ ...current, [assetId]: previous }));
+      }
+    },
+    [libraryId, marksByAsset],
+  );
+
   const handleLogin = useCallback(
     async (event: React.FormEvent) => {
       event.preventDefault();
       setLoggingIn(true);
       setLoginError('');
       try {
-        await api.login(password);
+        await api.login(username.trim(), requiresPassword ? password : undefined);
         setState(await api.state());
         setPhase('ready');
         setPassword('');
       } catch (error) {
-        setLoginError(
-          error instanceof ApiError && error.status === 429
-            ? t('尝试次数过多，请稍后再试。', 'Too many attempts. Try again later.')
-            : t('密码不正确。', 'Incorrect password.'),
-        );
+        if (error instanceof ApiError && error.status === 429) {
+          setLoginError(t('尝试次数过多，请稍后再试。', 'Too many attempts. Try again later.'));
+        } else if (requiresPassword) {
+          setLoginError(t('密码不正确。', 'Incorrect password.'));
+        } else {
+          setLoginError(t('无法进入，请重试。', 'Could not sign in. Try again.'));
+        }
       } finally {
         setLoggingIn(false);
       }
     },
-    [password],
+    [username, password, requiresPassword],
   );
+
+  // --- Test-only simulation (?debug=1). Inserts a fake card at the position a
+  // freshly sorted server response would put it, so the update flow is visible.
+  const insertSimulatedAsset = useCallback(() => {
+    const nonce = Date.now();
+    const name = `模拟新图-sim-${String(nonce).slice(-4)}.png`;
+    const asset: AssetSummary = {
+      assetId: `sim-${nonce}`,
+      locationKind: 'managed',
+      managedFolderId: null,
+      relativeFilePath: name,
+      displayName: name,
+      currentRevisionId: 'sim-rev',
+      byteSize: 1_234_567,
+      modifiedAt: new Date(nonce).toISOString(),
+      availability: 'available',
+      rating: 0,
+      favorite: false,
+      deletedAt: null,
+      trashedFromPath: null,
+      trashedFromTombstoneId: null,
+      remainingDays: null,
+      thumbnailStatus: 'failed',
+      thumbnailArtifactId: null,
+      mediaType: 'image',
+      width: 2048,
+      height: 2048,
+      durationMs: null,
+    };
+    setAssets((previous) => {
+      const next = [...previous, asset];
+      if (sort === 'name') {
+        const direction = order === 'desc' ? -1 : 1;
+        next.sort((left, right) => direction * left.displayName.localeCompare(right.displayName));
+      } else {
+        // Put it in the middle, where a re-sorted response would land it.
+        const middle = Math.floor(next.length / 2);
+        next.splice(middle, 0, next.pop()!);
+      }
+      return next;
+    });
+    setTotal((value) => value + 1);
+  }, [sort, order]);
+
+  const removeSimulatedAsset = useCallback(() => {
+    setAssets((previous) => {
+      const index = previous.findIndex((item) => item.assetId.startsWith('sim-'));
+      if (index >= 0) {
+        const next = [...previous];
+        next.splice(index, 1);
+        return next;
+      }
+      return previous.length === 0 ? previous : previous.slice(0, -1);
+    });
+    setTotal((value) => Math.max(0, value - 1));
+  }, []);
+
+  const viewerAssetId = viewerIndex === null ? undefined : assets[viewerIndex]?.assetId;
+  useEffect(() => {
+    if (phase !== 'ready' || libraryId === null || viewerAssetId === undefined) return;
+    if (marksByAsset[viewerAssetId] !== undefined) return;
+    if (mutatedAssetsRef.current.has(viewerAssetId)) return;
+    const assetId = viewerAssetId;
+    void (async () => {
+      try {
+        const { marks } = await api.marks(libraryId, assetId);
+        // Never clobber an edit the visitor made while this read was in flight.
+        if (mutatedAssetsRef.current.has(assetId)) return;
+        setMarksByAsset((current) => ({ ...current, [assetId]: marks }));
+      } catch {
+        // Leave it unmarked; the like button still works optimistically.
+      }
+    })();
+  }, [phase, libraryId, viewerAssetId, marksByAsset]);
 
   const folderItems = useMemo(() => folderTreeItems(folders), [folders]);
   const collectionItems = useMemo(() => collectionTreeItems(collections), [collections]);
@@ -358,27 +543,44 @@ export function App() {
   }
 
   if (phase === 'login') {
+    const canSubmit = username.trim() !== '' && (!requiresPassword || password !== '');
     return (
       <div className="center-screen">
         <form className="login" onSubmit={handleLogin}>
           <h1>Serpent</h1>
           <p className="login-subtitle">
-            {t('输入分享密码以查看资源库。', 'Enter the share password to view this library.')}
+            {t(
+              '输入一个用户名即可进入，写什么都可以。',
+              'Enter any username to continue — any name works.',
+            )}
           </p>
           <div className="field">
-            <label htmlFor="share-password">{t('密码', 'Password')}</label>
+            <label htmlFor="share-username">{t('用户名', 'Username')}</label>
             <input
-              id="share-password"
+              id="share-username"
               className="input"
-              type="password"
+              type="text"
               autoFocus
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              maxLength={64}
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
             />
           </div>
+          {requiresPassword ? (
+            <div className="field">
+              <label htmlFor="share-password">{t('密码', 'Password')}</label>
+              <input
+                id="share-password"
+                className="input"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+          ) : null}
           {loginError !== '' ? <p className="error-text">{loginError}</p> : null}
-          <button className="button" type="submit" disabled={loggingIn || password === ''}>
-            {t('查看资源库', 'View library')}
+          <button className="button" type="submit" disabled={loggingIn || !canSubmit}>
+            {t('进入资源库', 'Enter library')}
           </button>
         </form>
       </div>
@@ -395,6 +597,9 @@ export function App() {
 
   const libraryName = state.library?.displayName ?? 'Serpent';
   const selectedAsset = selectedIndex === null ? undefined : assets[selectedIndex];
+  const viewerAsset = viewerIndex === null ? undefined : assets[viewerIndex];
+  const marksFor = (assetId: string): VisitorMarks =>
+    marksByAsset[assetId] ?? { favorite: false, rating: 0 };
 
   return (
     <div className="app">
@@ -499,6 +704,16 @@ export function App() {
               <span>{t('包含子文件夹', 'Include subfolders')}</span>
             </label>
           ) : null}
+          {debugMode ? (
+            <>
+              <button className="button ghost" type="button" onClick={insertSimulatedAsset}>
+                + 模拟新图
+              </button>
+              <button className="button ghost" type="button" onClick={removeSimulatedAsset}>
+                − 模拟删除
+              </button>
+            </>
+          ) : null}
         </div>
 
         <div className="content">
@@ -510,6 +725,14 @@ export function App() {
             <div className="grid-scroll">
             {assets.length === 0 && !loading ? (
               <p className="empty">{t('没有匹配的资产。', 'No matching assets.')}</p>
+            ) : assets.length === 0 ? (
+              <div className="grid">
+                {Array.from({ length: SKELETON_TILES }, (_, index) => (
+                  <div className="card skeleton" key={index}>
+                    <span className="card-thumb" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <>
                 <div className="grid">
@@ -531,10 +754,14 @@ export function App() {
                       }}
                     >
                       <span className="card-thumb">
-                        <Thumb
-                          url={thumbnailUrl(libraryId, asset.assetId)}
-                          alt={asset.displayName}
-                        />
+                        {asset.assetId.startsWith('sim-') ? (
+                          <span className="placeholder">NEW</span>
+                        ) : (
+                          <Thumb
+                            url={thumbnailUrl(libraryId, asset.assetId)}
+                            alt={asset.displayName}
+                          />
+                        )}
                         <span className="card-badge">{formatBytes(asset.byteSize)}</span>
                         <button
                           aria-label={t('放大查看', 'Open viewer')}
@@ -586,6 +813,8 @@ export function App() {
               summary={selectedAsset}
               detail={detail}
               allowDownload={state.allowDownload}
+              marks={marksFor(selectedAsset.assetId)}
+              onMarksChange={(patch) => void updateMarks(selectedAsset.assetId, patch)}
               onClose={() => {
                 detailRequestIdRef.current += 1;
                 setDetail(null);
@@ -602,6 +831,10 @@ export function App() {
           assets={assets}
           index={viewerIndex}
           allowDownload={state.allowDownload}
+          marks={viewerAsset === undefined ? { favorite: false, rating: 0 } : marksFor(viewerAsset.assetId)}
+          onMarksChange={(patch) => {
+            if (viewerAsset !== undefined) void updateMarks(viewerAsset.assetId, patch);
+          }}
           onClose={() => setViewerIndex(null)}
           onNavigate={setViewerIndex}
         />

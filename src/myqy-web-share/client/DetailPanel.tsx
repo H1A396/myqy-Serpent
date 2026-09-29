@@ -1,8 +1,37 @@
+import type { ReactNode } from 'react';
+
 import type { AssetSummary } from '../../shared/asset-types';
-import type { AssetDetail } from './api';
-import { downloadUrl } from './api';
-import { formatBytes, formatDate, formatDimensions, formatDuration, stars } from './format';
+import type { AssetDetail, VisitorMarks } from './api';
+import { downloadUrl, viewUrl } from './api';
+import { formatBytes, formatDate, formatDimensions, formatDuration } from './format';
 import { t } from './i18n';
+
+/** Clickable 1–5 stars; clicking the current value clears it. */
+function StarRating({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (rating: number) => void;
+}): ReactNode {
+  return (
+    <span className="star-rating" role="radiogroup" aria-label={t('评分', 'Rating')}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          aria-checked={value === star}
+          aria-label={String(star)}
+          className="star-button"
+          key={star}
+          role="radio"
+          type="button"
+          onClick={() => onChange(value === star ? 0 : star)}
+        >
+          {star <= value ? '★' : '☆'}
+        </button>
+      ))}
+    </span>
+  );
+}
 
 function stringField(metadata: Record<string, unknown> | null, key: string): string | null {
   if (metadata === null) return null;
@@ -22,12 +51,16 @@ export function DetailPanel({
   summary,
   detail,
   allowDownload,
+  marks,
+  onMarksChange,
   onClose,
 }: {
   libraryId: string;
   summary: AssetSummary;
   detail: AssetDetail | null;
   allowDownload: boolean;
+  marks: VisitorMarks;
+  onMarksChange: (patch: { favorite?: boolean; rating?: number }) => void;
   onClose: () => void;
 }) {
   // A detail response for a previously selected asset must never be shown
@@ -44,8 +77,6 @@ export function DetailPanel({
     .join(' ');
   const author = metadata?.author ?? stringField(extracted?.metadata ?? null, 'author');
   const captureDate = stringField(extracted?.metadata ?? null, 'captureDate');
-  const rating = metadata?.rating ?? summary.rating;
-  const favorite = metadata?.favorite ?? summary.favorite;
   const tags = metadata?.tags ?? [];
 
   return (
@@ -55,9 +86,20 @@ export function DetailPanel({
           {t('收起', 'Hide')}
         </button>
         {allowDownload ? (
-          <a className="button" href={downloadUrl(libraryId, summary)} download>
-            {t('下载原图', 'Download')}
-          </a>
+          <>
+            {summary.mediaType === 'image' ? (
+              <a
+                className="button"
+                href={viewUrl(libraryId, summary, { download: true })}
+                download
+              >
+                {t('下载', 'Download')}
+              </a>
+            ) : null}
+            <a className="button download-original" href={downloadUrl(libraryId, summary)} download>
+              {t('下载原图', 'Download original')}
+            </a>
+          </>
         ) : null}
       </div>
 
@@ -86,12 +128,26 @@ export function DetailPanel({
       </section>
 
       <section className="detail-section">
-        <h3>{t('评分与标记', 'Rating & flags')}</h3>
+        <h3>{t('我的标记', 'My marks')}</h3>
         <dl>
           <dt>{t('评分', 'Rating')}</dt>
-          <dd className="stars">{stars(rating)}</dd>
-          <dt>{t('喜欢', 'Favorite')}</dt>
-          <dd>{favorite ? t('是', 'Yes') : t('否', 'No')}</dd>
+          <dd>
+            <StarRating
+              value={marks.rating}
+              onChange={(rating) => onMarksChange({ rating })}
+            />
+          </dd>
+          <dt>{t('喜欢', 'Like')}</dt>
+          <dd>
+            <button
+              aria-pressed={marks.favorite}
+              className="mark-toggle"
+              type="button"
+              onClick={() => onMarksChange({ favorite: !marks.favorite })}
+            >
+              {marks.favorite ? t('已喜欢 · 点击取消', 'Liked · click to undo') : t('喜欢', 'Like')}
+            </button>
+          </dd>
         </dl>
       </section>
 

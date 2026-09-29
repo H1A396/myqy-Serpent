@@ -278,4 +278,64 @@ describe('WorkerBackedWebShareMedia', () => {
     const media = new WorkerBackedWebShareMedia(client);
     expect(await media.resolveThumbnail({ libraryId: 'lib-a', assetId: 'asset-1' })).toBeNull();
   });
+
+  it('requests a bounded thumbnail derivative and owns its temporary file', async () => {
+    const client = new FakeWorkerClient((command) => {
+      if (command.type === 'media.get-share-thumbnail') {
+        return {
+          ok: true,
+          type: 'media.share-thumbnail',
+          absolutePath: 'X:/tmp/serpent-share-derivative-1/derivative.webp',
+          mimeType: 'image/webp',
+          byteSize: 123,
+          width: 128,
+          height: 128,
+          cached: true,
+        };
+      }
+      throw new Error(`unexpected ${command.type}`);
+    });
+    const media = new WorkerBackedWebShareMedia(client);
+    const resolved = await media.resolveThumbnailDerivative({
+      libraryId: 'lib-a',
+      assetId: 'asset-1',
+      format: 'webp',
+      maxEdge: 128,
+      sharpen: true,
+      maxBytes: 20480,
+    });
+    expect(resolved).toMatchObject({
+      absolutePath: 'X:/tmp/serpent-share-derivative-1/derivative.webp',
+      mimeType: 'image/webp',
+    });
+    expect(client.commands[0]).toMatchObject({
+      type: 'media.get-share-thumbnail',
+      libraryId: 'lib-a',
+      assetId: 'asset-1',
+      maxEdge: 128,
+      sharpen: true,
+      maxBytes: 20480,
+    });
+    // Idempotent: the response 'close' handler may run after a manual cleanup.
+    expect(() => resolved?.cleanup()).not.toThrow();
+    expect(() => resolved?.cleanup()).not.toThrow();
+  });
+
+  it('reports a thumbnail derivative as unavailable when the Worker cannot encode it', async () => {
+    const client = new FakeWorkerClient(() => ({
+      ok: false,
+      error: createPublicError('ASSET_NOT_FOUND'),
+    }));
+    const media = new WorkerBackedWebShareMedia(client);
+    expect(
+      await media.resolveThumbnailDerivative({
+        libraryId: 'lib-a',
+        assetId: 'asset-1',
+        format: 'webp',
+        maxEdge: 128,
+        sharpen: true,
+        maxBytes: 20480,
+      }),
+    ).toBeNull();
+  });
 });

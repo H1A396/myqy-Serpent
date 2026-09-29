@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, statSync } from 'node:fs';
 import {
   parseWorkerRequest,
   type WorkerCommand,
@@ -12,6 +13,10 @@ import {
 } from '../shared/protocol/responses';
 import { stopOutgoingLibrariesForOpen } from './library-open-stop';
 import { createShareDerivative } from './web-share-derivative';
+import {
+  encodeShareThumbnail,
+  type ShareThumbnailSharpFactory,
+} from './web-share-thumbnail-cache';
 import type { ParentPort } from 'electron';
 import {
   BUNDLED_HDRI_PRESET_IDS,
@@ -2153,6 +2158,78 @@ function destructiveBackupLibraryId(command: WorkerCommand): string | undefined 
   }
 }
 
+/**
+ * Resolve the cached card thumbnail's absolute path for the read-only web share,
+ * generating the card artifact first when a visitor is its first viewer. Returns
+ * `null` when no thumbnail can be produced (unsupported media, or a poster that
+ * is still generating asynchronously for the client to retry).
+ */
+async function resolveShareThumbnailArtifact(
+  service: LibraryService,
+  input: { libraryId: string; assetId: string },
+): Promise<{ absolutePath: string; revisionId: string } | null> {
+  const resolve = (): { absolutePath: string; revisionId: string } | null => {
+    const artifact = service.getThumbnailArtifact(input.libraryId, input.assetId);
+    if (artifact === null) return null;
+    return {
+      absolutePath: service.getArtifactAbsolutePath(input.libraryId, artifact.artifactId, 'preview'),
+      revisionId: artifact.revisionId,
+    };
+  };
+  const existing = resolve();
+  if (existing !== null) return existing;
+  try {
+    await service.generateThumbnail({ libraryId: input.libraryId, assetId: input.assetId });
+  } catch {
+    return null;
+  }
+  return resolve();
+}
+
+/** Persist every requested share-thumbnail edge for one asset. */
+async function generateShareThumbnailsForAsset(input: {
+  libraryId: string;
+  assetId: string;
+  edges: readonly number[];
+  sharpen: boolean;
+  maxBytes: number;
+  maxKb: number;
+  sharpFactory: ShareThumbnailSharpFactory;
+}): Promise<'generated' | 'skipped' | 'failed'> {
+  const source = await resolveShareThumbnailArtifact(libraryService, input);
+  if (source === null) return 'failed';
+  let generated = false;
+  let skipped = false;
+  for (const edge of input.edges) {
+    const destination = libraryService.shareThumbnailCachePath(
+      input.libraryId,
+      input.assetId,
+      source.revisionId,
+      edge,
+      input.sharpen,
+      input.maxKb,
+    );
+    if (existsSync(destination)) {
+      skipped = true;
+      continue;
+    }
+    try {
+      await encodeShareThumbnail({
+        sourceAbsolutePath: source.absolutePath,
+        destinationPath: destination,
+        edge,
+        sharpen: input.sharpen,
+        maxBytes: input.maxBytes,
+        sharpFactory: input.sharpFactory,
+      });
+      generated = true;
+    } catch {
+      return 'failed';
+    }
+  }
+  return generated ? 'generated' : skipped ? 'skipped' : 'failed';
+}
+
 async function handleRequest(request: WorkerRequest): Promise<WorkerResult> {
   const automationResult = dispatchAutomationReadOnlyRequest(libraryService, request);
   if (automationResult) return automationResult;
@@ -2664,16 +2741,22 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
       // Read-only web share. The derivative is written to the OS temporary
       // directory (never `.serpent/artifacts`) and Main deletes it after the
       // response is streamed, so a share visitor leaves nothing behind.
+      // Resolving through `getCurrentMediaSource` re-validates that the revision
+      // is still current, so a stale share link cannot encode a superseded one.
+      const source = libraryService.getCurrentMediaSource(
+        request.command.libraryId,
+        request.command.assetId,
+        request.command.revisionId,
+      );
       const derivative = await createShareDerivative({
-        libraryService,
+        sourceAbsolutePath: source.absolutePath,
         sharpFactory: requireSharp(),
         request: {
-          libraryId: request.command.libraryId,
-          assetId: request.command.assetId,
-          revisionId: request.command.revisionId,
           format: request.command.format,
           maxEdge: request.command.maxEdge,
           quality: request.command.quality,
+          fullSize: request.command.fullSize,
+          progressive: request.command.progressive,
         },
       });
       return {
@@ -2684,6 +2767,106 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
         byteSize: derivative.byteSize,
         width: derivative.width,
         height: derivative.height,
+      };
+    }
+    case 'media.get-share-thumbnail': {
+      // Read-only web share: serve the persisted share-only tile (downscaled
+      // from the card artifact, never the original) so the visitor's grid loads
+      // a cached WebP. Missing tiles are generated on demand and kept, so the
+      // file Main streams must NOT be deleted afterwards.
+      const source = await resolveShareThumbnailArtifact(libraryService, request.command);
+      if (source === null) {
+        // Server maps any non-`media.share-thumbnail` result to a 404 so the
+        // client retries while the poster/thumbnail is still generating.
+        throw new LibraryServiceError('ASSET_NOT_FOUND');
+      }
+      const maxKb = Math.max(1, Math.round(request.command.maxBytes / 1024));
+      const destination = libraryService.shareThumbnailCachePath(
+        request.command.libraryId,
+        request.command.assetId,
+        source.revisionId,
+        request.command.maxEdge,
+        request.command.sharpen,
+        maxKb,
+      );
+      let byteSize: number;
+      let width = request.command.maxEdge;
+      let height = request.command.maxEdge;
+      if (existsSync(destination)) {
+        byteSize = statSync(destination).size;
+      } else {
+        const encoded = await encodeShareThumbnail({
+          sourceAbsolutePath: source.absolutePath,
+          destinationPath: destination,
+          edge: request.command.maxEdge,
+          sharpen: request.command.sharpen,
+          maxBytes: request.command.maxBytes,
+          sharpFactory: requireSharp() as unknown as ShareThumbnailSharpFactory,
+        });
+        byteSize = encoded.byteSize;
+        width = encoded.width || request.command.maxEdge;
+        height = encoded.height || request.command.maxEdge;
+      }
+      return {
+        ok: true,
+        type: 'media.share-thumbnail',
+        absolutePath: destination,
+        mimeType: 'image/webp',
+        byteSize,
+        width,
+        height,
+        cached: true,
+      };
+    }
+    case 'web-share.generate-thumbnails': {
+      const sharpFactory = requireSharp() as unknown as ShareThumbnailSharpFactory;
+      let generated = 0;
+      let skipped = 0;
+      let failed = 0;
+      const maxBytes = request.command.maxBytes;
+      const maxKb = Math.max(1, Math.round(maxBytes / 1024));
+      for (const assetId of request.command.assetIds) {
+        const outcome = await generateShareThumbnailsForAsset({
+          libraryId: request.command.libraryId,
+          assetId,
+          edges: request.command.edges,
+          sharpen: request.command.sharpen,
+          maxBytes,
+          maxKb,
+          sharpFactory,
+        });
+        if (outcome === 'generated') generated += 1;
+        else if (outcome === 'skipped') skipped += 1;
+        else failed += 1;
+      }
+      return { ok: true, type: 'web-share.thumbnails.generated', generated, skipped, failed };
+    }
+    case 'web-share.list-targets': {
+      const assetIds: string[] = [];
+      const pageSize = 2_000;
+      for (;;) {
+        const page = libraryService.listShareThumbnailTargets(
+          request.command.libraryId,
+          assetIds.length,
+          pageSize,
+        );
+        for (const entry of page) assetIds.push(entry.assetId);
+        if (page.length < pageSize) break;
+      }
+      return { ok: true, type: 'web-share.targets', assetIds };
+    }
+    case 'web-share.prune-thumbnails': {
+      return {
+        ok: true,
+        type: 'web-share.pruned',
+        removed: libraryService.pruneShareThumbnails(request.command.libraryId),
+      };
+    }
+    case 'web-share.delete-thumbnails': {
+      return {
+        ok: true,
+        type: 'web-share.pruned',
+        removed: libraryService.deleteShareThumbnails(request.command.libraryId),
       };
     }
     case 'model.convert-fbx':

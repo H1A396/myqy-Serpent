@@ -4,13 +4,28 @@ import type {
   ManagedFolderSummary,
   TagSummary,
 } from '../../shared/asset-types';
-import type { WebShareDerivativeFormat } from '../../shared/web-share';
+
 
 export interface WebShareState {
   app: string;
   sharedLibraryId: string | null;
   library: { libraryId: string; displayName: string } | null;
   allowDownload: boolean;
+  requiresPassword: boolean;
+  username: string | null;
+}
+
+export interface WebShareConfig {
+  app: string;
+  requiresPassword: boolean;
+  /** The server only sets this for a direct local (loopback) browser. */
+  debug: boolean;
+}
+
+/** The visitor's own favorite/rating for one asset. */
+export interface VisitorMarks {
+  favorite: boolean;
+  rating: number;
 }
 
 export interface SearchResult {
@@ -34,6 +49,8 @@ export interface AssetDetail {
     status: 'ready' | 'pending' | 'failed' | 'missing';
     metadata: Record<string, unknown> | null;
   };
+  /** The signed-in visitor's own marks (never the library owner's). */
+  marks?: VisitorMarks;
 }
 
 export class ApiError extends Error {
@@ -90,15 +107,36 @@ export interface SearchParams {
 }
 
 export const api = {
+  config: (): Promise<WebShareConfig> => request('/api/config'),
+
   state: (): Promise<WebShareState> => request('/api/state'),
 
-  async login(password: string): Promise<void> {
+  async login(username: string, password?: string): Promise<void> {
     await request('/api/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(password === undefined ? { username } : { username, password }),
     });
   },
+
+  marks: (libraryId: string, assetId: string): Promise<{ marks: VisitorMarks }> =>
+    request(
+      `/api/libraries/${encodeURIComponent(libraryId)}/assets/${encodeURIComponent(assetId)}/marks`,
+    ),
+
+  setMarks: (
+    libraryId: string,
+    assetId: string,
+    patch: { favorite?: boolean; rating?: number },
+  ): Promise<{ ok: true; marks: VisitorMarks }> =>
+    request(
+      `/api/libraries/${encodeURIComponent(libraryId)}/assets/${encodeURIComponent(assetId)}/marks`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      },
+    ),
 
   async logout(): Promise<void> {
     await request('/api/session', { method: 'DELETE' });
@@ -151,17 +189,15 @@ export function downloadUrl(libraryId: string, asset: AssetSummary): string {
 }
 
 /**
- * Bounded re-encode of the original. The viewer uses the default WebP so a
- * visitor on a slow link sees the image quickly; the download menu asks for a
- * specific format and always re-encodes from the original, never from WebP.
+ * Bounded WebP for the viewer, or — with `download` — the full-resolution JPEG
+ * the "Download" button saves (the server re-encodes from the original).
  */
 export function viewUrl(
   libraryId: string,
   asset: AssetSummary,
-  options?: { format?: WebShareDerivativeFormat; download?: boolean },
+  options?: { download?: boolean },
 ): string {
   const query = new URLSearchParams({ revision: asset.currentRevisionId });
-  if (options?.format !== undefined) query.set('format', options.format);
   if (options?.download === true) query.set('download', '1');
   return `/media/view/${encodeURIComponent(libraryId)}/${encodeURIComponent(asset.assetId)}?${query.toString()}`;
 }

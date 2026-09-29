@@ -138,6 +138,38 @@ button {
   background: var(--ui-action-hover);
 }
 
+/* "Download original" reads as a secondary, positive action. */
+.button.download-original {
+  background: var(--ui-status-success-surface);
+  color: var(--ui-status-success-content);
+  border: 1px solid color-mix(in srgb, var(--ui-status-success) 42%, transparent);
+}
+
+.button.download-original:hover {
+  background: color-mix(in srgb, var(--ui-status-success) 24%, var(--ui-surface-raised));
+}
+
+/* Placeholder tiles shown the instant a collection is switched, before the
+   server response (or the cached list) fills the grid. */
+.card.skeleton {
+  pointer-events: none;
+}
+
+.card.skeleton .card-thumb {
+  background: color-mix(in srgb, var(--ui-content-tertiary) 14%, transparent);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 .error-text {
   color: var(--ui-status-danger-content);
   font-size: var(--ui-font-size-caption);
@@ -557,9 +589,67 @@ button {
   letter-spacing: 0.15em;
 }
 
+.star-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+
+.star-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ui-size-control-sm);
+  height: var(--ui-size-control-sm);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--ui-status-warning);
+  font-size: calc(var(--ui-font-size-heading) * 1.4);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.star-button:hover,
+.star-button[aria-checked='true'] {
+  color: var(--ui-action-accent);
+}
+
+.mark-toggle {
+  padding: 2px var(--ui-space-2);
+  background: transparent;
+  color: var(--ui-content-primary);
+  border: 1px solid var(--ui-border-control);
+  border-radius: var(--ui-radius-pill);
+  font-size: var(--ui-font-size-caption);
+  cursor: pointer;
+}
+
+.mark-toggle[aria-pressed='true'] {
+  background: var(--ui-action-accent);
+  color: var(--ui-content-on-accent);
+  border-color: transparent;
+}
+
 .detail-actions {
   display: flex;
   gap: var(--ui-space-2);
+}
+
+.viewer-like {
+  background: transparent;
+  color: var(--ui-content-primary);
+  border: 1px solid var(--ui-border-control);
+}
+
+.viewer-like:hover {
+  background: var(--ui-action-hover);
+}
+
+.viewer-like[aria-pressed='true'] {
+  background: var(--ui-action-accent);
+  color: var(--ui-content-on-accent);
+  border-color: transparent;
 }
 
 /* ---- Viewer ---- */

@@ -2405,6 +2405,47 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     format: z.enum(['webp', 'jpeg', 'png']),
     maxEdge: z.number().int().min(64).max(8192),
     quality: z.number().int().min(1).max(100),
+    /** Keep the original resolution (the "Download" re-encode). */
+    fullSize: z.boolean(),
+    /** Progressive/continuous JPEG encoding. */
+    progressive: z.boolean(),
+  }),
+  // Read-only web share: downscale the library's cached card thumbnail (never
+  // the original) so a grid page of tiles stays small on a slow link. The tile
+  // is persisted and Main must not delete it. `maxBytes` is an adaptive budget:
+  // the Worker lowers quality until the tile fits.
+  z.strictObject({
+    type: z.literal('media.get-share-thumbnail'),
+    libraryId: identifierSchema,
+    assetId: identifierSchema,
+    format: z.enum(['webp', 'jpeg', 'png']),
+    maxEdge: z.number().int().min(64).max(8192),
+    maxBytes: z.number().int().min(1024).max(16 * 1024 * 1024),
+    sharpen: z.boolean(),
+  }),
+  // Read-only web share: persist the share-only grid thumbnails for a batch of
+  // assets (skipping any already on disk) so the cache survives restarts.
+  z.strictObject({
+    type: z.literal('web-share.generate-thumbnails'),
+    libraryId: identifierSchema,
+    assetIds: z.array(identifierSchema).min(1).max(500),
+    edges: z.array(z.number().int().min(64).max(8192)).min(1).max(4),
+    sharpen: z.boolean(),
+    maxBytes: z.number().int().min(1024).max(16 * 1024 * 1024),
+  }),
+  z.strictObject({
+    type: z.literal('web-share.delete-thumbnails'),
+    libraryId: identifierSchema,
+  }),
+  // The "regenerate" sweep is driven by Main in batches: it lists every target
+  // once, then calls `web-share.generate-thumbnails` per chunk and prunes.
+  z.strictObject({
+    type: z.literal('web-share.list-targets'),
+    libraryId: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('web-share.prune-thumbnails'),
+    libraryId: identifierSchema,
   }),
   z.strictObject({
     type: z.literal('media.enqueue-thumbnail-jobs'),

@@ -16,11 +16,16 @@ import {
   WEB_SHARE_DERIVATIVE_QUALITY,
   WEB_SHARE_SESSION_COOKIE,
   WEB_SHARE_SESSION_TTL_MS,
+  WEB_SHARE_THUMBNAIL_FORMAT,
   webShareSettingsSnapshotSchema,
+  webShareUsernameSchema,
   type WebShareLibrarySummary,
   type WebShareRuntimeState,
   type WebShareServerPreferences,
   type WebShareSettingsSnapshot,
+  type WebShareThumbnailEdge,
+  type WebShareThumbnailProgress,
+  type WebShareVisitorSummary,
 } from '../../shared/web-share';
 import {
   createWebSharePasswordRecord,
@@ -28,6 +33,7 @@ import {
   WebShareLoginThrottle,
   WebShareSessionSigner,
 } from './web-share-auth';
+import { WebShareVisitorStore } from './web-share-visitor-store';
 import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
 import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from './web-share-media';
 import { WebShareSettingsStore } from './web-share-settings-store';
@@ -68,6 +74,7 @@ export class WebShareServerError extends Error {
 }
 
 const MAX_LOGIN_BODY_BYTES = 4 * 1024;
+const MAX_MARK_BODY_BYTES = 2 * 1024;
 const LOOPBACK_ADDRESS = '127.0.0.1';
 const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',
@@ -114,6 +121,8 @@ export class WebShareServer {
   readonly #onSnapshotChanged: WebShareServerOptions['onSnapshotChanged'];
   readonly #snapshotListeners = new Set<(snapshot: WebShareSettingsSnapshot) => void>();
   readonly #sessions = new Map<string, number>();
+  readonly #visitors: WebShareVisitorStore;
+  #thumbnailProgress: WebShareThumbnailProgress | null = null;
   #signer: WebShareSessionSigner;
   #libraries: WebShareLibrarySummary[] = [];
   #runtime: WebShareRuntimeState = { status: 'stopped' };
@@ -126,6 +135,7 @@ export class WebShareServer {
     this.#mediaGuard = options.mediaGuard;
     this.#logger = options.logger;
     this.#store = new WebShareSettingsStore(options.userDataPath);
+    this.#visitors = new WebShareVisitorStore(options.userDataPath);
     this.#now = options.now ?? Date.now;
     this.#staticRootDir = options.staticRootDir ?? null;
     this.#onSnapshotChanged = options.onSnapshotChanged;
@@ -148,8 +158,51 @@ export class WebShareServer {
       preferences: this.#store.preferences,
       runtime,
       hasPassword: this.#store.password !== null,
+      visitorCount: this.#visitors.count,
+      thumbnailProgress: this.#thumbnailProgress,
       libraries: this.#libraries,
     });
+  }
+
+  /** Visitor records for the operator's panel and export. */
+  listVisitors(): WebShareVisitorSummary[] {
+    return this.#visitors.listSummaries();
+  }
+
+  /** The library visitors currently see (`null` when none is open). */
+  resolvedSharedLibraryId(): string | null {
+    return this.#resolveSharedLibraryId();
+  }
+
+  setThumbnailEdge(edge: WebShareThumbnailEdge): WebShareSettingsSnapshot {
+    this.#store.setPreferences({ thumbnailEdge: edge });
+    return this.#publish();
+  }
+
+  setThumbnailSharpen(enabled: boolean): WebShareSettingsSnapshot {
+    this.#store.setPreferences({ thumbnailSharpen: enabled });
+    return this.#publish();
+  }
+
+  setThumbnailMaxKb(maxKb: number): WebShareSettingsSnapshot {
+    this.#store.setPreferences({ thumbnailMaxKb: maxKb });
+    return this.#publish();
+  }
+
+  setDownloadQuality(quality: number): WebShareSettingsSnapshot {
+    this.#store.setPreferences({ downloadQuality: quality });
+    return this.#publish();
+  }
+
+  setDownloadProgressive(enabled: boolean): WebShareSettingsSnapshot {
+    this.#store.setPreferences({ downloadProgressive: enabled });
+    return this.#publish();
+  }
+
+  /** Main relays worker sweep progress here so the panel can show it. */
+  setThumbnailProgress(progress: WebShareThumbnailProgress | null): WebShareSettingsSnapshot {
+    this.#thumbnailProgress = progress;
+    return this.#publish();
   }
 
   onSnapshot(listener: (snapshot: WebShareSettingsSnapshot) => void): () => void {
@@ -376,6 +429,20 @@ export class WebShareServer {
       return;
     }
 
+    // Unauthenticated: the login screen needs to know whether a password is
+    // configured before it can render the right fields.
+    if (request.method === 'GET' && pathname === '/api/config') {
+      writeJson(response, 200, {
+        app: 'Serpent',
+        requiresPassword: this.#store.password !== null,
+        // Only a direct loopback browser may reveal the client's test affordance;
+        // a tunnel/proxy request (which carries a real client IP header) never
+        // gets it, so visitors cannot enable `?debug=1`.
+        debug: isDirectLocalRequest(request),
+      });
+      return;
+    }
+
     if (request.method === 'POST' && pathname === '/api/session') {
       await this.#handleLogin(request, response);
       return;
@@ -388,7 +455,8 @@ export class WebShareServer {
     }
 
     if (pathname.startsWith('/api/') || pathname.startsWith('/media/')) {
-      if (!this.#authorize(request, response)) {
+      const visitorId = this.#authorize(request, response);
+      if (visitorId === null) {
         request.resume();
         return;
       }
@@ -396,61 +464,66 @@ export class WebShareServer {
         await this.#handleMedia(request, response, url, pathname);
         return;
       }
-      await this.#handleApi(request, response, url, pathname);
+      await this.#handleApi(request, response, url, pathname, visitorId);
       return;
     }
 
     await this.#serveStatic(request, response, pathname);
   }
 
-  #authorize(request: IncomingMessage, response: ServerResponse): boolean {
-    if (this.#store.password === null) {
-      writeJson(response, 409, {
-        error: 'Web sharing has no password yet.',
-        code: 'WEB_SHARE_PASSWORD_REQUIRED',
-      });
-      return false;
-    }
+  /** Returns the signed-in visitor id, or `null` after writing a 401. */
+  #authorize(request: IncomingMessage, response: ServerResponse): string | null {
     const cookie = parseCookies(request.headers.cookie)[WEB_SHARE_SESSION_COOKIE];
-    if (cookie === undefined || !this.#signer.verify(cookie, this.#now())) {
+    const visitorId = cookie === undefined ? null : this.#signer.verify(cookie, this.#now());
+    if (visitorId === null || !this.#visitors.has(visitorId)) {
       writeJson(response, 401, { error: 'Authentication required.', code: 'WEB_SHARE_UNAUTHORIZED' });
-      return false;
+      return null;
     }
-    this.#sessions.set(cookie, this.#now());
-    return true;
+    this.#sessions.set(cookie!, this.#now());
+    return visitorId;
   }
 
   async #handleLogin(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    if (this.#store.password === null) {
-      writeJson(response, 409, {
-        error: 'Web sharing has no password yet.',
-        code: 'WEB_SHARE_PASSWORD_REQUIRED',
+    const body = await readJsonBody(request, MAX_LOGIN_BODY_BYTES).catch(() => undefined);
+    const username = webShareUsernameSchema.safeParse(
+      isRecord(body) && typeof body.username === 'string' ? body.username : undefined,
+    );
+    if (!username.success) {
+      writeJson(response, 400, {
+        error: 'A username is required.',
+        code: 'WEB_SHARE_USERNAME_REQUIRED',
       });
-      request.resume();
-      return;
-    }
-    const remoteKey = request.socket.remoteAddress ?? 'unknown';
-    if (this.#throttle.isBlocked(remoteKey)) {
-      const retryAfterMs = this.#throttle.blockedForMs(remoteKey);
-      response.setHeader('Retry-After', String(Math.ceil(retryAfterMs / 1000)));
-      writeJson(response, 429, { error: 'Too many attempts.', code: 'WEB_SHARE_TOO_MANY_ATTEMPTS' });
-      request.resume();
       return;
     }
 
-    const body = await readJsonBody(request, MAX_LOGIN_BODY_BYTES).catch(() => undefined);
-    const password = isRecord(body) && typeof body.password === 'string' ? body.password : undefined;
-    const record = this.#store.password;
-    if (password === undefined || record === null || !verifyWebSharePassword(password, record)) {
-      this.#throttle.recordFailure(remoteKey);
-      writeJson(response, 401, { error: 'Incorrect password.', code: 'WEB_SHARE_INVALID_PASSWORD' });
-      return;
+    const passwordRecord = this.#store.password;
+    const remoteKey = clientIp(request) ?? request.socket.remoteAddress ?? 'unknown';
+    if (passwordRecord !== null) {
+      if (this.#throttle.isBlocked(remoteKey)) {
+        const retryAfterMs = this.#throttle.blockedForMs(remoteKey);
+        response.setHeader('Retry-After', String(Math.ceil(retryAfterMs / 1000)));
+        writeJson(response, 429, { error: 'Too many attempts.', code: 'WEB_SHARE_TOO_MANY_ATTEMPTS' });
+        return;
+      }
+      const password = isRecord(body) && typeof body.password === 'string' ? body.password : undefined;
+      if (password === undefined || !verifyWebSharePassword(password, passwordRecord)) {
+        this.#throttle.recordFailure(remoteKey);
+        writeJson(response, 401, { error: 'Incorrect password.', code: 'WEB_SHARE_INVALID_PASSWORD' });
+        return;
+      }
+      this.#throttle.reset(remoteKey);
     }
-    this.#throttle.reset(remoteKey);
-    const token = this.#signer.issue(this.#now());
+
+    const visitorId = this.#visitors.authenticate({
+      username: username.data,
+      ip: clientIp(request),
+      userAgent: userAgentOf(request),
+      now: new Date(this.#now()).toISOString(),
+    });
+    const token = this.#signer.issue(visitorId, this.#now());
     this.#sessions.set(token, this.#now());
     response.setHeader('Set-Cookie', sessionCookie(token));
-    writeJson(response, 200, { ok: true });
+    writeJson(response, 200, { ok: true, username: username.data });
   }
 
   async #handleApi(
@@ -458,17 +531,14 @@ export class WebShareServer {
     response: ServerResponse,
     url: URL,
     pathname: string,
+    visitorId: string,
   ): Promise<void> {
-    if (request.method !== 'GET') {
-      writeJson(response, 405, { error: 'Method not allowed.', code: 'WEB_SHARE_METHOD_NOT_ALLOWED' });
-      return;
-    }
     const segments = pathname.split('/').filter((segment) => segment.length > 0);
     // segments[0] === 'api'
     const rest = segments.slice(1);
 
-    if (rest.length === 1 && rest[0] === 'state') {
-      writeJson(response, 200, this.#buildState());
+    if (request.method === 'GET' && rest.length === 1 && rest[0] === 'state') {
+      writeJson(response, 200, this.#buildState(visitorId));
       return;
     }
 
@@ -483,8 +553,31 @@ export class WebShareServer {
       return;
     }
 
+    // The visitor's own marks are the only writable resource. Everything else
+    // the web client can reach stays read-only.
+    if (
+      request.method === 'PUT'
+      && rest.length === 5
+      && rest[2] === 'assets'
+      && rest[4] === 'marks'
+    ) {
+      await this.#handleSetMarks(
+        request,
+        response,
+        libraryId,
+        decodeURIComponent(rest[3]!),
+        visitorId,
+      );
+      return;
+    }
+
+    if (request.method !== 'GET') {
+      writeJson(response, 405, { error: 'Method not allowed.', code: 'WEB_SHARE_METHOD_NOT_ALLOWED' });
+      return;
+    }
+
     try {
-      const payload = await this.#resolveLibraryRoute(rest, url);
+      const payload = await this.#resolveLibraryRoute(rest, url, visitorId);
       if (payload === NOT_FOUND) {
         writeJson(response, 404, { error: 'Not found.', code: 'WEB_SHARE_NOT_FOUND' });
         return;
@@ -500,7 +593,61 @@ export class WebShareServer {
     }
   }
 
-  async #resolveLibraryRoute(rest: string[], url: URL): Promise<unknown> {
+  /** Upsert this visitor's favorite/rating for one asset. */
+  async #handleSetMarks(
+    request: IncomingMessage,
+    response: ServerResponse,
+    libraryId: string,
+    assetId: string,
+    visitorId: string,
+  ): Promise<void> {
+    const body = await readJsonBody(request, MAX_MARK_BODY_BYTES).catch(() => undefined);
+    if (!isRecord(body)) {
+      writeJson(response, 400, { error: 'Invalid mark.', code: 'WEB_SHARE_INVALID_MARK' });
+      return;
+    }
+    const patch: { favorite?: boolean; rating?: number } = {};
+    if (typeof body.favorite === 'boolean') patch.favorite = body.favorite;
+    if (
+      typeof body.rating === 'number'
+      && Number.isInteger(body.rating)
+      && body.rating >= 0
+      && body.rating <= 5
+    ) {
+      patch.rating = body.rating;
+    }
+    if (patch.favorite === undefined && patch.rating === undefined) {
+      writeJson(response, 400, { error: 'Nothing to update.', code: 'WEB_SHARE_INVALID_MARK' });
+      return;
+    }
+    let assetName: string;
+    try {
+      // Only assets that really exist in the shared library can be marked, so a
+      // visitor cannot inflate the store with invented ids.
+      const detail = await this.#data.getAssetDetail({ libraryId, assetId });
+      assetName = detail.asset.displayName;
+    } catch (error) {
+      if (error instanceof WebShareDataError) {
+        writeJson(response, 404, { error: 'Asset not found.', code: 'WEB_SHARE_ASSET_NOT_FOUND' });
+        return;
+      }
+      throw error;
+    }
+    const marks = this.#visitors.setMark({
+      visitorId,
+      libraryId,
+      assetId,
+      assetName,
+      ...patch,
+      ip: clientIp(request),
+      userAgent: userAgentOf(request),
+      now: new Date(this.#now()).toISOString(),
+    });
+    this.#publish();
+    writeJson(response, 200, { ok: true, marks });
+  }
+
+  async #resolveLibraryRoute(rest: string[], url: URL, visitorId: string): Promise<unknown> {
     const libraryId = decodeURIComponent(rest[1]!);
     const resource = rest[2];
     if (resource === undefined) return NOT_FOUND;
@@ -536,9 +683,17 @@ export class WebShareServer {
       });
     }
 
+    if (resource === 'assets' && rest.length === 5 && rest[4] === 'marks') {
+      const assetId = decodeURIComponent(rest[3]!);
+      return { marks: this.#visitors.getMarks(visitorId, libraryId, assetId) };
+    }
+
     if (resource === 'assets' && rest.length === 4) {
       const assetId = decodeURIComponent(rest[3]!);
-      return this.#data.getAssetDetail({ libraryId, assetId });
+      const detail = await this.#data.getAssetDetail({ libraryId, assetId });
+      // The detail carries the visitor's own favorite/rating so the inspector
+      // can render them without a second request.
+      return { ...detail, marks: this.#visitors.getMarks(visitorId, libraryId, assetId) };
     }
 
     if (resource === 'search' && rest.length === 3) {
@@ -639,13 +794,15 @@ export class WebShareServer {
     return this.#libraries[0]?.libraryId ?? null;
   }
 
-  #buildState(): unknown {
+  #buildState(visitorId: string): unknown {
     const sharedLibraryId = this.#resolveSharedLibraryId();
     return {
       app: 'Serpent',
       sharedLibraryId,
       library: this.#libraries.find((library) => library.libraryId === sharedLibraryId) ?? null,
       allowDownload: this.#store.preferences.allowDownload,
+      requiresPassword: this.#store.password !== null,
+      username: this.#visitors.usernameOf(visitorId),
     };
   }
 
@@ -684,6 +841,25 @@ export class WebShareServer {
 
     let resolved: ResolvedMedia | null;
     if (kind === 'thumbnail') {
+      // Grid tiles are downscaled from the cached card artifact so a page of
+      // dozens of tiles stays small on a slow tunnel. Fall back to the raw card
+      // artifact when the bounded re-encode is not available yet.
+      const derivative = await media.resolveThumbnailDerivative({
+        libraryId,
+        assetId: identifier,
+        format: WEB_SHARE_THUMBNAIL_FORMAT,
+        maxEdge: this.#store.preferences.thumbnailEdge,
+        sharpen: this.#store.preferences.thumbnailSharpen,
+        maxBytes: this.#store.preferences.thumbnailMaxKb * 1024,
+      });
+      if (derivative !== null) {
+        await this.#streamDerivative(request, response, derivative, {
+          download: false,
+          assetId: identifier,
+          cacheable: true,
+        });
+        return;
+      }
       resolved = await media.resolveThumbnail({ libraryId, assetId: identifier });
     } else if (kind === 'source') {
       const revisionId = url.searchParams.get('revision');
@@ -695,43 +871,42 @@ export class WebShareServer {
     } else if (kind === 'preview' || kind === 'proxy') {
       resolved = await media.resolveArtifact({ libraryId, artifactId: identifier, kind });
     } else if (kind === 'view') {
-      // Bounded, re-encoded copy of the original for visitors on a slow link
-      // (a ComfyUI 12 MB PNG is a minute over a small tunnel). Video and audio
-      // have no bounded derivative yet and keep streaming their source.
+      // The viewer shows a bounded WebP (a ComfyUI 12 MB PNG is a minute over a
+      // small tunnel); the Download button re-encodes the *original* at full
+      // resolution to JPEG so the saved file matches a Photoshop quality-10 save.
       const revisionId = url.searchParams.get('revision');
       if (revisionId === null || revisionId === '') {
         writeJson(response, 400, { error: 'A revision is required.', code: 'WEB_SHARE_REVISION_REQUIRED' });
         return;
       }
-      const format = parseDerivativeFormat(url.searchParams.get('format'));
-      if (format === null) {
-        writeJson(response, 400, {
-          error: 'Unsupported derivative format.',
-          code: 'WEB_SHARE_DERIVATIVE_FORMAT_UNSUPPORTED',
-        });
+      const download = url.searchParams.get('download') === '1';
+      if (download && !this.#store.preferences.allowDownload) {
+        writeJson(response, 403, { error: 'Downloading is disabled.', code: 'WEB_SHARE_DOWNLOAD_DISABLED' });
         return;
       }
       const derivative = await media.resolveDerivative({
         libraryId,
         assetId: identifier,
         revisionId,
-        format,
+        format: download ? 'jpeg' : 'webp',
         maxEdge: WEB_SHARE_DERIVATIVE_MAX_EDGE,
-        quality: WEB_SHARE_DERIVATIVE_QUALITY,
+        quality: download
+          ? this.#store.preferences.downloadQuality
+          : WEB_SHARE_DERIVATIVE_QUALITY,
+        fullSize: download,
+        progressive: download && this.#store.preferences.downloadProgressive,
       });
       if (derivative === null) {
         writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
         return;
       }
-      const download = url.searchParams.get('download') === '1';
-      if (download && !this.#store.preferences.allowDownload) {
-        derivative.cleanup();
-        writeJson(response, 403, { error: 'Downloading is disabled.', code: 'WEB_SHARE_DOWNLOAD_DISABLED' });
-        return;
-      }
       await this.#streamDerivative(request, response, derivative, {
         download,
         assetId: identifier,
+        // The on-screen image is a deterministic function of the asset+revision,
+        // so let the visitor's own browser reuse it across reopens. Downloads
+        // stay uncached so the browser always saves a fresh copy.
+        cacheControl: download ? 'private, no-store' : 'private, max-age=3600',
       });
       return;
     } else {
@@ -827,7 +1002,13 @@ export class WebShareServer {
     request: IncomingMessage,
     response: ServerResponse,
     derivative: ResolvedDerivative,
-    options: { download: boolean; assetId: string },
+    options: {
+      download: boolean;
+      assetId: string;
+      cacheable?: boolean;
+      cacheControl?: string;
+      nameSuffix?: string;
+    },
   ): Promise<void> {
     let size: number;
     try {
@@ -841,14 +1022,22 @@ export class WebShareServer {
     }
 
     response.setHeader('Content-Type', derivative.mimeType);
-    // Derived on demand from a temporary file, so it must not be cached: the
-    // path and bytes are gone by the next request.
-    response.setHeader('Cache-Control', 'private, no-store');
+    // The temporary file is gone by the next request, but the bytes are a
+    // deterministic function of the source. `cacheControl` is set explicitly by
+    // the caller: grid thumbnails may be cached publicly, the on-screen viewer
+    // image privately in the visitor's browser, and downloads never.
+    response.setHeader(
+      'Cache-Control',
+      options.cacheControl
+        ?? (options.cacheable === true ? 'public, max-age=3600' : 'private, no-store'),
+    );
     response.setHeader('Content-Length', String(size));
     if (options.download) {
       response.setHeader(
         'Content-Disposition',
-        contentDisposition(`share-${options.assetId}${path.extname(derivative.absolutePath)}`),
+        contentDisposition(
+          `share-${options.assetId}${options.nameSuffix ?? ''}${path.extname(derivative.absolutePath)}`,
+        ),
       );
     }
 
@@ -990,6 +1179,43 @@ async function isFile(candidate: string): Promise<boolean> {
   }
 }
 
+/**
+ * Best-effort client IP. A tunnel (Cloudflare, frp) terminates the connection,
+ * so the loopback socket address is useless; the proxy headers carry the real
+ * address. Headers are spoofable, so this is only recorded for the operator's
+ * records, never used for access control.
+ */
+function clientIp(request: IncomingMessage): string | null {
+  const cf = request.headers['cf-connecting-ip'];
+  const direct = Array.isArray(cf) ? cf[0] : cf;
+  if (typeof direct === 'string' && direct.trim() !== '') return direct.trim();
+  const forwarded = request.headers['x-forwarded-for'];
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  if (typeof first === 'string' && first.trim() !== '') {
+    return first.split(',')[0]!.trim();
+  }
+  return request.socket.remoteAddress ?? null;
+}
+
+/**
+ * True only for a browser talking to the loopback server directly, not through
+ * a tunnel. A tunnel (Cloudflare, frp) forwards the visitor's real address in
+ * `cf-connecting-ip` / `x-forwarded-for`, so its presence means "not local".
+ */
+function isDirectLocalRequest(request: IncomingMessage): boolean {
+  const cf = request.headers['cf-connecting-ip'];
+  const forwarded = request.headers['x-forwarded-for'];
+  if (typeof cf === 'string' && cf.trim() !== '') return false;
+  if (typeof forwarded === 'string' && forwarded.trim() !== '') return false;
+  const address = request.socket.remoteAddress ?? '';
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function userAgentOf(request: IncomingMessage): string | null {
+  const value = request.headers['user-agent'];
+  return typeof value === 'string' && value !== '' ? value.slice(0, 1024) : null;
+}
+
 function parseCookies(header: string | undefined): Record<string, string> {
   const result: Record<string, string> = {};
   if (header === undefined) return result;
@@ -1030,11 +1256,6 @@ function writeJson(response: ServerResponse, status: number, body: unknown): voi
  * Only formats the desktop can produce from the original are accepted. An
  * unknown value is a client bug, not a reason to silently fall back to WebP.
  */
-function parseDerivativeFormat(value: string | null): 'webp' | 'jpeg' | 'png' | null {
-  if (value === null || value === '') return 'webp';
-  return value === 'webp' || value === 'jpeg' || value === 'png' ? value : null;
-}
-
 function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];

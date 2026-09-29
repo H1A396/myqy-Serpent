@@ -67,6 +67,8 @@ describe('web share Viewer', () => {
           assets: [makeAsset('a1', 'one.png')],
           index: 0,
           allowDownload: true,
+          marks: { favorite: false, rating: 0 },
+          onMarksChange: () => undefined,
           onClose,
           onNavigate: () => undefined,
         }),
@@ -111,19 +113,18 @@ describe('web share Viewer', () => {
     expect(container?.querySelector('.zoom-stage img')?.getAttribute('src')).toBe('/media/view');
   });
 
-  it('offers the original plus re-encoded download formats', () => {
+  it('offers a re-encoded Download and a Download original button', () => {
     renderViewer(vi.fn());
-    const trigger = container?.querySelector('.download-menu .viewer-download');
-    expect(trigger).not.toBeNull();
-    act(() => {
-      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-    const items = [...(container?.querySelectorAll('.download-menu-item') ?? [])].map(
-      (element) => element.textContent,
-    );
-    expect(items).toEqual(['Original', 'JPG', 'WebP', 'PNG']);
-    expect(container?.querySelector('.download-menu-item')?.getAttribute('href')).toBe(
+    const links = [...(container?.querySelectorAll('.viewer-header-right a') ?? [])];
+    expect(links.map((element) => element.textContent)).toEqual([
+      'Download',
+      'Download original',
+    ]);
+    // The re-encode goes through the viewer endpoint; the original is the source.
+    expect(links.map((element) => element.getAttribute('href'))).toEqual([
+      '/media/view',
       '/media/download',
-    );
+    ]);
+    expect(links.every((element) => element.hasAttribute('download'))).toBe(true);
   });
 });

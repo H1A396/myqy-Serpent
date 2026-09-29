@@ -5,10 +5,27 @@ import {
   WEB_SHARE_MIN_PASSWORD_LENGTH,
   type SerpentWebShareSettingsApi,
   type WebShareSettingsSnapshot,
+  type WebShareThumbnailProgress,
+  type WebShareVisitorSummary,
 } from "../shared/web-share";
 import { useT } from "./i18n";
 import { SettingsCard } from "./ui/patterns";
 import { Switch } from "./ui/primitives";
+
+function webShareThumbnailProgressText(
+  t: (key: string) => string,
+  progress: WebShareThumbnailProgress | null,
+): string {
+  if (progress === null) return t("settings.webShareThumbnailRegenerateHint");
+  if (progress.active) {
+    return `${t("settings.webShareThumbnailProgressRunning")} ${progress.generated}/${progress.total}`;
+  }
+  const failed =
+    progress.failed > 0
+      ? ` · ${t("settings.webShareThumbnailProgressFailed")} ${progress.failed}`
+      : "";
+  return `${t("settings.webShareThumbnailProgressDone")} ${progress.generated}/${progress.total}${failed}`;
+}
 
 interface WebShareSettingsPageProps {
   api?: SerpentWebShareSettingsApi;
@@ -20,10 +37,13 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
   const t = useT();
   const [snapshot, setSnapshot] = useState<WebShareSettingsSnapshot | null>(null);
   const [portDraft, setPortDraft] = useState(String(WEB_SHARE_DEFAULT_PORT));
+  const [maxKbDraft, setMaxKbDraft] = useState("20");
+  const [downloadQualityDraft, setDownloadQualityDraft] = useState("91");
   const [passwordDraft, setPasswordDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [visitors, setVisitors] = useState<WebShareVisitorSummary[] | null>(null);
 
   useEffect(() => {
     if (!api) return;
@@ -32,9 +52,11 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       .request({ type: "get" })
       .then((response) => {
         if (!active) return;
-        if (response.snapshot) {
+        if ("snapshot" in response && response.snapshot !== undefined) {
           setSnapshot(response.snapshot);
           setPortDraft(String(response.snapshot.preferences.port));
+          setMaxKbDraft(String(response.snapshot.preferences.thumbnailMaxKb));
+          setDownloadQualityDraft(String(response.snapshot.preferences.downloadQuality));
         }
         if (!response.ok) setError(response.message);
       })
@@ -51,6 +73,8 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       api?.onChanged((next) => {
         setSnapshot(next);
         setPortDraft(String(next.preferences.port));
+        setMaxKbDraft(String(next.preferences.thumbnailMaxKb));
+        setDownloadQualityDraft(String(next.preferences.downloadQuality));
       }) ?? undefined,
     [api],
   );
@@ -65,12 +89,29 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
     setNotice(null);
     try {
       const response = await api.request(input);
-      if (response.snapshot) {
+      if ("snapshot" in response && response.snapshot !== undefined) {
         setSnapshot(response.snapshot);
         setPortDraft(String(response.snapshot.preferences.port));
+        setMaxKbDraft(String(response.snapshot.preferences.thumbnailMaxKb));
+        setDownloadQualityDraft(String(response.snapshot.preferences.downloadQuality));
       }
       if (!response.ok) setError(response.message);
       else if (successNotice !== undefined) setNotice(successNotice);
+    } catch {
+      setError(t("settings.webShareOperationFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadVisitors(): Promise<void> {
+    if (!api) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await api.request({ type: "list-visitors" });
+      if ("visitors" in response) setVisitors(response.visitors);
+      else if (!response.ok) setError(response.message);
     } catch {
       setError(t("settings.webShareOperationFailed"));
     } finally {
@@ -135,7 +176,7 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
           <Switch
             aria-label={t("settings.webShareEnabled")}
             checked={enabled}
-            disabled={busy || !hasPassword}
+            disabled={busy}
             onCheckedChange={(next) => void request({ type: "enable", enabled: next })}
           />
         </div>
@@ -150,11 +191,6 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             {statusLabel}
           </span>
         </div>
-        {!hasPassword ? (
-          <div className="app-settings-row-copy">
-            <span>{t("settings.webSharePasswordRequired")}</span>
-          </div>
-        ) : null}
         {error ? <p className="settings-error-message">{error}</p> : null}
         {notice ? <p className="settings-success-message">{notice}</p> : null}
       </SettingsCard>
@@ -247,6 +283,140 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       </SettingsCard>
 
       <SettingsCard>
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-thumbnail-edge">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareThumbnailResolution")}</strong>
+            <span>{t("settings.webShareThumbnailResolutionHint")}</span>
+          </span>
+          <select
+            aria-label={t("settings.webShareThumbnailResolution")}
+            className="settings-select"
+            disabled={busy}
+            id="web-share-thumbnail-edge"
+            onChange={(event) =>
+              void request({
+                type: "set-thumbnail-edge",
+                edge: Number(event.target.value) === 256 ? 256 : 128,
+              })
+            }
+            value={String(snapshot?.preferences.thumbnailEdge ?? 128)}
+          >
+            <option value="128">128 px</option>
+            <option value="256">256 px</option>
+          </select>
+        </label>
+        <div className="app-settings-card-divider" />
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-thumbnail-maxkb">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareThumbnailMaxKb")}</strong>
+            <span>{t("settings.webShareThumbnailMaxKbHint")}</span>
+          </span>
+          <input
+            aria-label={t("settings.webShareThumbnailMaxKb")}
+            className="settings-number-input"
+            disabled={busy}
+            id="web-share-thumbnail-maxkb"
+            max={2048}
+            min={4}
+            onBlur={() => {
+              const next = Number(maxKbDraft);
+              if (Number.isInteger(next) && next >= 4 && next <= 2048) {
+                void request({ type: "set-thumbnail-max-kb", maxKb: next });
+              } else if (snapshot) {
+                setMaxKbDraft(String(snapshot.preferences.thumbnailMaxKb));
+              }
+            }}
+            onChange={(event) => setMaxKbDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            type="number"
+            value={maxKbDraft}
+          />
+        </label>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-toggle-row">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareThumbnailSharpen")}</strong>
+            <span>{t("settings.webShareThumbnailSharpenHint")}</span>
+          </span>
+          <Switch
+            aria-label={t("settings.webShareThumbnailSharpen")}
+            checked={snapshot?.preferences.thumbnailSharpen ?? false}
+            disabled={busy}
+            onCheckedChange={(next) => void request({ type: "set-thumbnail-sharpen", enabled: next })}
+          />
+        </div>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-action-row">
+          <div className="app-settings-row-copy">
+            <strong>{t("settings.webShareThumbnailRegenerate")}</strong>
+            <span>{webShareThumbnailProgressText(t, snapshot?.thumbnailProgress ?? null)}</span>
+          </div>
+          <button
+            className="secondary-button"
+            disabled={busy || (snapshot?.thumbnailProgress?.active ?? false)}
+            onClick={() => void request({ type: "regenerate-thumbnails" })}
+            type="button"
+          >
+            {t("settings.webShareThumbnailRegenerateAction")}
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => void request({ type: "delete-thumbnails" })}
+            type="button"
+          >
+            {t("settings.webShareThumbnailDeleteAction")}
+          </button>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard>
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-download-quality">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareDownloadQuality")}</strong>
+            <span>{t("settings.webShareDownloadQualityHint")}</span>
+          </span>
+          <input
+            aria-label={t("settings.webShareDownloadQuality")}
+            className="settings-number-input"
+            disabled={busy}
+            id="web-share-download-quality"
+            max={100}
+            min={1}
+            onBlur={() => {
+              const next = Number(downloadQualityDraft);
+              if (Number.isInteger(next) && next >= 1 && next <= 100) {
+                void request({ type: "set-download-quality", quality: next });
+              } else if (snapshot) {
+                setDownloadQualityDraft(String(snapshot.preferences.downloadQuality));
+              }
+            }}
+            onChange={(event) => setDownloadQualityDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            type="number"
+            value={downloadQualityDraft}
+          />
+        </label>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-toggle-row">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareDownloadProgressive")}</strong>
+            <span>{t("settings.webShareDownloadProgressiveHint")}</span>
+          </span>
+          <Switch
+            aria-label={t("settings.webShareDownloadProgressive")}
+            checked={snapshot?.preferences.downloadProgressive ?? false}
+            disabled={busy}
+            onCheckedChange={(next) => void request({ type: "set-download-progressive", enabled: next })}
+          />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard>
         <div className="app-settings-row app-settings-row-inline">
           <span className="app-settings-row-copy">
             <strong>{t("settings.webShareConnectionTitle")}</strong>
@@ -285,6 +455,86 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             value={portDraft}
           />
         </label>
+      </SettingsCard>
+
+      <SettingsCard>
+        <div className="app-settings-action-row">
+          <div className="app-settings-row-copy">
+            <strong>{t("settings.webShareVisitorsTitle")}</strong>
+            <span>
+              {t("settings.webShareVisitorsHint")} · {snapshot?.visitorCount ?? 0}
+            </span>
+          </div>
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => void loadVisitors()}
+            type="button"
+          >
+            {t("settings.webShareVisitorsLoad")}
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => void request({ type: "export-visitors", format: "json" })}
+            type="button"
+          >
+            {t("settings.webShareVisitorsExportJson")}
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => void request({ type: "export-visitors", format: "csv" })}
+            type="button"
+          >
+            {t("settings.webShareVisitorsExportCsv")}
+          </button>
+        </div>
+        {visitors === null ? null : visitors.length === 0 ? (
+          <div className="app-settings-row-copy">
+            <span>{t("settings.webShareVisitorsEmpty")}</span>
+          </div>
+        ) : (
+          <div className="web-share-visitors">
+            {visitors.map((visitor) => (
+              <div className="web-share-visitor" key={visitor.visitorId}>
+                <div className="web-share-visitor-head">
+                  <strong>{visitor.username}</strong>
+                  <span>
+                    {visitor.lastIp ?? t("settings.webShareVisitorsUnknownIp")} ·{" "}
+                    {t("settings.webShareVisitorsAccesses")}: {visitor.accesses} ·{" "}
+                    {new Date(visitor.lastSeenAt).toLocaleString()}
+                  </span>
+                </div>
+                {visitor.lastUserAgent !== null ? (
+                  <div className="web-share-visitor-agent">{visitor.lastUserAgent}</div>
+                ) : null}
+                {visitor.marks.length === 0 ? (
+                  <div className="web-share-visitor-mark">
+                    {t("settings.webShareVisitorsNoMarks")}
+                  </div>
+                ) : (
+                  visitor.marks.map((mark) => (
+                    <div
+                      className="web-share-visitor-mark"
+                      key={`${mark.libraryId}/${mark.assetId}`}
+                    >
+                      <span className="web-share-visitor-asset">
+                        {mark.assetName ?? mark.assetId}
+                      </span>
+                      <span>
+                        {mark.rating > 0
+                          ? "★".repeat(mark.rating)
+                          : t("settings.webShareVisitorsNoRating")}
+                      </span>
+                      {mark.favorite ? <span>{t("settings.webShareVisitorsLiked")}</span> : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </SettingsCard>
     </>
   );

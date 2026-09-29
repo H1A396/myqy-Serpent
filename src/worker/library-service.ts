@@ -37,6 +37,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { removeLibraryRootWithRetry, removePathWithSyncRetry, renamePathWithRetry } from './windows-fs-retry';
+import { shareThumbnailFileName } from './web-share-thumbnail-cache';
 import {
   execFileSync,
   spawn,
@@ -28420,6 +28421,7 @@ export class LibraryService {
     assetId: string,
   ): {
     artifactId: string;
+    revisionId: string;
     filePath: string;
     width: number | null;
     height: number | null;
@@ -28451,11 +28453,117 @@ export class LibraryService {
     return row
       ? {
           artifactId: row.artifact_id,
+          revisionId: assetRow.current_revision_id,
           filePath: row.file_path,
           width: row.width,
           height: row.height,
         }
       : null;
+  }
+
+  /**
+   * Absolute path of one share-only grid thumbnail. The file name carries the
+   * asset, revision, edge and sharpen flag, so switching either setting produces
+   * a distinct file instead of serving a stale one.
+   */
+  shareThumbnailCachePath(
+    libraryId: string,
+    assetId: string,
+    revisionId: string,
+    edge: number,
+    sharpen: boolean,
+    maxKb: number,
+  ): string {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    return path.join(
+      openLibrary.summary.libraryPath,
+      '.serpent',
+      'share-thumbnails',
+      String(edge),
+      shareThumbnailFileName(assetId, revisionId, edge, sharpen, maxKb),
+    );
+  }
+
+  /** Remove every share-only thumbnail for the library (the "delete" button). */
+  deleteShareThumbnails(libraryId: string): number {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const root = path.join(openLibrary.summary.libraryPath, '.serpent', 'share-thumbnails');
+    if (!existsSync(root)) return 0;
+    let removed = 0;
+    for (const edgeEntry of readdirSync(root, { withFileTypes: true })) {
+      if (!edgeEntry.isDirectory()) continue;
+      const edgeDir = path.join(root, edgeEntry.name);
+      for (const file of readdirSync(edgeDir, { withFileTypes: true })) {
+        if (file.isFile() && file.name.endsWith('.webp')) removed += 1;
+      }
+    }
+    rmSync(root, { force: true, recursive: true });
+    return removed;
+  }
+
+  /**
+   * Assets that can carry a share thumbnail, i.e. those whose current revision
+   * has a ready card artifact (image `thumbnail` or video `video_poster`).
+   * Paged so the regenerate sweep never loads the whole library at once.
+   */
+  listShareThumbnailTargets(
+    libraryId: string,
+    offset: number,
+    limit: number,
+  ): Array<{ assetId: string; revisionId: string }> {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    return openLibrary.connection
+      .prepare(
+        `SELECT a.asset_id AS assetId, a.current_revision_id AS revisionId
+           FROM assets a
+           JOIN revision_artifacts ra ON ra.revision_id = a.current_revision_id
+          WHERE a.current_revision_id IS NOT NULL
+            AND ra.kind IN ('thumbnail', 'video_poster')
+            AND ra.status = 'ready'
+            AND ra.invalidated_at IS NULL
+          ORDER BY a.asset_id
+          LIMIT ? OFFSET ?`,
+      )
+      .all(limit, offset) as Array<{ assetId: string; revisionId: string }>;
+  }
+
+  /** Live `assetId\0revisionId` keys for pruning superseded cache files. */
+  listShareThumbnailKeys(libraryId: string): Set<string> {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const rows = openLibrary.connection
+      .prepare(
+        `SELECT asset_id AS assetId, current_revision_id AS revisionId
+           FROM assets
+          WHERE current_revision_id IS NOT NULL`,
+      )
+      .all() as Array<{ assetId: string; revisionId: string }>;
+    return new Set(rows.map((row) => `${row.assetId}\u0000${row.revisionId}`));
+  }
+
+  /** Remove any share-thumbnail file whose asset/revision is gone. */
+  pruneShareThumbnails(libraryId: string): number {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const kept = this.listShareThumbnailKeys(libraryId);
+    const root = path.join(openLibrary.summary.libraryPath, '.serpent', 'share-thumbnails');
+    if (!existsSync(root)) return 0;
+    let removed = 0;
+    for (const edgeEntry of readdirSync(root, { withFileTypes: true })) {
+      if (!edgeEntry.isDirectory()) continue;
+      const edgeDir = path.join(root, edgeEntry.name);
+      for (const file of readdirSync(edgeDir, { withFileTypes: true })) {
+        if (!file.isFile() || !file.name.endsWith('.webp')) continue;
+        // `<assetId>.<revisionId>.<edge>.<sh>.<kb>kb.webp`; ids never contain dots.
+        const [assetId = file.name, revisionId = ''] = file.name.split('.');
+        if (kept.has(`${assetId}\u0000${revisionId}`)) continue;
+        try {
+          rmSync(path.join(edgeDir, file.name), { force: true });
+          removed += 1;
+        } catch {
+          // Best effort; the next sweep retries.
+        }
+      }
+    }
+    return removed;
   }
 
   /** Persist bounded Main-brokered plugin media as the normal thumbnail artifact. */

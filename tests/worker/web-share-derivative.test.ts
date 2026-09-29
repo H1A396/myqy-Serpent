@@ -4,7 +4,6 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { LibraryService } from '../../src/worker/library-service';
 import { createShareDerivative } from '../../src/worker/web-share-derivative';
 
 // The Worker loads Sharp lazily through a CommonJS require; mirror that so the
@@ -48,25 +47,18 @@ async function writeSourceImage(): Promise<{ directory: string; filePath: string
   return { directory, filePath };
 }
 
-function libraryServiceReturning(filePath: string): LibraryService {
-  return {
-    getCurrentMediaSource: () => ({ absolutePath: filePath, mimeType: 'image/png' }),
-  } as unknown as LibraryService;
-}
-
 describe('createShareDerivative', () => {
   it('encodes the requested format into a temporary file', async () => {
     const { filePath } = await writeSourceImage();
     const result = await createShareDerivative({
-      libraryService: libraryServiceReturning(filePath),
+      sourceAbsolutePath: filePath,
       sharpFactory: sharp as never,
       request: {
-        libraryId: 'lib-a',
-        assetId: 'asset-1',
-        revisionId: 'rev-1',
         format: 'jpeg',
         maxEdge: 32,
         quality: 80,
+        fullSize: false,
+        progressive: false,
       },
     });
 
@@ -87,15 +79,14 @@ describe('createShareDerivative', () => {
   it('never enlarges a source smaller than the bound', async () => {
     const { filePath } = await writeSourceImage();
     const result = await createShareDerivative({
-      libraryService: libraryServiceReturning(filePath),
+      sourceAbsolutePath: filePath,
       sharpFactory: sharp as never,
       request: {
-        libraryId: 'lib-a',
-        assetId: 'asset-1',
-        revisionId: 'rev-1',
         format: 'webp',
         maxEdge: 2560,
         quality: 82,
+        fullSize: false,
+        progressive: false,
       },
     });
     expect(result.width).toBe(64);
@@ -111,15 +102,14 @@ describe('createShareDerivative', () => {
 
     await expect(
       createShareDerivative({
-        libraryService: libraryServiceReturning(path.join(directory, 'missing.png')),
+        sourceAbsolutePath: path.join(directory, 'missing.png'),
         sharpFactory: failing,
         request: {
-          libraryId: 'lib-a',
-          assetId: 'asset-1',
-          revisionId: 'rev-1',
           format: 'png',
           maxEdge: 512,
           quality: 82,
+          fullSize: false,
+          progressive: false,
         },
       }),
     ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });

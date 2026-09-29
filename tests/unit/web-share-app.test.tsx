@@ -8,6 +8,7 @@ import type { AssetDetail } from '../../src/myqy-web-share/client/api';
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
+    config: vi.fn(),
     state: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
@@ -16,6 +17,8 @@ const { apiMock } = vi.hoisted(() => ({
     tags: vi.fn(),
     search: vi.fn(),
     asset: vi.fn(),
+    marks: vi.fn(),
+    setMarks: vi.fn(),
   },
 }));
 
@@ -62,7 +65,10 @@ function makeAsset(assetId: string, displayName: string): AssetSummary {
   };
 }
 
-function makeDetail(asset: AssetSummary): AssetDetail {
+function makeDetail(
+  asset: AssetSummary,
+  marks?: { favorite: boolean; rating: number },
+): AssetDetail {
   return {
     asset,
     metadata: {
@@ -74,6 +80,7 @@ function makeDetail(asset: AssetSummary): AssetDetail {
       tags: [],
     },
     extracted: { assetId: asset.assetId, status: 'missing', metadata: null },
+    ...(marks === undefined ? {} : { marks }),
   };
 }
 
@@ -84,11 +91,14 @@ describe('web share App selection', () => {
   let container: HTMLDivElement | undefined;
 
   beforeEach(() => {
+    apiMock.config.mockResolvedValue({ app: 'Serpent', requiresPassword: false });
     apiMock.state.mockResolvedValue({
       app: 'Serpent',
       sharedLibraryId: 'lib-a',
       library: { libraryId: 'lib-a', displayName: 'Lib' },
       allowDownload: true,
+      requiresPassword: false,
+      username: 'tester',
     });
     apiMock.folders.mockResolvedValue({ folders: [] });
     apiMock.collections.mockResolvedValue({ collections: [] });
@@ -157,5 +167,41 @@ describe('web share App selection', () => {
     clickCard(0);
     await flush();
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a late mark read overwrite a fresh like', async () => {
+    let resolveDetail: ((detail: AssetDetail) => void) | undefined;
+    // The detail read (which carries the visitor's marks) is slow, as it is on a
+    // tunnel; it must not clobber a like the visitor makes while it is in flight.
+    apiMock.asset.mockImplementation(
+      () =>
+        new Promise<AssetDetail>((resolve) => {
+          resolveDetail = resolve;
+        }),
+    );
+    apiMock.setMarks.mockResolvedValue({ ok: true, marks: { favorite: true, rating: 0 } });
+
+    await act(async () => {
+      root?.render(createElement(App));
+    });
+    await flush();
+
+    clickCard(0);
+    await flush();
+
+    const like = container?.querySelector('.mark-toggle');
+    expect(like).not.toBeNull();
+    expect(like?.getAttribute('aria-pressed')).toBe('false');
+    like?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flush();
+    expect(container?.querySelector('.mark-toggle')?.getAttribute('aria-pressed')).toBe('true');
+
+    // The stale detail lands afterwards with the visitor's old (false) mark.
+    await act(async () => {
+      resolveDetail?.(makeDetail(assets[0]!, { favorite: false, rating: 0 }));
+      await Promise.resolve();
+    });
+    await flush();
+    expect(container?.querySelector('.mark-toggle')?.getAttribute('aria-pressed')).toBe('true');
   });
 });

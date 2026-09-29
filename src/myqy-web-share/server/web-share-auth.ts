@@ -44,10 +44,14 @@ export function verifyWebSharePassword(
 }
 
 /**
- * Stateless signed session cookie. The value is `<version>.<issuedAtMs>.<hmac>`
+ * Stateless signed session cookie. The value is
+ * `<version>.<subject>.<issuedAtMs>.<hmac>` where `subject` is the visitor id,
  * so a restart keeps existing visitors signed in as long as the secret and the
- * TTL allow it. Sessions are read-only and expire on their own.
+ * TTL allow it. The cookie proves only that this browser signed in; it grants
+ * no library write access.
  */
+const SESSION_SUBJECT_PATTERN = /^[A-Za-z0-9_-]{1,64}$/u;
+
 export class WebShareSessionSigner {
   readonly #secret: string;
   readonly #ttlMs: number;
@@ -57,29 +61,36 @@ export class WebShareSessionSigner {
     this.#ttlMs = ttlMs;
   }
 
-  #signature(issuedAtMs: number): string {
+  #signature(subject: string, issuedAtMs: number): string {
     return createHmac('sha256', this.#secret)
-      .update(`${SESSION_TOKEN_PREFIX}.${issuedAtMs}`)
+      .update(`${SESSION_TOKEN_PREFIX}.${subject}.${issuedAtMs}`)
       .digest('base64url');
   }
 
-  issue(nowMs: number = Date.now()): string {
-    return `${SESSION_TOKEN_PREFIX}.${nowMs}.${this.#signature(nowMs)}`;
+  issue(subject: string, nowMs: number = Date.now()): string {
+    return `${SESSION_TOKEN_PREFIX}.${subject}.${nowMs}.${this.#signature(subject, nowMs)}`;
   }
 
-  verify(value: string, nowMs: number = Date.now()): boolean {
+  /** Returns the visitor id when authentic and fresh, otherwise `null`. */
+  verify(value: string, nowMs: number = Date.now()): string | null {
     const parts = value.split('.');
-    if (parts.length !== 3) return false;
-    const [version, issuedAtText, signature] = parts as [string, string, string];
-    if (version !== SESSION_TOKEN_PREFIX) return false;
-    if (!/^\d{1,20}$/u.test(issuedAtText)) return false;
+    if (parts.length !== 4) return null;
+    const [version, subject, issuedAtText, signature] = parts as [
+      string,
+      string,
+      string,
+      string,
+    ];
+    if (version !== SESSION_TOKEN_PREFIX) return null;
+    if (!SESSION_SUBJECT_PATTERN.test(subject)) return null;
+    if (!/^\d{1,20}$/u.test(issuedAtText)) return null;
     const issuedAtMs = Number(issuedAtText);
-    if (!Number.isSafeInteger(issuedAtMs) || issuedAtMs <= 0) return false;
+    if (!Number.isSafeInteger(issuedAtMs) || issuedAtMs <= 0) return null;
     const age = nowMs - issuedAtMs;
-    if (age < 0 || age > this.#ttlMs) return false;
-    const expected = Buffer.from(this.#signature(issuedAtMs));
+    if (age < 0 || age > this.#ttlMs) return null;
+    const expected = Buffer.from(this.#signature(subject, issuedAtMs));
     const provided = Buffer.from(signature);
-    return constantTimeEqual(expected, provided);
+    return constantTimeEqual(expected, provided) ? subject : null;
   }
 }
 
