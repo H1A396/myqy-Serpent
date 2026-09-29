@@ -153,6 +153,13 @@
 | APPEAR-LINKED-CHILD-001 / `Serpent-612345` | 链接子目录也要能设置图标与颜色 | 2026-09-23 用户反馈：不能只给链接根。APPEAR-002 原先规定虚拟子目录没有这项。 |
 | LINK-RENAME-001 / `Serpent-fe3cd7` | 链接文件夹应自动跟上磁盘上的重命名 | 2026-09-23 用户反馈：需要自动探测文件夹重命名。当前改名后旧路径不存在，会标成离线。 |
 | LINK-GONE-001 / `Serpent-fc5466` | 链接源不存在时侧栏应显示断开链接图标 | 2026-09-23 用户反馈：源文件夹不存在时图标应变成断开链接。 |
+### 2026-09-22 只读网页分享
+
+> 决策见 [ADR-0034](../adr/0034-read-only-web-share.md)；使用说明见[网页分享](../../user-guide/web-share.md)。Electron 真实运行、packaged 与 Windows 均**未执行**。
+
+| ID | 功能 | 状态 | 人类操作 | 预期结果 | 证据 | 结果/反馈 |
+| --- | --- | --- | --- | --- | --- | --- |
+| WEB-SHARE-001 | 桌面「设置 → 网页分享」可设置密码、启停只读服务并分享 | 待人类验收 | ① **完全退出**后重新启动含本次改动的构建。② 打开一个资源库，进入 设置 → 网页分享。③ 不设密码时开关应禁用；设置至少 8 位密码后可开启。④ 打开开关，记下显示的本地地址。⑤ 用浏览器打开该地址，输入密码进入，浏览文件夹/合集、搜索、打开图片与视频查看器。⑥ 尝试修改任何内容（应无入口）；关闭「允许下载原图」后确认下载入口消失。⑦ 修改分享密码，确认已登录的标签页再次刷新会被要求重新登录。⑧ 关闭开关后地址不可访问。 | 访客只能浏览/搜索/预览/（可选）下载；不能导入、删除、改名或改元数据；改密码后旧会话失效；关闭开关即停止监听。 | [ADR-0034](../adr/0034-read-only-web-share.md) / `src/main/web-share-server.ts`、`src/main/web-share-auth.ts`、`src/main/web-share-data.ts`、`src/main/web-share-media.ts`、`src/web/**`、`src/renderer/WebShareSettingsPage.tsx` / [单测](../../../tests/unit/web-share-server.test.ts)（18 项） / `npm run typecheck`、`npm run lint`、`npm run web:build` | 2026-09-22 实现完成；typecheck/lint/单测/前端构建通过。真实 Electron 运行、隧道联调、packaged 与 Windows 未执行，待人工验收。 |
 
 ### 2026-09-21 视频倍速下拉
 

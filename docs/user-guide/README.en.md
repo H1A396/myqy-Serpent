@@ -10,6 +10,7 @@ A Serpent usage guide for end users. For Chinese, switch the site language; in t
 - [Browser extension](browser-extension.md) — save web images/videos from Chrome / Edge / Firefox
 - [Using plugins](plugins.md) — install, enable, update, and uninstall plugins
 - [Automation](automation.md) — automation scripts and MCP client connections
+- [Web sharing](web-share.md) — share a library read-only in the browser
 - [Troubleshooting](troubleshooting.md) — common problems and fixes
 
 ## Quick start

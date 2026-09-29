@@ -10,6 +10,7 @@
 - [浏览器扩展](browser-extension.md)——Chrome / Edge / Firefox 保存网页图片视频
 - [插件使用](plugins.md)——安装、启用、更新和卸载插件
 - [自动化功能](automation.md)——自动化脚本和 MCP 外部客户端连接
+- [网页分享](web-share.md)——把资源库只读分享给朋友在浏览器浏览
 - [故障排查](troubleshooting.md)——常见问题与解决
 
 ## 快速开始
