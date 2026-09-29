@@ -4,6 +4,7 @@ import type {
   ManagedFolderSummary,
   TagSummary,
 } from '../../shared/asset-types';
+import type { WebShareDerivativeFormat } from '../../shared/web-share';
 
 export interface WebShareState {
   app: string;
@@ -147,4 +148,20 @@ export function sourceUrl(libraryId: string, asset: AssetSummary): string {
 
 export function downloadUrl(libraryId: string, asset: AssetSummary): string {
   return `${sourceUrl(libraryId, asset)}&download=1`;
+}
+
+/**
+ * Bounded re-encode of the original. The viewer uses the default WebP so a
+ * visitor on a slow link sees the image quickly; the download menu asks for a
+ * specific format and always re-encodes from the original, never from WebP.
+ */
+export function viewUrl(
+  libraryId: string,
+  asset: AssetSummary,
+  options?: { format?: WebShareDerivativeFormat; download?: boolean },
+): string {
+  const query = new URLSearchParams({ revision: asset.currentRevisionId });
+  if (options?.format !== undefined) query.set('format', options.format);
+  if (options?.download === true) query.set('download', '1');
+  return `/media/view/${encodeURIComponent(libraryId)}/${encodeURIComponent(asset.assetId)}?${query.toString()}`;
 }

@@ -8,6 +8,7 @@ import type { AssetSummary } from '../../src/shared/asset-types';
 vi.mock('../../src/myqy-web-share/client/api', () => ({
   sourceUrl: () => '/media/source',
   downloadUrl: () => '/media/download',
+  viewUrl: () => '/media/view',
 }));
 
 import { Viewer } from '../../src/myqy-web-share/client/Viewer';
@@ -102,6 +103,27 @@ describe('web share Viewer', () => {
     );
     expect(container?.querySelector('.viewer-header-center .viewer-counter')?.textContent).toBe(
       '1 / 1',
+    );
+  });
+
+  it('loads images through the bounded derivative instead of the source', () => {
+    renderViewer(vi.fn());
+    expect(container?.querySelector('.zoom-stage img')?.getAttribute('src')).toBe('/media/view');
+  });
+
+  it('offers the original plus re-encoded download formats', () => {
+    renderViewer(vi.fn());
+    const trigger = container?.querySelector('.download-menu .viewer-download');
+    expect(trigger).not.toBeNull();
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    const items = [...(container?.querySelectorAll('.download-menu-item') ?? [])].map(
+      (element) => element.textContent,
+    );
+    expect(items).toEqual(['Original', 'JPG', 'WebP', 'PNG']);
+    expect(container?.querySelector('.download-menu-item')?.getAttribute('href')).toBe(
+      '/media/download',
     );
   });
 });

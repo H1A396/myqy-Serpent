@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   AssetMetadataResult,
@@ -20,7 +20,7 @@ import type {
   WebShareDataProvider,
 } from '../../src/myqy-web-share/server/web-share-data';
 import { WebShareServer } from '../../src/myqy-web-share/server/web-share-server';
-import type { ResolvedMedia, WebShareMediaResolver } from '../../src/myqy-web-share/server/web-share-media';
+import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from '../../src/myqy-web-share/server/web-share-media';
 import type { WebShareLibrarySummary } from '../../src/shared/web-share';
 
 function emptyAsset(): AssetSummary {
@@ -167,6 +167,27 @@ class FakeMediaResolver implements WebShareMediaResolver {
     return this.#resolve('preview', input.artifactId, 'video/webm');
   }
 
+  async resolveDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    revisionId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    quality: number;
+  }): Promise<ResolvedDerivative | null> {
+    const resolved = this.#resolve('view', input.assetId, `image/${input.format}`);
+    if (resolved === null) return null;
+    return {
+      ...resolved,
+      cleanup: () => {
+        this.derivativeCleanupCount += 1;
+      },
+    };
+  }
+
+  /** Number of times a served derivative reported itself as discarded. */
+  derivativeCleanupCount = 0;
+
   #resolve(kind: string, id: string, mimeType: string): ResolvedMedia | null {
     const absolutePath = this.paths[`${kind}:${id}`];
     return absolutePath === undefined ? null : { absolutePath, mimeType };
@@ -209,6 +230,7 @@ describe('WebShareServer', () => {
   let userDataPath: string;
   let server: WebShareServer;
   let provider: FakeDataProvider;
+  let media: FakeMediaResolver;
   let baseUrl: string;
   let mediaPaths: Record<string, string>;
 
@@ -218,18 +240,21 @@ describe('WebShareServer', () => {
       'thumbnail:asset-1': path.join(userDataPath, 'thumb.webp'),
       'source:asset-1': path.join(userDataPath, 'clip.mp4'),
       'preview:art-1': path.join(userDataPath, 'preview.webm'),
+      'view:asset-1': path.join(userDataPath, 'derivative.webp'),
     };
     await writeFile(mediaPaths['thumbnail:asset-1']!, Buffer.from('thumb-bytes'));
     await writeFile(mediaPaths['source:asset-1']!, Buffer.from('0123456789'));
     await writeFile(mediaPaths['preview:art-1']!, Buffer.from('preview-bytes'));
+    await writeFile(mediaPaths['view:asset-1']!, Buffer.from('derivative-bytes'));
     provider = new FakeDataProvider([
       { libraryId: 'lib-a', displayName: 'Library A' },
       { libraryId: 'lib-b', displayName: 'Library B' },
     ]);
+    media = new FakeMediaResolver(mediaPaths);
     server = new WebShareServer({
       userDataPath,
       data: provider,
-      media: new FakeMediaResolver(mediaPaths),
+      media,
       logger: { info: () => undefined, error: () => undefined },
     });
     const port = await getFreePort();
@@ -399,6 +424,64 @@ describe('WebShareServer', () => {
     server.setAllowDownload(true);
     const allowed = await fetch(
       `${baseUrl}/media/source/lib-a/asset-1?revision=rev-1&download=1`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get('content-disposition')).toContain('attachment');
+  });
+
+  it('serves and then discards a bounded derivative', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.derivativeCleanupCount = 0;
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&format=jpeg`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(await response.text()).toBe('derivative-bytes');
+    // Discarding is bound to the response 'close' event, which fires once the
+    // body has been flushed.
+    await vi.waitFor(() => expect(media.derivativeCleanupCount).toBe(1));
+  });
+
+  it('requires a revision for a derivative', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(`${baseUrl}/media/view/lib-a/asset-1`, {
+      headers: { Cookie: cookie! },
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects an unknown derivative format instead of falling back', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&format=tiff`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(400);
+    expect((await response.json()).code).toBe('WEB_SHARE_DERIVATIVE_FORMAT_UNSUPPORTED');
+  });
+
+  it('gates derivative downloads behind the preference and always cleans up', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    server.setAllowDownload(false);
+    media.derivativeCleanupCount = 0;
+    const blocked = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(blocked.status).toBe(403);
+    // A refused download still must not leak the temporary file.
+    await vi.waitFor(() => expect(media.derivativeCleanupCount).toBe(1));
+    server.setAllowDownload(true);
+    const allowed = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1`,
       { headers: { Cookie: cookie! } },
     );
     expect(allowed.status).toBe(200);

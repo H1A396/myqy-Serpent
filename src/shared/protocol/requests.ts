@@ -2394,6 +2394,18 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     assetId: identifierSchema,
     revisionId: identifierSchema,
   }),
+  // Read-only web share: encode a bounded derivative from the original so a
+  // visitor on a slow link does not pull a full-resolution source. Main owns
+  // the temporary file and deletes it once the response has been streamed.
+  z.strictObject({
+    type: z.literal('media.get-share-derivative'),
+    libraryId: identifierSchema,
+    assetId: identifierSchema,
+    revisionId: identifierSchema,
+    format: z.enum(['webp', 'jpeg', 'png']),
+    maxEdge: z.number().int().min(64).max(8192),
+    quality: z.number().int().min(1).max(100),
+  }),
   z.strictObject({
     type: z.literal('media.enqueue-thumbnail-jobs'),
     libraryId: identifierSchema,

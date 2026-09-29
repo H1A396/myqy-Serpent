@@ -22,6 +22,17 @@ export const WEB_SHARE_SESSION_TTL_MS = 12 * 60 * 60 * 1_000;
 /** Minimum share-password length; kept low because the tunnel is opt-in. */
 export const WEB_SHARE_MIN_PASSWORD_LENGTH = 4;
 
+/**
+ * Bounded re-encode parameters for `GET /media/view`. The viewer loads the WebP
+ * by default so a slow tunnel does not pull a 10–30 MB source; the download
+ * menu re-encodes the *original* into the chosen format at the same size bound.
+ */
+export const WEB_SHARE_DERIVATIVE_MAX_EDGE = 2_560;
+export const WEB_SHARE_DERIVATIVE_QUALITY = 82;
+export const WEB_SHARE_DERIVATIVE_FORMATS = ['webp', 'jpeg', 'png'] as const;
+export const webShareDerivativeFormatSchema = z.enum(WEB_SHARE_DERIVATIVE_FORMATS);
+export type WebShareDerivativeFormat = z.infer<typeof webShareDerivativeFormatSchema>;
+
 export const webShareServerPreferencesSchema = z.strictObject({
   enabled: z.boolean(),
   port: z.number().int().min(WEB_SHARE_MIN_PORT).max(WEB_SHARE_MAX_PORT),

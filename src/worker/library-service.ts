@@ -337,7 +337,7 @@ interface PaletteSharpModule {
 }
 
 let sharpModule: SharpModule | undefined;
-function requireSharp(): SharpModule {
+export function requireSharp(): SharpModule {
   if (!sharpModule) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports

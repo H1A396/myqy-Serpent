@@ -1887,6 +1887,17 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     absolutePath: nonBlankString,
     mimeType: nonBlankString,
   }),
+  // Absolute path of a freshly encoded web-share derivative. The file lives in
+  // the Worker's temporary directory and is deleted by Main after streaming.
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('media.share-derivative'),
+    absolutePath: nonBlankString,
+    mimeType: nonBlankString,
+    byteSize: z.number().int().nonnegative(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  }),
   z.strictObject({
     ok: z.literal(true),
     type: z.literal('media.thumbnail-artifact'),

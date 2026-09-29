@@ -11,6 +11,7 @@ import {
   type AiProgressEvent,
 } from '../shared/protocol/responses';
 import { stopOutgoingLibrariesForOpen } from './library-open-stop';
+import { createShareDerivative } from './web-share-derivative';
 import type { ParentPort } from 'electron';
 import {
   BUNDLED_HDRI_PRESET_IDS,
@@ -40,6 +41,7 @@ import {
   LibraryServiceError,
   THUMBNAIL_VISIBLE_PAGE_SIZE,
   hasIdleForegroundImageSlot,
+  requireSharp,
   shutdownActiveMediaProcesses,
   shutdownWorkerResources,
   type ImportFailurePoint,
@@ -2657,6 +2659,32 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
         throw new Error(`Unhandled media generation command: ${request.command.type}`);
       }
       return result;
+    }
+    case 'media.get-share-derivative': {
+      // Read-only web share. The derivative is written to the OS temporary
+      // directory (never `.serpent/artifacts`) and Main deletes it after the
+      // response is streamed, so a share visitor leaves nothing behind.
+      const derivative = await createShareDerivative({
+        libraryService,
+        sharpFactory: requireSharp(),
+        request: {
+          libraryId: request.command.libraryId,
+          assetId: request.command.assetId,
+          revisionId: request.command.revisionId,
+          format: request.command.format,
+          maxEdge: request.command.maxEdge,
+          quality: request.command.quality,
+        },
+      });
+      return {
+        ok: true,
+        type: 'media.share-derivative',
+        absolutePath: derivative.absolutePath,
+        mimeType: derivative.mimeType,
+        byteSize: derivative.byteSize,
+        width: derivative.width,
+        height: derivative.height,
+      };
     }
     case 'model.convert-fbx':
     case 'media.get-artifact-path':

@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { AssetSummary } from '../../shared/asset-types';
-import { downloadUrl, sourceUrl } from './api';
+import type { WebShareDerivativeFormat } from '../../shared/web-share';
+import { downloadUrl, sourceUrl, viewUrl } from './api';
 import { t } from './i18n';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
+
+/** Download choices for an image. Every entry re-encodes the original. */
+const IMAGE_DOWNLOAD_FORMATS: ReadonlyArray<{ format: WebShareDerivativeFormat; label: string }> = [
+  { format: 'jpeg', label: 'JPG' },
+  { format: 'webp', label: 'WebP' },
+  { format: 'png', label: 'PNG' },
+];
 
 /**
  * Zoomable/pannable image that loads the original source only in the viewer.
@@ -123,6 +131,88 @@ function ZoomImage({
   );
 }
 
+/**
+ * Download control: the original plus bounded re-encodes. Every option is an
+ * `<a download>` so the browser owns the save, and each format is encoded from
+ * the original — never from the WebP the viewer displays.
+ */
+function DownloadMenu({
+  libraryId,
+  asset,
+}: {
+  libraryId: string;
+  asset: AssetSummary;
+}): ReactNode {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocumentPointerDown = (event: PointerEvent) => {
+      const container = containerRef.current;
+      if (container !== null && event.target instanceof Node && container.contains(event.target)) {
+        return;
+      }
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onDocumentPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onDocumentPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const isImage = asset.mediaType === 'image';
+
+  return (
+    <div className="download-menu" ref={containerRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="button viewer-download"
+        type="button"
+        onClick={() => setOpen((previous) => !previous)}
+      >
+        {t('下载', 'Download')}
+      </button>
+      {open ? (
+        <div className="download-menu-surface" role="menu">
+          <a
+            className="download-menu-item"
+            href={downloadUrl(libraryId, asset)}
+            download
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            {t('原图', 'Original')}
+          </a>
+          {isImage
+            ? IMAGE_DOWNLOAD_FORMATS.map((entry) => (
+                <a
+                  className="download-menu-item"
+                  download
+                  href={viewUrl(libraryId, asset, { format: entry.format, download: true })}
+                  key={entry.format}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                >
+                  {entry.label}
+                </a>
+              ))
+            : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Viewer({
   libraryId,
   assets,
@@ -166,7 +256,10 @@ export function Viewer({
   );
 
   if (asset === undefined) return null;
-  const src = sourceUrl(libraryId, asset);
+  // Images use the bounded derivative so a slow tunnel is not asked for a
+  // 10–30 MB source; the download menu still offers the original. Video and
+  // audio have no bounded derivative yet and keep streaming their source.
+  const src = asset.mediaType === 'image' ? viewUrl(libraryId, asset) : sourceUrl(libraryId, asset);
   const hasPrevious = index > 0;
   const hasNext = index + 1 < assets.length;
 
@@ -193,11 +286,7 @@ export function Viewer({
           </span>
         </div>
         <div className="viewer-header-right">
-          {allowDownload ? (
-            <a className="button viewer-download" href={downloadUrl(libraryId, asset)} download>
-              {t('下载原图', 'Download')}
-            </a>
-          ) : null}
+          {allowDownload ? <DownloadMenu libraryId={libraryId} asset={asset} /> : null}
         </div>
       </div>
 
@@ -246,11 +335,7 @@ export function Viewer({
                 'This format cannot be previewed in the browser. Download it to open locally.',
               )}
             </p>
-            {allowDownload ? (
-              <a className="button viewer-download" href={downloadUrl(libraryId, asset)} download>
-                {t('下载原图', 'Download')}
-              </a>
-            ) : null}
+            {allowDownload ? <DownloadMenu libraryId={libraryId} asset={asset} /> : null}
           </div>
         )}
       </div>

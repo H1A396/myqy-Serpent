@@ -12,6 +12,8 @@ import {
 } from '../../shared/asset-types';
 import { parseSearchExpression } from '../../shared/search-expression';
 import {
+  WEB_SHARE_DERIVATIVE_MAX_EDGE,
+  WEB_SHARE_DERIVATIVE_QUALITY,
   WEB_SHARE_SESSION_COOKIE,
   WEB_SHARE_SESSION_TTL_MS,
   webShareSettingsSnapshotSchema,
@@ -27,7 +29,7 @@ import {
   WebShareSessionSigner,
 } from './web-share-auth';
 import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
-import type { ResolvedMedia, WebShareMediaResolver } from './web-share-media';
+import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from './web-share-media';
 import { WebShareSettingsStore } from './web-share-settings-store';
 import { parseByteRange } from '../../main/artifact-response';
 
@@ -355,7 +357,10 @@ export class WebShareServer {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
       response.setHeader(name, value);
     }
-    response.setHeader('Connection', 'close');
+    // Keep-alive is deliberate. A share runs over a tunnel with a long RTT, and
+    // the grid requests dozens of thumbnails; closing the socket per request
+    // paid a fresh handshake for every one of them. Node's default HTTP
+    // timeouts bound idle sockets.
     request.on('error', () => {
       // The socket is destroyed by Node; nothing to do.
     });
@@ -689,6 +694,46 @@ export class WebShareServer {
       resolved = await media.resolveSource({ libraryId, assetId: identifier, revisionId });
     } else if (kind === 'preview' || kind === 'proxy') {
       resolved = await media.resolveArtifact({ libraryId, artifactId: identifier, kind });
+    } else if (kind === 'view') {
+      // Bounded, re-encoded copy of the original for visitors on a slow link
+      // (a ComfyUI 12 MB PNG is a minute over a small tunnel). Video and audio
+      // have no bounded derivative yet and keep streaming their source.
+      const revisionId = url.searchParams.get('revision');
+      if (revisionId === null || revisionId === '') {
+        writeJson(response, 400, { error: 'A revision is required.', code: 'WEB_SHARE_REVISION_REQUIRED' });
+        return;
+      }
+      const format = parseDerivativeFormat(url.searchParams.get('format'));
+      if (format === null) {
+        writeJson(response, 400, {
+          error: 'Unsupported derivative format.',
+          code: 'WEB_SHARE_DERIVATIVE_FORMAT_UNSUPPORTED',
+        });
+        return;
+      }
+      const derivative = await media.resolveDerivative({
+        libraryId,
+        assetId: identifier,
+        revisionId,
+        format,
+        maxEdge: WEB_SHARE_DERIVATIVE_MAX_EDGE,
+        quality: WEB_SHARE_DERIVATIVE_QUALITY,
+      });
+      if (derivative === null) {
+        writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+        return;
+      }
+      const download = url.searchParams.get('download') === '1';
+      if (download && !this.#store.preferences.allowDownload) {
+        derivative.cleanup();
+        writeJson(response, 403, { error: 'Downloading is disabled.', code: 'WEB_SHARE_DOWNLOAD_DISABLED' });
+        return;
+      }
+      await this.#streamDerivative(request, response, derivative, {
+        download,
+        assetId: identifier,
+      });
+      return;
     } else {
       writeJson(response, 404, { error: 'Not found.', code: 'WEB_SHARE_NOT_FOUND' });
       return;
@@ -766,6 +811,74 @@ export class WebShareServer {
     });
     response.on('close', () => {
       if (!response.writableFinished) stream.destroy();
+    });
+    stream.pipe(response);
+  }
+
+  /**
+   * Stream a freshly encoded derivative and delete it once the transfer ends.
+   *
+   * `cleanup` is bound to the response rather than awaited, so a visitor who
+   * aborts mid-download still leaves nothing behind. No byte range is accepted:
+   * the client receives a whole, disposable file, and a partial save would be
+   * useless anyway.
+   */
+  async #streamDerivative(
+    request: IncomingMessage,
+    response: ServerResponse,
+    derivative: ResolvedDerivative,
+    options: { download: boolean; assetId: string },
+  ): Promise<void> {
+    let size: number;
+    try {
+      const info = await stat(derivative.absolutePath);
+      if (!info.isFile()) throw new Error('not a file');
+      size = info.size;
+    } catch {
+      derivative.cleanup();
+      writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      return;
+    }
+
+    response.setHeader('Content-Type', derivative.mimeType);
+    // Derived on demand from a temporary file, so it must not be cached: the
+    // path and bytes are gone by the next request.
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('Content-Length', String(size));
+    if (options.download) {
+      response.setHeader(
+        'Content-Disposition',
+        contentDisposition(`share-${options.assetId}${path.extname(derivative.absolutePath)}`),
+      );
+    }
+
+    if (request.method === 'HEAD') {
+      response.end();
+      derivative.cleanup();
+      return;
+    }
+
+    let cleaned = false;
+    const cleanup = (): void => {
+      if (cleaned) return;
+      cleaned = true;
+      derivative.cleanup();
+    };
+    const stream = createReadStream(derivative.absolutePath);
+    stream.on('error', (error) => {
+      this.#logger.error('web-share.derivative-stream', error);
+      cleanup();
+      if (!response.headersSent) {
+        writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      } else {
+        response.destroy();
+      }
+    });
+    // 'close' fires for both a completed response and an aborted socket, so it
+    // is the one event that always runs.
+    response.on('close', () => {
+      stream.destroy();
+      cleanup();
     });
     stream.pipe(response);
   }
@@ -911,6 +1024,15 @@ function writeJson(response: ServerResponse, status: number, body: unknown): voi
   response.setHeader('Content-Type', 'application/json; charset=utf-8');
   response.setHeader('Content-Length', Buffer.byteLength(serialized, 'utf8'));
   response.end(serialized);
+}
+
+/**
+ * Only formats the desktop can produce from the original are accepted. An
+ * unknown value is a client bug, not a reason to silently fall back to WebP.
+ */
+function parseDerivativeFormat(value: string | null): 'webp' | 'jpeg' | 'png' | null {
+  if (value === null || value === '') return 'webp';
+  return value === 'webp' || value === 'jpeg' || value === 'png' ? value : null;
 }
 
 function readJsonBody(request: IncomingMessage, maxBytes: number): Promise<unknown> {

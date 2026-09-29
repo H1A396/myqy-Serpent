@@ -29,6 +29,7 @@ vi.mock('../../src/myqy-web-share/client/api', () => ({
     `/media/thumbnail/${libraryId}/${assetId}`,
   sourceUrl: () => '/media/source',
   downloadUrl: () => '/media/download',
+  viewUrl: () => '/media/view',
 }));
 
 import { App } from '../../src/myqy-web-share/client/App';

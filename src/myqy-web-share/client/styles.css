@@ -642,6 +642,39 @@ button {
   background: color-mix(in srgb, var(--ui-status-success) 82%, black);
 }
 
+.download-menu {
+  position: relative;
+}
+
+.download-menu-surface {
+  position: absolute;
+  top: calc(100% + var(--ui-space-1));
+  right: 0;
+  z-index: 2;
+  min-width: 132px;
+  padding: var(--ui-space-1);
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-surface-raised);
+  border: 1px solid var(--ui-border-divider);
+  border-radius: var(--ui-radius-control);
+  box-shadow: var(--ui-shadow-popover);
+}
+
+.download-menu-item {
+  display: flex;
+  align-items: center;
+  height: var(--ui-size-control-md);
+  padding: 0 var(--ui-space-3);
+  color: var(--ui-content-primary);
+  border-radius: var(--ui-radius-control);
+  font-size: var(--ui-font-size-body);
+}
+
+.download-menu-item:hover {
+  background: var(--ui-action-hover);
+}
+
 @media (max-width: 720px) {
   .viewer-hints {
     display: none;

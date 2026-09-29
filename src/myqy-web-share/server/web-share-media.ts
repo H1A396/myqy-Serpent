@@ -1,3 +1,5 @@
+import { rmSync } from 'node:fs';
+import path from 'node:path';
 import { artifactProtocolMimeForExtension } from '../../shared/media-formats';
 import type { WorkerCommand } from '../../shared/protocol/requests';
 import { workerResultSchema, type WorkerResult } from '../../shared/protocol/responses';
@@ -6,6 +8,12 @@ import type { WebShareWorkerClient } from './web-share-data';
 export interface ResolvedMedia {
   absolutePath: string;
   mimeType: string;
+}
+
+/** Bounded re-encode of an image source for visitors on a slow link. */
+export interface ResolvedDerivative extends ResolvedMedia {
+  /** Removes the temporary file once the response has been streamed. */
+  cleanup: () => void;
 }
 
 export interface WebShareMediaResolver {
@@ -20,6 +28,14 @@ export interface WebShareMediaResolver {
     artifactId: string;
     kind: 'preview' | 'proxy';
   }): Promise<ResolvedMedia | null>;
+  resolveDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    revisionId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    quality: number;
+  }): Promise<ResolvedDerivative | null>;
 }
 
 function mimeForPath(absolutePath: string): string {
@@ -137,5 +153,41 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
     kind: 'preview' | 'proxy';
   }): Promise<ResolvedMedia | null> {
     return this.#resolveArtifactPath(input.libraryId, input.artifactId, input.kind);
+  }
+
+  /**
+   * Encode a bounded derivative from the original source. The Worker writes it
+   * to a temporary directory and Main deletes it after streaming, so a visitor
+   * never leaves files in the library (or anywhere else) on the user's disk.
+   */
+  async resolveDerivative(input: {
+    libraryId: string;
+    assetId: string;
+    revisionId: string;
+    format: 'webp' | 'jpeg' | 'png';
+    maxEdge: number;
+    quality: number;
+  }): Promise<ResolvedDerivative | null> {
+    const result = await this.#request({
+      type: 'media.get-share-derivative',
+      libraryId: input.libraryId,
+      assetId: input.assetId,
+      revisionId: input.revisionId,
+      format: input.format,
+      maxEdge: input.maxEdge,
+      quality: input.quality,
+    });
+    if (!result.ok || result.type !== 'media.share-derivative') return null;
+    return {
+      absolutePath: result.absolutePath,
+      mimeType: result.mimeType,
+      cleanup: () => {
+        // Main owns the response lifecycle, so it also removes the temporary
+        // file once the bytes are out. The path was minted by the Worker inside
+        // the OS temporary directory; it is never a library path.
+        rmSync(result.absolutePath, { force: true });
+        rmSync(path.dirname(result.absolutePath), { force: true, recursive: true });
+      },
+    };
   }
 }
