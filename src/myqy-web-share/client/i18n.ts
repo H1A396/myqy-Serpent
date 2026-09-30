@@ -1,4 +1,4 @@
-const PREFERS_CHINESE =
+export const PREFERS_CHINESE =
   typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh');
 
 /** Minimal two-language copy for the read-only web client. */

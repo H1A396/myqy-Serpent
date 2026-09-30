@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import type { AssetSummary } from '../../shared/asset-types';
 import type { AssetDetail, VisitorMarks } from './api';
 import { downloadUrl, viewUrl } from './api';
-import { formatBytes, formatDate, formatDimensions, formatDuration } from './format';
-import { t } from './i18n';
+import { formatDate, formatDuration, mediaTypeLabel, truncateMiddle } from './format';
+import { PREFERS_CHINESE, t } from './i18n';
 
 /** Clickable 1–5 stars; clicking the current value clears it. */
 function StarRating({
@@ -103,27 +103,19 @@ export function DetailPanel({
         ) : null}
       </div>
 
-      <h2>{summary.displayName}</h2>
+      <h2 title={summary.displayName}>{truncateMiddle(summary.displayName)}</h2>
 
       <section className="detail-section">
         <h3>{t('信息', 'Info')}</h3>
         <dl>
           <dt>{t('类型', 'Type')}</dt>
-          <dd>{summary.mediaType}</dd>
-          <dt>{t('尺寸', 'Dimensions')}</dt>
-          <dd>{formatDimensions(summary.width, summary.height)}</dd>
-          <dt>{t('大小', 'Size')}</dt>
-          <dd>{formatBytes(summary.byteSize)}</dd>
+          <dd>{mediaTypeLabel(summary.mediaType, PREFERS_CHINESE)}</dd>
           {summary.durationMs !== null && summary.durationMs !== undefined && summary.durationMs > 0 ? (
             <>
               <dt>{t('时长', 'Duration')}</dt>
               <dd>{formatDuration(summary.durationMs)}</dd>
             </>
           ) : null}
-          <dt>{t('修改时间', 'Modified')}</dt>
-          <dd>{formatDate(summary.modifiedAt)}</dd>
-          <dt>{t('路径', 'Path')}</dt>
-          <dd>{summary.relativeFilePath}</dd>
         </dl>
       </section>
 

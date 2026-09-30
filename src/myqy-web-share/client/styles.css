@@ -25,6 +25,7 @@
    themes, so this must be light in both — binding it to --ui-content-primary
    turned the badges into dark-on-dark in the light theme. */
 :root {
+  --web-share-detail-width: 260px;
   --web-share-on-scrim: #ffffff;
   --web-share-on-scrim-hover: rgb(255 255 255 / 18%);
 }
@@ -363,7 +364,7 @@ button {
   display: flex;
   align-items: center;
   gap: var(--ui-space-2);
-  padding: var(--ui-space-2) var(--ui-space-3);
+  padding: var(--ui-space-2) calc(var(--web-share-detail-width) + var(--ui-space-3)) var(--ui-space-2) var(--ui-space-3);
   border-bottom: 1px solid var(--ui-border-divider);
   background: var(--web-share-chrome);
   flex-wrap: wrap;
@@ -372,6 +373,31 @@ button {
 .toolbar .grow {
   flex: 1 1 200px;
   min-width: 160px;
+}
+
+.grid-density-control {
+  display: flex;
+  flex: 0 1 294px;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 180px;
+  margin-left: auto;
+  color: var(--ui-content-secondary);
+  font-size: var(--ui-font-size-caption);
+  white-space: nowrap;
+}
+
+.grid-density-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ui-action-accent);
+}
+
+.grid-density-value {
+  min-width: 2ch;
+  color: var(--ui-content-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .select {
@@ -449,7 +475,6 @@ button {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--ui-gutter-grid);
 }
 
@@ -501,7 +526,9 @@ button {
 .card-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Show the whole thumbnail; the square card letterboxes it instead of
+     cropping the artwork. */
+  object-fit: contain;
   display: block;
 }
 
@@ -510,18 +537,6 @@ button {
   font-size: var(--ui-font-size-caption);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-}
-
-.card-badge {
-  position: absolute;
-  bottom: var(--ui-space-1);
-  right: var(--ui-space-1);
-  padding: 0 var(--ui-space-1);
-  border-radius: var(--ui-radius-pill);
-  background: var(--ui-surface-scrim);
-  color: var(--web-share-on-scrim);
-  font-size: var(--ui-font-size-micro);
-  font-variant-numeric: tabular-nums;
 }
 
 .card-open {
@@ -590,7 +605,7 @@ button {
 
 /* ---- Detail ---- */
 .detail {
-  width: 320px;
+  width: var(--web-share-detail-width);
   min-height: 0;
   border-left: 1px solid var(--ui-border-divider);
   background: var(--web-share-chrome);
@@ -601,11 +616,37 @@ button {
   gap: var(--ui-space-4);
 }
 
+/* The pane is always present: when no asset is selected it shows the shared
+   library's own facts, the way the desktop inspector does. */
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-4);
+}
+
+.detail-empty-brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+}
+
+.detail-empty-brand h2 {
+  word-break: break-word;
+}
+
+.detail-empty-sub {
+  margin: 0;
+  color: var(--ui-content-tertiary);
+  font-size: var(--ui-font-size-caption);
+  word-break: break-all;
+}
+
 .detail h2 {
   margin: 0;
   font-size: var(--ui-font-size-heading);
   font-weight: var(--ui-font-weight-semibold);
-  word-break: break-all;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .detail-section h3 {
@@ -696,7 +737,31 @@ button {
 
 .detail-actions {
   display: flex;
-  gap: var(--ui-space-2);
+  gap: var(--ui-space-1);
+  min-width: 0;
+}
+
+.detail-actions > .button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--ui-size-control-md);
+  padding: 0 var(--ui-space-1);
+  overflow: hidden;
+  font-size: var(--ui-font-size-micro);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    padding-right: var(--ui-space-3);
+  }
+
+  .grid-density-control {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
 }
 
 .viewer-like {
@@ -837,11 +902,6 @@ button {
 /* The share is read on a phone as often as a desktop: give the grid a little
    more room on small screens, and never let the toolbar overflow sideways. */
 @media (max-width: 560px) {
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--ui-space-2);
-  }
-
   .toolbar .grow {
     flex-basis: 100%;
   }

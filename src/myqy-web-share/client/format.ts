@@ -34,3 +34,37 @@ export function formatDuration(durationMs: number | null | undefined): string {
 export function stars(rating: number): string {
   return '★★★★★'.slice(0, Math.max(0, Math.min(5, rating))) + '☆☆☆☆☆'.slice(0, 5 - Math.max(0, Math.min(5, rating)));
 }
+
+const MEDIA_TYPE_LABELS: Readonly<Record<string, [string, string]>> = {
+  image: ['图片', 'Image'],
+  video: ['视频', 'Video'],
+  audio: ['音频', 'Audio'],
+  text: ['文本', 'Text'],
+  model: ['模型', '3D model'],
+  document: ['文档', 'Document'],
+  font: ['字体', 'Font'],
+  other: ['其他', 'Other'],
+};
+
+/** Localized media-type label; falls back to the raw value for unknowns. */
+export function mediaTypeLabel(mediaType: string, zh: boolean): string {
+  const labels = MEDIA_TYPE_LABELS[mediaType];
+  if (labels === undefined) return mediaType;
+  return zh ? labels[0] : labels[1];
+}
+
+/**
+ * Keep the head and tail of a long name with the extension visible, so two
+ * files that differ only in a middle hash are still distinguishable.
+ * `Krea2-文生图_00070.png` stays intact; longer names retain the extension.
+ */
+export function truncateMiddle(name: string, maxChars = 22): string {
+  if (name.length <= maxChars) return name;
+  const dot = name.lastIndexOf('.');
+  const extension = dot > 0 ? name.slice(dot) : '';
+  const stem = extension === '' ? name : name.slice(0, dot);
+  const available = Math.max(8, maxChars - extension.length - 1);
+  const head = Math.min(9, Math.ceil(available / 2));
+  const tail = Math.max(4, available - head);
+  return `${stem.slice(0, head)}…${stem.slice(-tail)}${extension}`;
+}

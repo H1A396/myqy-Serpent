@@ -169,6 +169,50 @@ describe('web share App selection', () => {
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
   });
 
+  it('uses an integer grid-density slider bounded to 5–15 columns', async () => {
+    await act(async () => {
+      root?.render(createElement(App));
+    });
+    await flush();
+
+    const slider = container?.querySelector<HTMLInputElement>('.grid-density-slider');
+    expect(slider).not.toBeNull();
+    expect(slider?.type).toBe('range');
+    expect(slider?.min).toBe('5');
+    expect(slider?.max).toBe('15');
+    expect(slider?.step).toBe('1');
+    expect(slider?.value).toBe('5');
+
+    await act(async () => {
+      if (slider === null || slider === undefined) throw new Error('grid density slider missing');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(slider, '9');
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    expect(container?.querySelector('.grid-density-value')?.textContent).toBe('9');
+    expect(container?.querySelector('.grid')?.getAttribute('style')).toContain(
+      'repeat(9, minmax(0, 1fr))',
+    );
+  });
+
+  it('omits grid size badges and hides the removed detail facts', async () => {
+    await act(async () => {
+      root?.render(createElement(App));
+    });
+    await flush();
+
+    expect(container?.querySelector('.card-badge')).toBeNull();
+    clickCard(0);
+    await flush();
+
+    const info = container?.querySelector('.detail-section dl')?.textContent ?? '';
+    expect(info).toContain('Type');
+    expect(info).not.toContain('Dimensions');
+    expect(info).not.toContain('Size');
+    expect(info).not.toContain('Modified');
+    expect(info).not.toContain('Path');
+  });
+
   it('does not let a late mark read overwrite a fresh like', async () => {
     let resolveDetail: ((detail: AssetDetail) => void) | undefined;
     // The detail read (which carries the visitor's marks) is slow, as it is on a

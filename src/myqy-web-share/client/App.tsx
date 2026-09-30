@@ -10,7 +10,6 @@ import {
   type WebShareState,
 } from './api';
 import { DetailPanel } from './DetailPanel';
-import { formatBytes } from './format';
 import { t } from './i18n';
 import { Viewer } from './Viewer';
 
@@ -18,6 +17,8 @@ const PAGE_SIZE = 100;
 const THUMBNAIL_RETRY_LIMIT = 6;
 const SKELETON_TILES = 12;
 const SEARCH_CACHE_LIMIT = 24;
+const GRID_COLUMNS_MIN = 5;
+const GRID_COLUMNS_MAX = 15;
 
 /** Stable identity for one (library, scope, sort, filters, query) listing. */
 function searchCacheKey(parts: readonly unknown[]): string {
@@ -190,6 +191,79 @@ function scopeLabel(
   return collections.find((collection) => collection.collectionId === scope.collectionId)?.name ?? libraryName;
 }
 
+/**
+ * Right pane shown before any asset is picked: the shared library's own facts,
+ * mirroring what the desktop inspector shows when nothing is selected. It only
+ * uses data the client already fetched for navigation, so it costs no request.
+ */
+function LibraryInfoPanel({
+  libraryName,
+  libraryId,
+  total,
+  folderCount,
+  collectionCount,
+  tagCount,
+  visitor,
+  allowDownload,
+}: {
+  libraryName: string;
+  libraryId: string;
+  total: number;
+  folderCount: number;
+  collectionCount: number;
+  tagCount: number;
+  visitor: string | null;
+  allowDownload: boolean;
+}) {
+  return (
+    <aside className="detail" aria-label={t('资源库信息', 'Library info')}>
+      <div className="detail-empty">
+        <div className="detail-empty-brand">
+          <h2>{libraryName}</h2>
+          <p className="detail-empty-sub">{libraryId}</p>
+        </div>
+
+        <section className="detail-section">
+          <h3>{t('概览', 'Overview')}</h3>
+          <dl>
+            <dt>{t('资产', 'Assets')}</dt>
+            <dd>{total}</dd>
+            <dt>{t('文件夹', 'Folders')}</dt>
+            <dd>{folderCount}</dd>
+            <dt>{t('合集', 'Collections')}</dt>
+            <dd>{collectionCount}</dd>
+            <dt>{t('标签', 'Tags')}</dt>
+            <dd>{tagCount}</dd>
+          </dl>
+        </section>
+
+        <section className="detail-section">
+          <h3>{t('分享设置', 'Share')}</h3>
+          <dl>
+            <dt>{t('下载', 'Download')}</dt>
+            <dd>
+              {allowDownload ? t('允许下载原图', 'Original allowed') : t('仅在线预览', 'Preview only')}
+            </dd>
+            {visitor !== null && visitor !== '' ? (
+              <>
+                <dt>{t('当前访客', 'Signed in as')}</dt>
+                <dd>{visitor}</dd>
+              </>
+            ) : null}
+          </dl>
+        </section>
+
+        <p className="detail-empty-sub">
+          {t(
+            '选择左侧任意资产查看详情。',
+            'Select any asset on the left to see its details.',
+          )}
+        </p>
+      </div>
+    </aside>
+  );
+}
+
 export function App() {
   const [phase, setPhase] = useState<'loading' | 'login' | 'ready'>('loading');
   const [state, setState] = useState<WebShareState | null>(null);
@@ -213,6 +287,7 @@ export function App() {
   const [favorite, setFavorite] = useState('any');
   const [rating, setRating] = useState('');
   const [recursive, setRecursive] = useState(true);
+  const [gridColumns, setGridColumns] = useState(GRID_COLUMNS_MIN);
 
   const [assets, setAssets] = useState<AssetSummary[]>([]);
   const [total, setTotal] = useState(0);
@@ -714,6 +789,20 @@ export function App() {
               </button>
             </>
           ) : null}
+          <label className="grid-density-control">
+            <span>{t('每行', 'Columns')}</span>
+            <input
+              aria-label={t('每行显示的网格卡片数量', 'Grid cards per row')}
+              className="grid-density-slider"
+              type="range"
+              min={GRID_COLUMNS_MIN}
+              max={GRID_COLUMNS_MAX}
+              step={1}
+              value={gridColumns}
+              onChange={(event) => setGridColumns(Number(event.target.value))}
+            />
+            <output className="grid-density-value">{gridColumns}</output>
+          </label>
         </div>
 
         <div className="content">
@@ -726,7 +815,10 @@ export function App() {
             {assets.length === 0 && !loading ? (
               <p className="empty">{t('没有匹配的资产。', 'No matching assets.')}</p>
             ) : assets.length === 0 ? (
-              <div className="grid">
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+              >
                 {Array.from({ length: SKELETON_TILES }, (_, index) => (
                   <div className="card skeleton" key={index}>
                     <span className="card-thumb" />
@@ -736,7 +828,10 @@ export function App() {
               </div>
             ) : (
               <>
-                <div className="grid">
+                <div
+                  className="grid"
+                  style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}
+                >
                   {assets.map((asset, index) => (
                     <div
                       className="card"
@@ -763,7 +858,6 @@ export function App() {
                             alt={asset.displayName}
                           />
                         )}
-                        <span className="card-badge">{formatBytes(asset.byteSize)}</span>
                         <button
                           aria-label={t('放大查看', 'Open viewer')}
                           className="card-open"
@@ -822,7 +916,18 @@ export function App() {
                 setSelectedIndex(null);
               }}
             />
-          ) : null}
+          ) : (
+            <LibraryInfoPanel
+              libraryName={libraryName}
+              libraryId={libraryId}
+              total={total}
+              folderCount={folders.length}
+              collectionCount={collections.length}
+              tagCount={tags.length}
+              visitor={state.username}
+              allowDownload={state.allowDownload}
+            />
+          )}
         </div>
       </main>
 
