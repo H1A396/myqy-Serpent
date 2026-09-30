@@ -1095,7 +1095,28 @@ export class WebShareServer {
       writeJson(response, 400, { error: 'Invalid path.', code: 'WEB_SHARE_INVALID_PATH' });
       return;
     }
-    const filePath = (await isFile(candidate)) ? candidate : path.join(root, 'index.html');
+    // A path that names a directory must end in `/`, otherwise the client's
+    // relative `./assets/…` URLs resolve against the parent, silently serving
+    // the other build's bundle. Redirect rather than fall back to index.html.
+    if (candidate !== root && (await isDirectory(candidate)) && !pathname.endsWith('/')) {
+      response.statusCode = 301;
+      response.setHeader('Location', `${pathname}/`);
+      response.setHeader('Content-Length', '0');
+      if (request.method === 'HEAD') response.end();
+      else response.end();
+      return;
+    }
+    // Resolve the file to serve. A directory serves its own index.html — not
+    // the root one — so a nested build (e.g. `/web-preview/`) gets its own
+    // entry document instead of silently falling back to the root build.
+    // Unknown paths fall back to the SPA entry of the nearest enclosing
+    // directory that actually has one, so deep links inside a nested build
+    // stay inside that build.
+    const filePath = await resolveStaticFile(root, candidate, isInside);
+    if (filePath === null) {
+      writeJson(response, 404, { error: 'Not found.', code: 'WEB_SHARE_NOT_FOUND' });
+      return;
+    }
     try {
       const body = await readFile(filePath);
       response.statusCode = 200;
@@ -1177,6 +1198,45 @@ async function isFile(candidate: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function isDirectory(candidate: string): Promise<boolean> {
+  try {
+    return (await stat(candidate)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pick the file to serve for one static request.
+ *
+ * A real file wins. A directory serves its own `index.html` (so a nested build
+ * is self-contained); an unknown path falls back to the SPA entry of the
+ * nearest enclosing directory that has one, and finally to the root entry.
+ * Returns `null` only when no entry can be found at all.
+ */
+async function resolveStaticFile(
+  root: string,
+  candidate: string,
+  inside: (root: string, candidate: string) => boolean,
+): Promise<string | null> {
+  if (await isFile(candidate)) return candidate;
+  if (await isDirectory(candidate)) {
+    const entry = path.join(candidate, 'index.html');
+    return (await isFile(entry)) ? entry : null;
+  }
+  // Deep link inside a nested build: stay inside that build.
+  for (
+    let enclosing = path.dirname(candidate);
+    inside(root, enclosing) && enclosing !== root;
+    enclosing = path.dirname(enclosing)
+  ) {
+    const nestedEntry = path.join(enclosing, 'index.html');
+    if (await isFile(nestedEntry)) return nestedEntry;
+  }
+  const rootEntry = path.join(root, 'index.html');
+  return (await isFile(rootEntry)) ? rootEntry : null;
 }
 
 /**

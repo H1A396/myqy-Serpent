@@ -714,6 +714,10 @@ describe('WebShareServer', () => {
     await mkdir(staticRoot, { recursive: true });
     await writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>Serpent</title>');
     await writeFile(path.join(staticRoot, 'app.js'), 'console.log(1);');
+    const previewRoot = path.join(staticRoot, 'web-preview');
+    await mkdir(path.join(previewRoot, 'assets'), { recursive: true });
+    await writeFile(path.join(previewRoot, 'index.html'), '<!doctype html><title>Preview build</title>');
+    await writeFile(path.join(previewRoot, 'assets', 'preview.js'), 'console.log("preview");');
     const port = await getFreePort();
     const staticServer = new WebShareServer({
       userDataPath: path.join(userDataPath, 'static-data'),
@@ -728,6 +732,23 @@ describe('WebShareServer', () => {
       const index = await fetch(`${origin}/`);
       expect(index.status).toBe(200);
       expect(await index.text()).toContain('Serpent');
+
+      const directoryWithoutSlash = await fetch(`${origin}/web-preview`, { redirect: 'manual' });
+      expect(directoryWithoutSlash.status).toBe(301);
+      expect(directoryWithoutSlash.headers.get('location')).toBe('/web-preview/');
+
+      const previewIndex = await fetch(`${origin}/web-preview/`);
+      expect(previewIndex.status).toBe(200);
+      expect(await previewIndex.text()).toContain('Preview build');
+
+      const previewAsset = await fetch(`${origin}/web-preview/assets/preview.js`);
+      expect(previewAsset.status).toBe(200);
+      expect(previewAsset.headers.get('content-type')).toContain('javascript');
+      expect(await previewAsset.text()).toContain('preview');
+
+      const previewDeepLink = await fetch(`${origin}/web-preview/some/deep/path`);
+      expect(previewDeepLink.status).toBe(200);
+      expect(await previewDeepLink.text()).toContain('Preview build');
 
       const asset = await fetch(`${origin}/app.js`);
       expect(asset.status).toBe(200);
