@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
+﻿import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -38,13 +38,6 @@ import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
 import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from './web-share-media';
 import { WebShareSettingsStore } from './web-share-settings-store';
 import { parseByteRange } from '../../main/artifact-response';
-
-/**
- * The viewer WebP is split into this many contiguous byte-range chunks. The
- * client requests them in parallel (each a separate tunnel connection, which is
- * ~5× faster than one stream) and concatenates them back into the image.
- */
-const WEB_SHARE_VIEWER_CHUNK_COUNT = 4;
 
 export interface WebShareLogger {
   info(scope: string, message: string, context?: Record<string, unknown>): void;
@@ -907,14 +900,6 @@ export class WebShareServer {
         writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
         return;
       }
-      // The on-screen image is a deterministic function of the asset+revision
-      // and (for the bounded WebP) persisted, so split it into fixed byte-range
-      // chunks the client can pull in parallel. Downloads keep the single file.
-      const chunkParam = url.searchParams.get('chunk');
-      if (!download && derivative.cached && chunkParam !== null) {
-        await this.#streamViewerChunk(request, response, derivative, chunkParam);
-        return;
-      }
       await this.#streamDerivative(request, response, derivative, {
         download,
         assetId: identifier,
@@ -993,76 +978,6 @@ export class WebShareServer {
     const stream = createReadStream(resolved.absolutePath, { start, end });
     stream.on('error', (error) => {
       this.#logger.error('web-share.media-stream', error);
-      if (!response.headersSent) {
-        writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
-      } else {
-        response.destroy();
-      }
-    });
-    response.on('close', () => {
-      if (!response.writableFinished) stream.destroy();
-    });
-    stream.pipe(response);
-  }
-
-  /**
-   * Serve one fixed byte-range chunk of the persisted viewer WebP.
-   *
-   * The client asks for `chunk=0..3`; each maps to an exact, contiguous,
-   * non-overlapping slice of the same file, so the four responses concatenate
-   * back into the original image with no gaps. `416` reports an out-of-range
-   * index; a `HEAD` returns the slice headers without a body. The cached file is
-   * never deleted (its `cleanup` is a no-op).
-   */
-  async #streamViewerChunk(
-    request: IncomingMessage,
-    response: ServerResponse,
-    derivative: ResolvedDerivative,
-    chunkParam: string,
-  ): Promise<void> {
-    let size: number;
-    try {
-      const info = await stat(derivative.absolutePath);
-      if (!info.isFile()) throw new Error('not a file');
-      size = info.size;
-    } catch {
-      derivative.cleanup();
-      writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
-      return;
-    }
-
-    const index = Number.parseInt(chunkParam, 10);
-    if (
-      !Number.isInteger(index)
-      || index < 0
-      || index >= WEB_SHARE_VIEWER_CHUNK_COUNT
-      || size <= 0
-    ) {
-      response.statusCode = 416;
-      response.setHeader('Content-Range', `bytes */${size}`);
-      response.end();
-      return;
-    }
-
-    const start = Math.floor((index * size) / WEB_SHARE_VIEWER_CHUNK_COUNT);
-    const endExclusive = Math.floor(((index + 1) * size) / WEB_SHARE_VIEWER_CHUNK_COUNT);
-    const end = Math.max(start, endExclusive - 1);
-
-    response.setHeader('Content-Type', derivative.mimeType);
-    response.setHeader('Accept-Ranges', 'bytes');
-    response.setHeader('Cache-Control', 'private, max-age=3600');
-    response.statusCode = 206;
-    response.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
-    response.setHeader('Content-Length', String(end - start + 1));
-
-    if (request.method === 'HEAD') {
-      response.end();
-      return;
-    }
-
-    const stream = createReadStream(derivative.absolutePath, { start, end });
-    stream.on('error', (error) => {
-      this.#logger.error('web-share.viewer-chunk-stream', error);
       if (!response.headersSent) {
         writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
       } else {
@@ -1181,7 +1096,7 @@ export class WebShareServer {
       return;
     }
     // A path that names a directory must end in `/`, otherwise the client's
-    // relative `./assets/…` URLs resolve against the parent, silently serving
+    // relative `./assets/鈥 URLs resolve against the parent, silently serving
     // the other build's bundle. Redirect rather than fall back to index.html.
     if (candidate !== root && (await isDirectory(candidate)) && !pathname.endsWith('/')) {
       response.statusCode = 301;
@@ -1191,8 +1106,8 @@ export class WebShareServer {
       else response.end();
       return;
     }
-    // Resolve the file to serve. A directory serves its own index.html — not
-    // the root one — so a nested build (e.g. `/web-preview/`) gets its own
+    // Resolve the file to serve. A directory serves its own index.html 鈥?not
+    // the root one 鈥?so a nested build (e.g. `/web-preview/`) gets its own
     // entry document instead of silently falling back to the root build.
     // Unknown paths fall back to the SPA entry of the nearest enclosing
     // directory that actually has one, so deep links inside a nested build
@@ -1206,9 +1121,24 @@ export class WebShareServer {
       const body = await readFile(filePath);
       response.statusCode = 200;
       response.setHeader('Content-Type', CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream');
-      response.setHeader('Cache-Control', path.basename(filePath) === 'index.html' ? 'no-cache' : 'public, max-age=3600');
-      if (path.extname(filePath).toLowerCase() === '.html') {
+      const baseName = path.basename(filePath);
+      const isHtml = path.extname(filePath).toLowerCase() === '.html';
+      // Vite emits content-addressed names (`index-<hash>.js`), so the bytes for
+      // a given URL never change: cache them for a year and let Cloudflare's
+      // edge hold them. `index.html` must be revalidated so a new deploy is
+      // picked up. A nested build's `index.html` is also named `index.html`.
+      response.setHeader(
+        'Cache-Control',
+        baseName === 'index.html' ? 'no-cache' : 'public, max-age=31536000, immutable',
+      );
+      if (isHtml) {
         response.setHeader('Content-Security-Policy', WEB_SHARE_CSP);
+        // Early Hints: let the browser (and Cloudflare, when the panel's
+        // "Early Hints" toggle is on) start fetching the entry bundle and
+        // stylesheet while the HTML body is still being read. The hrefs come
+        // straight from the HTML, so they are the exact hashed asset names.
+        const hints = entryAssetHintHeaders(body.toString('utf8'), pathname);
+        if (hints.length > 0) response.setHeader('Link', hints);
       }
       response.setHeader('Content-Length', String(body.byteLength));
       if (request.method === 'HEAD') response.end();
@@ -1236,6 +1166,34 @@ export class WebShareServer {
 }
 
 const NOT_FOUND = Symbol('web-share-not-found');
+
+/**
+ * Build `Link: rel=preload` Early Hints for an entry document's own module
+ * script and stylesheet. The hrefs are read straight from the emitted HTML
+ * (they are the exact hashed asset names), and are resolved relative to the
+ * document's own directory so a nested build (`/web-preview/`) preloads its own
+ * bundle, never the root one.
+ */
+export function entryAssetHintHeaders(html: string, pathname: string): string[] {
+  const directory = pathname.endsWith('/')
+    ? pathname
+    : `${pathname.slice(0, pathname.lastIndexOf('/') + 1)}`;
+  const hints: string[] = [];
+  const seen = new Set<string>();
+  for (const match of html.matchAll(/<(?:script|link)\b[^>]*?\b(?:src|href)="([^"]+\.(?:js|css))"/giu)) {
+    const reference = match[1]!;
+    if (/^[a-z]+:|^\/\//iu.test(reference)) continue;
+    const href = reference.startsWith('/')
+      ? reference
+      : `${directory}${reference.replace(/^\.\//u, '')}`;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    const isScript = /\.js$/iu.test(reference);
+    hints.push(`<${href}>; rel=preload; as=${isScript ? 'script' : 'style'}`);
+  }
+  return hints;
+}
+
 const WEB_SHARE_CSP = [
   "default-src 'self'",
   "img-src 'self' data: blob:",

@@ -98,3 +98,22 @@
 - `npm run test:library-availability`（改动 `library-service` 强制）：9 文件 / 228 通过 / 1 跳过。
 - 本机 HTTP 实测（共享库内一张 1040×1560 / 源 2.15MB 的 PNG）：整图 WebP `200 image/webp` 160,022 B；`chunk=0..3` 均 `206`，`Content-Range` 连续、四片合计 160,022 B，拼接 SHA256 与整图**完全一致**；`chunk=9` 返回 `416`。本次请求未产生新的系统临时目录（缓存路径生效）。
 - **未执行**：真实浏览器/隧道实速前后对比、packaged、Windows。记为待人类验收（`WEB-SHARE-CHUNK-001`）。
+
+## 补充记录（2026-10-01 第二轮）：回退分片、加 Early Hints 与强缓存
+
+用户验收后决定**回退客户端 4 片并发**，因为主线走 Cloudflare 隧道后单请求足够，分片增加复杂度且收益有限；同时追加三项小优化。
+
+**回退（保留优化项）**：
+- 客户端查看器恢复为**单请求** `<img src={viewUrl}>`（保留 `fetchPriority="high"` / `decoding="async"`）；删除 `viewer-image.ts` 及其单测、`.viewer-loading` 样式。
+- 服务端删除 `?chunk=` 分支、`#streamViewerChunk`、`WEB_SHARE_VIEWER_CHUNK_COUNT` 及相关单测。
+- **保留**：缩略图让路（`paused`）、缩略图 `low`/大图 `high` 优先级、查看器标题栏收窄；**服务端大图派生持久缓存**（`.serpent/share-derivatives/` + `prune-derivatives`）——省去每次重编码 CPU。
+
+**新增**：
+- 静态内容寻址资源（非 `index.html`）缓存头改为 `public, max-age=31536000, immutable`，配合 Cloudflare 边缘缓存；`index.html` 仍 `no-cache`。
+- 入口文档响应新增 **Early Hints** `Link: <...>; rel=preload; as=script|style`：从 HTML 内实际引用的 hash 资源生成，嵌套构建（`/web-preview/`）预加载**自己**的 bundle。配合 Cloudflare 面板 Speed → Content Optimization → Early Hints 生效。
+- 缩略图 `decoding="async"` 确认保留。
+
+**验证**：
+- `npm run typecheck`、lint 通过；`web-share-server`（含新的 immutable + Early Hints 断言）、`web-share-viewer`、`web-share-app` 全绿。
+- 本机 HTTP 实测：`/web-preview/` 返回 4 个 4 片请求已不复存在，只看单次 `/media/view`；`assets/*` 返回 `immutable`；入口 HTML 带 `Link: rel=preload`。
+- **未执行**：真实浏览器/Cloudflare 边缘缓存命中、packaged、Windows。

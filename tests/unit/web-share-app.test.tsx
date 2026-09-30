@@ -111,10 +111,6 @@ describe('web share App selection', () => {
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
-    // The viewer loads its image as parallel chunks; keep it off the network.
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })));
-    (URL as unknown as { createObjectURL: () => string }).createObjectURL = vi.fn(() => 'blob:x');
-    (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = vi.fn();
   });
 
   afterEach(() => {
@@ -122,7 +118,6 @@ describe('web share App selection', () => {
     root = undefined;
     container?.remove();
     container = undefined;
-    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 

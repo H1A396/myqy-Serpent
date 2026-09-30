@@ -946,11 +946,6 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.viewer-loading {
-  color: var(--ui-content-secondary);
-  font-size: var(--ui-font-size-caption);
-}
-
 .viewer-nav {
   position: absolute;
   top: 50%;

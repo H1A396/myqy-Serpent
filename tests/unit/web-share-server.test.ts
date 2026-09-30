@@ -640,69 +640,6 @@ describe('WebShareServer', () => {
     expect(response.status).toBe(400);
   });
 
-  it('serves a cached viewer derivative as four contiguous byte-range chunks', async () => {
-    server.setPassword('correct horse battery');
-    const { cookie } = await login('correct horse battery');
-    media.derivativeCached = true;
-    media.derivativeCleanupCount = 0;
-
-    const bodies: string[] = [];
-    for (let index = 0; index < 4; index += 1) {
-      const response = await fetch(
-        `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=${index}`,
-        { headers: { Cookie: cookie! } },
-      );
-      expect(response.status).toBe(206);
-      expect(response.headers.get('content-type')).toBe('image/webp');
-      expect(response.headers.get('accept-ranges')).toBe('bytes');
-      expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
-      bodies.push(await response.text());
-    }
-    // 16 bytes split 4 ways, contiguous and non-overlapping.
-    expect(bodies).toEqual(['deri', 'vati', 've-b', 'ytes']);
-    expect(bodies.join('')).toBe('derivative-bytes');
-    // A cached file is never deleted.
-    expect(media.derivativeCleanupCount).toBe(0);
-  });
-
-  it('reports an out-of-range chunk index with 416', async () => {
-    server.setPassword('correct horse battery');
-    const { cookie } = await login('correct horse battery');
-    media.derivativeCached = true;
-    const response = await fetch(
-      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=9`,
-      { headers: { Cookie: cookie! } },
-    );
-    expect(response.status).toBe(416);
-    expect(response.headers.get('content-range')).toBe('bytes */16');
-  });
-
-  it('answers a HEAD chunk request with headers and no body', async () => {
-    server.setPassword('correct horse battery');
-    const { cookie } = await login('correct horse battery');
-    media.derivativeCached = true;
-    const response = await fetch(
-      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=1`,
-      { method: 'HEAD', headers: { Cookie: cookie! } },
-    );
-    expect(response.status).toBe(206);
-    expect(response.headers.get('content-length')).toBe('4');
-    expect(await response.text()).toBe('');
-  });
-
-  it('ignores the chunk parameter for downloads', async () => {
-    server.setPassword('correct horse battery');
-    const { cookie } = await login('correct horse battery');
-    media.derivativeCached = true;
-    const response = await fetch(
-      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1&chunk=0`,
-      { headers: { Cookie: cookie! } },
-    );
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe('derivative-bytes');
-  });
-
-
   it('re-encodes the download as a full-resolution JPEG at the configured quality', async () => {
     server.setPassword('correct horse battery');
     const { cookie } = await login('correct horse battery');
@@ -779,11 +716,17 @@ describe('WebShareServer', () => {
   it('serves the built web client and falls back to index.html', async () => {
     const staticRoot = path.join(userDataPath, 'web');
     await mkdir(staticRoot, { recursive: true });
-    await writeFile(path.join(staticRoot, 'index.html'), '<!doctype html><title>Serpent</title>');
+    await writeFile(
+      path.join(staticRoot, 'index.html'),
+      '<!doctype html><title>Serpent</title><script type="module" src="./assets/main-abc.js"></script><link rel="stylesheet" href="./assets/main-abc.css">',
+    );
     await writeFile(path.join(staticRoot, 'app.js'), 'console.log(1);');
     const previewRoot = path.join(staticRoot, 'web-preview');
     await mkdir(path.join(previewRoot, 'assets'), { recursive: true });
-    await writeFile(path.join(previewRoot, 'index.html'), '<!doctype html><title>Preview build</title>');
+    await writeFile(
+      path.join(previewRoot, 'index.html'),
+      '<!doctype html><title>Preview build</title><script type="module" src="./assets/preview.js"></script>',
+    );
     await writeFile(path.join(previewRoot, 'assets', 'preview.js'), 'console.log("preview");');
     const port = await getFreePort();
     const staticServer = new WebShareServer({
@@ -799,6 +742,12 @@ describe('WebShareServer', () => {
       const index = await fetch(`${origin}/`);
       expect(index.status).toBe(200);
       expect(await index.text()).toContain('Serpent');
+      // The entry document is revalidated and announces its own hashed assets
+      // as Early Hints so the browser can start them before the body is read.
+      expect(index.headers.get('cache-control')).toBe('no-cache');
+      const link = index.headers.get('link') ?? '';
+      expect(link).toContain('</assets/main-abc.js>; rel=preload; as=script');
+      expect(link).toContain('</assets/main-abc.css>; rel=preload; as=style');
 
       const directoryWithoutSlash = await fetch(`${origin}/web-preview`, { redirect: 'manual' });
       expect(directoryWithoutSlash.status).toBe(301);
@@ -807,10 +756,16 @@ describe('WebShareServer', () => {
       const previewIndex = await fetch(`${origin}/web-preview/`);
       expect(previewIndex.status).toBe(200);
       expect(await previewIndex.text()).toContain('Preview build');
+      // A nested build preloads *its own* bundle, not the root one.
+      expect(previewIndex.headers.get('link') ?? '').toContain(
+        '</web-preview/assets/preview.js>; rel=preload; as=script',
+      );
 
       const previewAsset = await fetch(`${origin}/web-preview/assets/preview.js`);
       expect(previewAsset.status).toBe(200);
       expect(previewAsset.headers.get('content-type')).toContain('javascript');
+      // Content-addressed assets are immutable for a year.
+      expect(previewAsset.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
       expect(await previewAsset.text()).toContain('preview');
 
       const previewDeepLink = await fetch(`${origin}/web-preview/some/deep/path`);
