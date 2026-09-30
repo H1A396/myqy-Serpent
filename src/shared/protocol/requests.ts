@@ -2447,6 +2447,12 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('web-share.prune-thumbnails'),
     libraryId: identifierSchema,
   }),
+  // Remove cached viewer derivatives whose asset/revision is gone. Run after
+  // the share sweep alongside the thumbnail prune.
+  z.strictObject({
+    type: z.literal('web-share.prune-derivatives'),
+    libraryId: identifierSchema,
+  }),
   z.strictObject({
     type: z.literal('media.enqueue-thumbnail-jobs'),
     libraryId: identifierSchema,

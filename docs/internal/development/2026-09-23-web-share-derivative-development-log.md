@@ -80,3 +80,21 @@
 ## 补充记录（2026-09-30）
 
 开发测试页面 `/web-preview/` 的网格密度滑块上界由 **15 列调整为 10 列**（`GRID_COLUMNS_MAX = 10`，范围 5–10，默认 5）。旧行为：上界 15；新行为：上界 10。相应更新 `web-share-app.test.tsx` 的滑块上界断言与测试说明。该滑块仍只在开发测试页面生效，主线页面尚未应用；待验收后通过 `npm run web:build` 应用到主线。
+
+## 补充记录（2026-10-01）：查看器大图分片并发加载
+
+**动机**：单条隧道连接实测只有 ~100–130 KB/s（FRP 与 Cloudflare 节点相近），2MB 大图要 15–20 秒；并发数增加时聚合吞吐明显上升（8 并发约 5 倍）。瓶颈是单连接吞吐，不是节点上限。
+
+**旧行为**：查看器 `GET /media/view?...` 单请求、单连接拉取整张有界 WebP；Worker 每次请求现场重编码到系统临时目录，Main 传完即删；打开查看器时网格仍在后台继续加载缩略图，与大图抢带宽。
+
+**新行为**：
+- 服务端：查看器 WebP（非下载）**持久化缓存**于 `<library>/.serpent/share-derivatives/`（文件名 `assetId.revisionId.edge.quality.webp`），命中即复用不重编码；写入用临时文件 + 原子 rename；有界 LRU（上限 1 GiB，超限按最旧 mtime 淘汰）；新命令 `web-share.prune-derivatives` 在缩略图巡检后清理失效条目。`/media/view`（非下载）支持固定 **4 段字节范围**：`?chunk=0..3` → `206` + `Content-Range`，越界 `416`，`HEAD` 返回切片头；下载仍走单请求全分辨率 JPEG。
+- 客户端：新模块 `viewer-image.ts` 并发拉取 4 个分片 → 按序拼装 `Blob` → 显示；分片失败重试 2 次，整体失败或服务端返回整文件时回退单请求；内存 LRU（默认 12 张）复用 `objectURL`，淘汰时 revoke。查看器打开期间 `Thumb` 渲染占位符、暂停网格缩略图，缩略图标记 `fetchPriority=low`、大图 `fetchPriority=high`。大图加载时显示「加载中…」。
+- 顺带：大图查看器标题栏收窄（垂直内边距 `--ui-space-2`→`--ui-space-1`，栏内按钮 `control-md`→`control-sm`）。
+
+**验证**：
+- `npm run typecheck`、`npm run lint` 通过。
+- 单测：`web-share-server`（含 4 片 206/416/HEAD/下载忽略 chunk 共 34 项）、`web-share-viewer-image`（分片拼装/重试/整文件回退/LRU）、`web-share-viewer`、`web-share-app`、`web-share-derivative-cache`、`web-share-derivative` 全绿。
+- `npm run test:library-availability`（改动 `library-service` 强制）：9 文件 / 228 通过 / 1 跳过。
+- 本机 HTTP 实测（共享库内一张 1040×1560 / 源 2.15MB 的 PNG）：整图 WebP `200 image/webp` 160,022 B；`chunk=0..3` 均 `206`，`Content-Range` 连续、四片合计 160,022 B，拼接 SHA256 与整图**完全一致**；`chunk=9` 返回 `416`。本次请求未产生新的系统临时目录（缓存路径生效）。
+- **未执行**：真实浏览器/隧道实速前后对比、packaged、Windows。记为待人类验收（`WEB-SHARE-CHUNK-001`）。

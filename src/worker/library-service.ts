@@ -37,6 +37,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { removeLibraryRootWithRetry, removePathWithSyncRetry, renamePathWithRetry } from './windows-fs-retry';
+import { shareDerivativeFileName } from './web-share-derivative-cache';
 import { shareThumbnailFileName } from './web-share-thumbnail-cache';
 import {
   execFileSync,
@@ -28561,6 +28562,45 @@ export class LibraryService {
         } catch {
           // Best effort; the next sweep retries.
         }
+      }
+    }
+    return removed;
+  }
+
+  /** Deterministic cache path for one viewer derivative (bounded WebP). */
+  shareDerivativeCachePath(
+    libraryId: string,
+    assetId: string,
+    revisionId: string,
+    maxEdge: number,
+    quality: number,
+  ): string {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    return path.join(
+      openLibrary.summary.libraryPath,
+      '.serpent',
+      'share-derivatives',
+      shareDerivativeFileName(assetId, revisionId, maxEdge, quality),
+    );
+  }
+
+  /** Remove any share-derivative file whose asset/revision is gone. */
+  pruneShareDerivatives(libraryId: string): number {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const kept = this.listShareThumbnailKeys(libraryId);
+    const root = path.join(openLibrary.summary.libraryPath, '.serpent', 'share-derivatives');
+    if (!existsSync(root)) return 0;
+    let removed = 0;
+    for (const file of readdirSync(root, { withFileTypes: true })) {
+      if (!file.isFile() || !file.name.endsWith('.webp')) continue;
+      // `<assetId>.<revisionId>.<edge>.<quality>.webp`; ids never contain dots.
+      const [assetId = file.name, revisionId = ''] = file.name.split('.');
+      if (kept.has(`${assetId}\u0000${revisionId}`)) continue;
+      try {
+        rmSync(path.join(root, file.name), { force: true });
+        removed += 1;
+      } catch {
+        // Best effort; the next sweep retries.
       }
     }
     return removed;

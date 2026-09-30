@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AssetSummary } from '../../shared/asset-types';
 import { downloadUrl, sourceUrl, viewUrl, type VisitorMarks } from './api';
 import { t } from './i18n';
+import { loadViewerImage, viewerImageCache } from './viewer-image';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
@@ -87,7 +88,9 @@ function ZoomImage({
     <div className="zoom-stage">
       <img
         alt={alt}
+        decoding="async"
         draggable={false}
+        fetchPriority="high"
         ref={imageRef}
         src={src}
         style={{
@@ -193,6 +196,45 @@ export function Viewer({
     [onClose],
   );
 
+  const imageSource =
+    asset !== undefined && asset.mediaType === 'image' ? viewUrl(libraryId, asset) : null;
+  const blobLoadingSupported =
+    typeof fetch === 'function' && typeof URL.createObjectURL === 'function';
+  const [imageLoad, setImageLoad] = useState<
+    { status: 'loading' } | { status: 'ok'; url: string } | { status: 'fallback' }
+  >(() => (blobLoadingSupported ? { status: 'loading' } : { status: 'fallback' }));
+  // Reset to a loading state when the target image changes. This is the
+  // documented "adjust state during render" pattern: it re-renders immediately
+  // without an extra effect pass and without showing the previous image.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  if (blobLoadingSupported && imageSource !== null && loadedKey !== imageSource) {
+    setLoadedKey(imageSource);
+    setImageLoad({ status: 'loading' });
+  }
+
+  useEffect(() => {
+    if (imageSource === null || !blobLoadingSupported) return;
+    const controller = new AbortController();
+    let active = true;
+    loadViewerImage({
+      url: imageSource,
+      key: imageSource,
+      cache: viewerImageCache,
+      signal: controller.signal,
+    })
+      .then((url) => {
+        if (active) setImageLoad({ status: 'ok', url });
+      })
+      .catch(() => {
+        // Parallel loading failed: let the browser fetch the single file.
+        if (active) setImageLoad({ status: 'fallback' });
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [imageSource, blobLoadingSupported]);
+
   if (asset === undefined) return null;
   // Images use the bounded derivative so a slow tunnel is not asked for a
   // 10–30 MB source; the download menu still offers the original. Video and
@@ -279,16 +321,22 @@ export function Viewer({
         ) : null}
 
         {asset.mediaType === 'image' ? (
-          <ZoomImage
-            key={asset.assetId}
-            src={src}
-            alt={asset.displayName}
-            dragMovedRef={dragMovedRef}
-          />
+          imageLoad.status === 'loading' ? (
+            <div className="viewer-loading" role="status">
+              {t('加载中…', 'Loading…')}
+            </div>
+          ) : (
+            <ZoomImage
+              key={asset.assetId}
+              src={imageLoad.status === 'ok' ? imageLoad.url : src}
+              alt={asset.displayName}
+              dragMovedRef={dragMovedRef}
+            />
+          )
         ) : asset.mediaType === 'video' ? (
-          <video key={asset.assetId} src={src} controls autoPlay playsInline />
+          <video key={asset.assetId} src={src} controls autoPlay playsInline preload="auto" />
         ) : asset.mediaType === 'audio' ? (
-          <audio key={asset.assetId} src={src} controls autoPlay />
+          <audio key={asset.assetId} src={src} controls autoPlay preload="auto" />
         ) : (
           <div className="viewer-fallback">
             <p>

@@ -1887,8 +1887,9 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     absolutePath: nonBlankString,
     mimeType: nonBlankString,
   }),
-  // Absolute path of a freshly encoded web-share derivative. The file lives in
-  // the Worker's temporary directory and is deleted by Main after streaming.
+  // Absolute path of a bounded web-share derivative. Without a cache the file
+  // lives in the Worker's temporary directory and is deleted by Main after
+  // streaming; `cached` marks the persisted viewer WebP that Main must keep.
   z.strictObject({
     ok: z.literal(true),
     type: z.literal('media.share-derivative'),
@@ -1897,6 +1898,8 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     byteSize: z.number().int().nonnegative(),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
+    /** `true` when the file is a persistent cache entry (do not delete it). */
+    cached: z.boolean(),
   }),
   // Absolute path of a freshly encoded, bounded web-share thumbnail. The file
   // lives in the Worker's temporary directory and is deleted by Main after

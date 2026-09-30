@@ -114,4 +114,28 @@ describe('createShareDerivative', () => {
       }),
     ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
   });
+
+  it('persists the viewer WebP at a destination and keeps it after cleanup', async () => {
+    const { directory, filePath } = await writeSourceImage();
+    const destination = path.join(directory, 'share-derivatives', 'asset.rev.2560.82.webp');
+    const result = await createShareDerivative({
+      sourceAbsolutePath: filePath,
+      sharpFactory: sharp as never,
+      request: {
+        format: 'webp',
+        maxEdge: 32,
+        quality: 82,
+        fullSize: false,
+        progressive: false,
+      },
+      destinationAbsolutePath: destination,
+    });
+
+    expect(result.cached).toBe(true);
+    expect(result.absolutePath).toBe(destination);
+    expect(existsSync(destination)).toBe(true);
+    // cleanup must not delete a cache entry.
+    result.cleanup();
+    expect(existsSync(destination)).toBe(true);
+  });
 });

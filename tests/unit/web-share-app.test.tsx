@@ -111,6 +111,10 @@ describe('web share App selection', () => {
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
+    // The viewer loads its image as parallel chunks; keep it off the network.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })));
+    (URL as unknown as { createObjectURL: () => string }).createObjectURL = vi.fn(() => 'blob:x');
+    (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = vi.fn();
   });
 
   afterEach(() => {
@@ -118,6 +122,7 @@ describe('web share App selection', () => {
     root = undefined;
     container?.remove();
     container = undefined;
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -164,9 +169,42 @@ describe('web share App selection', () => {
     await flush();
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
 
-    clickCard(0);
+clickCard(0);
     await flush();
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads grid thumbnails at low priority', async () => {
+    await act(async () => {
+      root?.render(createElement(App));
+    });
+    await flush();
+
+    const thumb = container?.querySelector('.card-thumb img');
+    expect(thumb).not.toBeNull();
+    expect(thumb?.getAttribute('fetchpriority')).toBe('low');
+    expect(thumb?.getAttribute('loading')).toBe('lazy');
+    expect(thumb?.getAttribute('decoding')).toBe('async');
+  });
+
+  it('pauses grid thumbnails while the viewer is open so the big image wins', async () => {
+    await act(async () => {
+      root?.render(createElement(App));
+    });
+    await flush();
+
+    expect(container?.querySelectorAll('.card-thumb img').length).toBeGreaterThan(0);
+
+    const open = container?.querySelector('.card .card-open');
+    if (open === undefined || open === null) throw new Error('viewer open button missing');
+    await act(async () => {
+      open.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await flush();
+
+    expect(container?.querySelector('.viewer')).not.toBeNull();
+    expect(container?.querySelectorAll('.card-thumb img').length).toBe(0);
+    expect(container?.querySelectorAll('.card-thumb .placeholder').length).toBeGreaterThan(0);
   });
 
 it('uses an integer grid-density slider bounded to 5–10 columns', async () => {

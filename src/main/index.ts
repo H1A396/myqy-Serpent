@@ -732,6 +732,7 @@ async function runWebShareThumbnailSweep(server: WebShareServer): Promise<void> 
       server.setThumbnailProgress({ active: true, total: assetIds.length, generated, skipped, failed });
     }
     await client.request({ type: 'web-share.prune-thumbnails', libraryId });
+    await client.request({ type: 'web-share.prune-derivatives', libraryId });
     server.setThumbnailProgress({ active: false, total: assetIds.length, generated, skipped, failed });
   } catch (error) {
     logger?.error('web-share.thumbnail-sweep', error);

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
+import path from 'node:path';
 import {
   parseWorkerRequest,
   type WorkerCommand,
@@ -13,6 +14,7 @@ import {
 } from '../shared/protocol/responses';
 import { stopOutgoingLibrariesForOpen } from './library-open-stop';
 import { createShareDerivative } from './web-share-derivative';
+import { evictShareDerivatives } from './web-share-derivative-cache';
 import {
   encodeShareThumbnail,
   type ShareThumbnailSharpFactory,
@@ -2738,16 +2740,65 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
       return result;
     }
     case 'media.get-share-derivative': {
-      // Read-only web share. The derivative is written to the OS temporary
-      // directory (never `.serpent/artifacts`) and Main deletes it after the
-      // response is streamed, so a share visitor leaves nothing behind.
-      // Resolving through `getCurrentMediaSource` re-validates that the revision
-      // is still current, so a stale share link cannot encode a superseded one.
+      // Read-only web share. Resolving through `getCurrentMediaSource`
+      // re-validates that the revision is still current, so a stale share link
+      // cannot encode a superseded one.
+      //
+      // The viewer WebP (bounded, non-full-size) is persisted under
+      // `.serpent/share-derivatives/` so it survives across the four parallel
+      // byte-range chunk requests and is never re-encoded per view. The
+      // full-resolution download JPEG stays a disposable temp file.
       const source = libraryService.getCurrentMediaSource(
         request.command.libraryId,
         request.command.assetId,
         request.command.revisionId,
       );
+      const persistable =
+        !request.command.fullSize && request.command.format === 'webp';
+      if (persistable) {
+        const destination = libraryService.shareDerivativeCachePath(
+          request.command.libraryId,
+          request.command.assetId,
+          request.command.revisionId,
+          request.command.maxEdge,
+          request.command.quality,
+        );
+        if (existsSync(destination)) {
+          return {
+            ok: true,
+            type: 'media.share-derivative',
+            absolutePath: destination,
+            mimeType: 'image/webp',
+            byteSize: statSync(destination).size,
+            width: request.command.maxEdge,
+            height: request.command.maxEdge,
+            cached: true,
+          };
+        }
+        const derivative = await createShareDerivative({
+          sourceAbsolutePath: source.absolutePath,
+          sharpFactory: requireSharp(),
+          request: {
+            format: request.command.format,
+            maxEdge: request.command.maxEdge,
+            quality: request.command.quality,
+            fullSize: request.command.fullSize,
+            progressive: request.command.progressive,
+          },
+          destinationAbsolutePath: destination,
+        });
+        evictShareDerivatives(path.dirname(destination), derivative.byteSize);
+        return {
+          ok: true,
+          type: 'media.share-derivative',
+          absolutePath: derivative.absolutePath,
+          mimeType: derivative.mimeType,
+          byteSize: derivative.byteSize,
+          width: derivative.width,
+          height: derivative.height,
+          cached: derivative.cached,
+        };
+      }
       const derivative = await createShareDerivative({
         sourceAbsolutePath: source.absolutePath,
         sharpFactory: requireSharp(),
@@ -2767,6 +2818,7 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
         byteSize: derivative.byteSize,
         width: derivative.width,
         height: derivative.height,
+        cached: derivative.cached,
       };
     }
     case 'media.get-share-thumbnail': {
@@ -2860,6 +2912,13 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
         ok: true,
         type: 'web-share.pruned',
         removed: libraryService.pruneShareThumbnails(request.command.libraryId),
+      };
+    }
+    case 'web-share.prune-derivatives': {
+      return {
+        ok: true,
+        type: 'web-share.pruned',
+        removed: libraryService.pruneShareDerivatives(request.command.libraryId),
       };
     }
     case 'web-share.delete-thumbnails': {

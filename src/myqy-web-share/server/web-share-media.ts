@@ -12,6 +12,8 @@ export interface ResolvedMedia {
 
 /** Bounded re-encode of an image source for visitors on a slow link. */
 export interface ResolvedDerivative extends ResolvedMedia {
+  /** `true` when the file is a persistent cache entry that must not be deleted. */
+  cached: boolean;
   /** Removes the temporary file once the response has been streamed. */
   cleanup: () => void;
 }
@@ -197,9 +199,20 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
       progressive: input.progressive,
     });
     if (!result.ok || result.type !== 'media.share-derivative') return null;
+    if (result.cached) {
+      // The viewer WebP lives in the persistent share-derivative cache; Main
+      // must never delete it (chunk reads depend on it surviving).
+      return {
+        absolutePath: result.absolutePath,
+        mimeType: result.mimeType,
+        cached: true,
+        cleanup: () => undefined,
+      };
+    }
     return {
       absolutePath: result.absolutePath,
       mimeType: result.mimeType,
+      cached: false,
       cleanup: () => {
         // Main owns the response lifecycle, so it also removes the temporary
         // file once the bytes are out. The path was minted by the Worker inside
@@ -239,6 +252,7 @@ export class WorkerBackedWebShareMedia implements WebShareMediaResolver {
       return {
         absolutePath: result.absolutePath,
         mimeType: result.mimeType,
+        cached: true,
         cleanup: () => undefined,
       };
     } catch {

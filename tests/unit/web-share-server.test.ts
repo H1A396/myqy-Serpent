@@ -196,6 +196,7 @@ class FakeMediaResolver implements WebShareMediaResolver {
     if (resolved === null) return null;
     return {
       ...resolved,
+      cached: this.derivativeCached,
       cleanup: () => {
         this.derivativeCleanupCount += 1;
       },
@@ -215,6 +216,7 @@ class FakeMediaResolver implements WebShareMediaResolver {
     if (resolved === null) return null;
     return {
       ...resolved,
+      cached: true,
       cleanup: () => {
         this.derivativeCleanupCount += 1;
       },
@@ -223,6 +225,9 @@ class FakeMediaResolver implements WebShareMediaResolver {
 
   /** Simulates a still-generating thumbnail that forces the artifact fallback. */
   thumbnailDerivativeUnavailable = false;
+
+  /** When true, the viewer derivative comes from the persistent cache. */
+  derivativeCached = false;
 
   /** Parameters of the last viewer derivative the server requested. */
   lastDerivative: {
@@ -633,6 +638,68 @@ describe('WebShareServer', () => {
       headers: { Cookie: cookie! },
     });
     expect(response.status).toBe(400);
+  });
+
+  it('serves a cached viewer derivative as four contiguous byte-range chunks', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.derivativeCached = true;
+    media.derivativeCleanupCount = 0;
+
+    const bodies: string[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      const response = await fetch(
+        `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=${index}`,
+        { headers: { Cookie: cookie! } },
+      );
+      expect(response.status).toBe(206);
+      expect(response.headers.get('content-type')).toBe('image/webp');
+      expect(response.headers.get('accept-ranges')).toBe('bytes');
+      expect(response.headers.get('cache-control')).toBe('private, max-age=3600');
+      bodies.push(await response.text());
+    }
+    // 16 bytes split 4 ways, contiguous and non-overlapping.
+    expect(bodies).toEqual(['deri', 'vati', 've-b', 'ytes']);
+    expect(bodies.join('')).toBe('derivative-bytes');
+    // A cached file is never deleted.
+    expect(media.derivativeCleanupCount).toBe(0);
+  });
+
+  it('reports an out-of-range chunk index with 416', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.derivativeCached = true;
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=9`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(416);
+    expect(response.headers.get('content-range')).toBe('bytes */16');
+  });
+
+  it('answers a HEAD chunk request with headers and no body', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.derivativeCached = true;
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&chunk=1`,
+      { method: 'HEAD', headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-length')).toBe('4');
+    expect(await response.text()).toBe('');
+  });
+
+  it('ignores the chunk parameter for downloads', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    media.derivativeCached = true;
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&download=1&chunk=0`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('derivative-bytes');
   });
 
 

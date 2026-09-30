@@ -136,7 +136,7 @@ function SidebarTree({
  * backoff while the Worker produces the artifact. The original file is never
  * requested here; it is only fetched by the viewer.
  */
-function Thumb({ url, alt }: { url: string; alt: string }) {
+function Thumb({ url, alt, paused }: { url: string; alt: string; paused?: boolean }) {
   const [attempt, setAttempt] = useState(0);
   const [exhausted, setExhausted] = useState(false);
   const extension = alt.includes('.') ? alt.split('.').pop() : '';
@@ -144,9 +144,17 @@ function Thumb({ url, alt }: { url: string; alt: string }) {
   if (exhausted) {
     return <span className="placeholder">{(extension ?? '').toUpperCase() || '?'}</span>;
   }
+  if (paused) {
+    // The viewer is open on top of the grid: cancel/stall this thumbnail's
+    // request so the full-size image gets the whole connection pool and tunnel
+    // bandwidth. Thumbnails are HTTP-cached, so they reload instantly on close.
+    return <span className="placeholder" aria-label={alt} />;
+  }
   return (
     <img
       alt={alt}
+      decoding="async"
+      fetchPriority="low"
       loading="lazy"
       src={attempt === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}retry=${attempt}`}
       onError={() => {
@@ -854,6 +862,7 @@ export function App() {
                           <span className="placeholder">NEW</span>
                         ) : (
                           <Thumb
+                            paused={viewerIndex !== null}
                             url={thumbnailUrl(libraryId, asset.assetId)}
                             alt={asset.displayName}
                           />

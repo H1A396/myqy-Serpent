@@ -796,11 +796,16 @@ button {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--ui-space-3);
-  padding: var(--ui-space-2) var(--ui-space-3);
+  padding: var(--ui-space-1) var(--ui-space-3);
   color: var(--ui-content-primary);
   background: var(--ui-surface-overlay);
   border-bottom: 1px solid var(--ui-border-divider);
   backdrop-filter: blur(12px);
+}
+
+.viewer-header .button {
+  height: var(--ui-size-control-sm);
+  padding: 0 var(--ui-space-3);
 }
 
 .viewer-header-left {
@@ -939,6 +944,11 @@ button {
   color: var(--ui-content-secondary);
   font-size: var(--ui-font-size-caption);
   font-variant-numeric: tabular-nums;
+}
+
+.viewer-loading {
+  color: var(--ui-content-secondary);
+  font-size: var(--ui-font-size-caption);
 }
 
 .viewer-nav {

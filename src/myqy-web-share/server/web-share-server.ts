@@ -39,6 +39,13 @@ import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from '.
 import { WebShareSettingsStore } from './web-share-settings-store';
 import { parseByteRange } from '../../main/artifact-response';
 
+/**
+ * The viewer WebP is split into this many contiguous byte-range chunks. The
+ * client requests them in parallel (each a separate tunnel connection, which is
+ * ~5× faster than one stream) and concatenates them back into the image.
+ */
+const WEB_SHARE_VIEWER_CHUNK_COUNT = 4;
+
 export interface WebShareLogger {
   info(scope: string, message: string, context?: Record<string, unknown>): void;
   error(scope: string, error: unknown, context?: Record<string, unknown>): void;
@@ -900,6 +907,14 @@ export class WebShareServer {
         writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
         return;
       }
+      // The on-screen image is a deterministic function of the asset+revision
+      // and (for the bounded WebP) persisted, so split it into fixed byte-range
+      // chunks the client can pull in parallel. Downloads keep the single file.
+      const chunkParam = url.searchParams.get('chunk');
+      if (!download && derivative.cached && chunkParam !== null) {
+        await this.#streamViewerChunk(request, response, derivative, chunkParam);
+        return;
+      }
       await this.#streamDerivative(request, response, derivative, {
         download,
         assetId: identifier,
@@ -978,6 +993,76 @@ export class WebShareServer {
     const stream = createReadStream(resolved.absolutePath, { start, end });
     stream.on('error', (error) => {
       this.#logger.error('web-share.media-stream', error);
+      if (!response.headersSent) {
+        writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      } else {
+        response.destroy();
+      }
+    });
+    response.on('close', () => {
+      if (!response.writableFinished) stream.destroy();
+    });
+    stream.pipe(response);
+  }
+
+  /**
+   * Serve one fixed byte-range chunk of the persisted viewer WebP.
+   *
+   * The client asks for `chunk=0..3`; each maps to an exact, contiguous,
+   * non-overlapping slice of the same file, so the four responses concatenate
+   * back into the original image with no gaps. `416` reports an out-of-range
+   * index; a `HEAD` returns the slice headers without a body. The cached file is
+   * never deleted (its `cleanup` is a no-op).
+   */
+  async #streamViewerChunk(
+    request: IncomingMessage,
+    response: ServerResponse,
+    derivative: ResolvedDerivative,
+    chunkParam: string,
+  ): Promise<void> {
+    let size: number;
+    try {
+      const info = await stat(derivative.absolutePath);
+      if (!info.isFile()) throw new Error('not a file');
+      size = info.size;
+    } catch {
+      derivative.cleanup();
+      writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
+      return;
+    }
+
+    const index = Number.parseInt(chunkParam, 10);
+    if (
+      !Number.isInteger(index)
+      || index < 0
+      || index >= WEB_SHARE_VIEWER_CHUNK_COUNT
+      || size <= 0
+    ) {
+      response.statusCode = 416;
+      response.setHeader('Content-Range', `bytes */${size}`);
+      response.end();
+      return;
+    }
+
+    const start = Math.floor((index * size) / WEB_SHARE_VIEWER_CHUNK_COUNT);
+    const endExclusive = Math.floor(((index + 1) * size) / WEB_SHARE_VIEWER_CHUNK_COUNT);
+    const end = Math.max(start, endExclusive - 1);
+
+    response.setHeader('Content-Type', derivative.mimeType);
+    response.setHeader('Accept-Ranges', 'bytes');
+    response.setHeader('Cache-Control', 'private, max-age=3600');
+    response.statusCode = 206;
+    response.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+    response.setHeader('Content-Length', String(end - start + 1));
+
+    if (request.method === 'HEAD') {
+      response.end();
+      return;
+    }
+
+    const stream = createReadStream(derivative.absolutePath, { start, end });
+    stream.on('error', (error) => {
+      this.#logger.error('web-share.viewer-chunk-stream', error);
       if (!response.headersSent) {
         writeJson(response, 404, { error: 'Media not found.', code: 'WEB_SHARE_MEDIA_NOT_FOUND' });
       } else {

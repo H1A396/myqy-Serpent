@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, renameSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { LibraryServiceError } from './library-service';
@@ -15,14 +15,15 @@ import { LibraryServiceError } from './library-service';
  *   revision (resolved and re-validated by the handler, so a stale share link
  *   cannot encode a superseded revision); the grid derives from the cached card
  *   thumbnail instead of re-decoding a multi-megapixel original per tile.
- * - **Nothing lands in the library.** The output goes to the OS temporary
+ * - **Disposable output by default.** The output goes to the OS temporary
  *   directory, never `.serpent/artifacts`. Files written there without a
  *   `revision_artifacts` row are deleted by the orphan scan five minutes later,
  *   so they cannot serve as a cache; not claiming to be one keeps the library
  *   schema and its cleanup invariants untouched.
- * - **The caller deletes the file.** `createShareDerivative` returns a path and
- *   a cleanup function. The temporary directory is removed as soon as the
- *   response has been written, including on error.
+ * - **Persistent output on request.** The viewer WebP is expensive to encode
+ *   and is now served as four parallel byte-range chunks, so the caller may
+ *   pass a `destinationAbsolutePath` (the share-derivative cache). The file is
+ *   written atomically (temp + rename) and `cached` tells Main not to delete it.
  */
 
 export type ShareDerivativeFormat = 'webp' | 'jpeg' | 'png';
@@ -33,7 +34,9 @@ export interface ShareDerivativeResult {
   byteSize: number;
   width: number;
   height: number;
-  /** Idempotent; safe to call after a failed transfer. */
+  /** `true` when the file is a persistent cache entry; Main must not delete it. */
+  cached: boolean;
+  /** Idempotent; safe to call after a failed transfer. No-op for cached files. */
   cleanup: () => void;
 }
 
@@ -111,24 +114,46 @@ function encode(
 }
 
 /**
- * Encode one bounded derivative into a temporary file.
+ * Encode one bounded derivative.
  *
- * The caller owns the returned `cleanup` and must run it once the response has
- * been streamed (or failed).
+ * With no `destinationAbsolutePath` the output is a temporary file owned by the
+ * caller's `cleanup`. With a destination the file is written atomically into the
+ * persistent share-derivative cache and `cached` is set, so the caller keeps it.
  */
 export async function createShareDerivative(options: {
   /** Absolute path of the pixels to encode; the caller owns path validation. */
   sourceAbsolutePath: string;
   sharpFactory: DerivativeSharpFactory;
   request: ShareDerivativeRequest;
+  /** Write straight into the persistent cache instead of the temp directory. */
+  destinationAbsolutePath?: string;
 }): Promise<ShareDerivativeResult> {
   const { sourceAbsolutePath, sharpFactory, request } = options;
 
-  const stageDir = mkdtempSync(path.join(tmpdir(), 'serpent-share-derivative-'));
-  const outputPath = path.join(stageDir, `derivative.${EXTENSION_BY_FORMAT[request.format]}`);
-  const cleanup = (): void => {
-    rmSync(stageDir, { force: true, recursive: true });
-  };
+  let outputPath: string;
+  let temporaryPath: string;
+  let stageDir: string | null = null;
+  let cleanup: () => void;
+  let cached = false;
+
+  if (options.destinationAbsolutePath === undefined) {
+    stageDir = mkdtempSync(path.join(tmpdir(), 'serpent-share-derivative-'));
+    outputPath = path.join(stageDir, `derivative.${EXTENSION_BY_FORMAT[request.format]}`);
+    temporaryPath = outputPath;
+    cleanup = (): void => {
+      rmSync(stageDir as string, { force: true, recursive: true });
+    };
+  } else {
+    const destination = options.destinationAbsolutePath;
+    mkdirSync(path.dirname(destination), { recursive: true });
+    outputPath = destination;
+    temporaryPath = `${destination}.${process.pid}.tmp`;
+    cached = true;
+    cleanup = (): void => {
+      // The cache entry persists; only a failed write's temp is removed.
+      rmSync(temporaryPath, { force: true });
+    };
+  }
 
   let encoded: EncodedDerivative;
   try {
@@ -142,7 +167,7 @@ export async function createShareDerivative(options: {
           fit: 'inside',
           withoutEnlargement: true,
         });
-    const output = await encode(pipeline, request).toFile(outputPath);
+    const output = await encode(pipeline, request).toFile(temporaryPath);
     const dimensions = output as { width?: unknown; height?: unknown } | null;
     if (
       dimensions === null
@@ -162,7 +187,7 @@ export async function createShareDerivative(options: {
 
   let byteSize: number;
   try {
-    byteSize = statSync(outputPath).size;
+    byteSize = statSync(temporaryPath).size;
     if (byteSize <= 0) throw new Error('empty output');
   } catch (error) {
     cleanup();
@@ -172,12 +197,25 @@ export async function createShareDerivative(options: {
     });
   }
 
+  if (cached) {
+    try {
+      renameSync(temporaryPath, outputPath);
+    } catch (error) {
+      rmSync(temporaryPath, { force: true });
+      throw new LibraryServiceError('INTERNAL_ERROR', {
+        reason: 'MEDIA_PROCESSING_FAILED',
+        cause: error,
+      });
+    }
+  }
+
   return {
     absolutePath: outputPath,
     mimeType: MIME_BY_FORMAT[request.format],
     byteSize,
     width: encoded.width,
     height: encoded.height,
+    cached,
     cleanup,
   };
 }
