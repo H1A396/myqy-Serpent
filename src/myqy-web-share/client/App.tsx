@@ -730,6 +730,7 @@ export function App() {
                 {Array.from({ length: SKELETON_TILES }, (_, index) => (
                   <div className="card skeleton" key={index}>
                     <span className="card-thumb" />
+                    <span className="card-caption" />
                   </div>
                 ))}
               </div>
