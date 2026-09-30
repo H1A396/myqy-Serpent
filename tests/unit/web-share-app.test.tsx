@@ -169,7 +169,7 @@ describe('web share App selection', () => {
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
   });
 
-  it('uses an integer grid-density slider bounded to 5–15 columns', async () => {
+it('uses an integer grid-density slider bounded to 5–10 columns', async () => {
     await act(async () => {
       root?.render(createElement(App));
     });
@@ -179,7 +179,7 @@ describe('web share App selection', () => {
     expect(slider).not.toBeNull();
     expect(slider?.type).toBe('range');
     expect(slider?.min).toBe('5');
-    expect(slider?.max).toBe('15');
+    expect(slider?.max).toBe('10');
     expect(slider?.step).toBe('1');
     expect(slider?.value).toBe('5');
 

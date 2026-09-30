@@ -18,7 +18,7 @@ const THUMBNAIL_RETRY_LIMIT = 6;
 const SKELETON_TILES = 12;
 const SEARCH_CACHE_LIMIT = 24;
 const GRID_COLUMNS_MIN = 5;
-const GRID_COLUMNS_MAX = 15;
+const GRID_COLUMNS_MAX = 10;
 
 /** Stable identity for one (library, scope, sort, filters, query) listing. */
 function searchCacheKey(parts: readonly unknown[]): string {
