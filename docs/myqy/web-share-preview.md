@@ -46,6 +46,13 @@
 
 - **`npm start` 不得自动重建 `dist/web`**（`prestart` 中已移除 `build-web.mjs`）。
   否则每次启动都会用当前未验收的源码覆盖主线页面——2026-09-30 已发生过一次。
+- **主线构建不删除测试页（2026-09-30 修复）**：`vite.web.config.ts` 使用
+  `emptyOutDir: false`，因此 `npm run web:build` / `npm run package` 只覆盖主线页面，
+  **不再清空整个 `dist/web`**，`dist/web/web-preview/` 会保留。
+  代价是根目录会残留无引用的旧 hash 资产，需要时手动 `Remove-Item dist/web` 整体清理。
+- **应用主线后测试页与主线同态**：同一份源码构建，两者 hash 一致
+  （本轮实际产出均为 `index-D37934d0.js`）。改动应用到主线后，测试页默认保留不变；
+  后续要开发新试验，直接在测试页上改源码并重跑 `npm run web:build:preview`。
 - 若需要恢复自动化，必须先确认主线页面不会被未验收改动污染，并更新本文件。
 - `npm run package` / `npm run web:build` 产出的是主线页面（`dist/web`），用于发布。
 - `dist/` 已被 `.gitignore` 忽略，两个页面都不进版本控制。

@@ -29,7 +29,11 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir,
-    emptyOutDir: true,
+    // Never wipe the whole outDir: the preview lives *inside* `dist/web`
+    // (`dist/web/web-preview/`), and a root build must not delete it. Hashed
+    // asset names mean stale bundles are unreferenced and harmless; clean
+    // `dist/web` manually when the accumulation bothers you.
+    emptyOutDir: false,
     target: 'es2022',
   },
   server: {
