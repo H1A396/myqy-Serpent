@@ -241,6 +241,7 @@ import { WorkerBackedWebShareData } from '../myqy-web-share/server/web-share-dat
 import { WorkerBackedWebShareMedia } from '../myqy-web-share/server/web-share-media';
 import {
   WEB_SHARE_VISITOR_LIST_LIMIT,
+  WEB_SHARE_DERIVATIVE_TIERS,
   webShareSettingsRequestSchema,
   webShareSettingsResponseSchema,
   webShareSettingsSnapshotSchema,
@@ -753,6 +754,53 @@ function scheduleWebShareThumbnailGeneration(libraryId: string, assetId: string)
     webShareThumbnailFlushTimer = undefined;
     void flushWebShareThumbnailGeneration();
   }, 300);
+}
+
+/**
+ * After an import, also warm the two viewer LOD tiers (WebP 82/100) for the
+ * currently-shared library, so a freshly added image opens instantly rather
+ * than waiting on a cold encode. Batched and piggy-backed on the same
+ * `asset.thumbnail.ready` signal; the derivative cache skips anything already
+ * on disk, so a re-import is cheap.
+ */
+const webSharePendingDerivativeAssets = new Map<string, Set<string>>();
+let webShareDerivativeFlushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleWebShareDerivativeGeneration(libraryId: string, assetId: string): void {
+  const pending = webSharePendingDerivativeAssets.get(libraryId) ?? new Set<string>();
+  pending.add(assetId);
+  webSharePendingDerivativeAssets.set(libraryId, pending);
+  if (webShareDerivativeFlushTimer !== undefined) return;
+  webShareDerivativeFlushTimer = setTimeout(() => {
+    webShareDerivativeFlushTimer = undefined;
+    void flushWebShareDerivativeGeneration();
+  }, 500);
+}
+
+async function flushWebShareDerivativeGeneration(): Promise<void> {
+  const client = workerClient;
+  const server = webShareServer;
+  const libraryId = server?.resolvedSharedLibraryId() ?? null;
+  const pending =
+    libraryId === null ? undefined : webSharePendingDerivativeAssets.get(libraryId);
+  webSharePendingDerivativeAssets.clear();
+  if (client === undefined || server === undefined || libraryId === null) return;
+  if (pending === undefined || pending.size === 0) return;
+  const assetIds = [...pending].slice(0, 500);
+  try {
+    // Lowest tier first, so a viewer opens on 82 even while 100 is encoding.
+    for (const quality of WEB_SHARE_DERIVATIVE_TIERS) {
+      await client.request({
+        type: 'web-share.generate-derivatives',
+        libraryId,
+        assetIds,
+        quality,
+      });
+    }
+    await refreshWebShareDerivativeStats(server, libraryId);
+  } catch (error) {
+    logger?.error('web-share.derivative-autogen', error);
+  }
 }
 
 async function flushWebShareThumbnailGeneration(): Promise<void> {
@@ -5370,6 +5418,7 @@ async function startApplication(): Promise<void> {
       event.libraryId === webShareServer.resolvedSharedLibraryId()
     ) {
       scheduleWebShareThumbnailGeneration(event.libraryId, event.assetId);
+      scheduleWebShareDerivativeGeneration(event.libraryId, event.assetId);
     }
     sendToLiveWebContents(mainWindow?.webContents, THUMBNAIL_CHANNEL, event);
   });

@@ -159,3 +159,12 @@
 
 **验证**：typecheck/lint 通过；`web-share-prefetch-queue`（low 先于 high、跳过已缓存/非图片、暂停不下载-恢复后继续）与 `web-share-prefetch-cache`（无 IndexedDB 时降级；有则读写/总量/LRU）单测全绿；预览与主线构建产物含 IndexedDB 缓存与暂停逻辑；`/` 与 `/web-preview/` 引用同一 bundle。
 - **未执行**：真实浏览器预取/暂停/命中观感、Cloudflare 隧道实测、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，追加）：新导入图片自动生成两档大图
+
+**旧行为**：新导入到分享库的图片只自动生成**缩略图**；webp82/100 大图需访客点开或手动点设置页按钮才生成。
+
+**新行为**：`src/main/index.ts` 在 `asset.thumbnail.ready`（当前分享库）时，除缩略图外再排入一个派生生成队列（去抖 500ms、批量 500），对每个新资产**先跑 webp82 再跑 webp100**（复用 `web-share.generate-derivatives`），完成后刷新设置页体积统计。已在磁盘的档跳过，重复导入廉价。
+
+**验证**：typecheck/lint 通过；构建后的 Main（`.vite/build/main.js`）含新钩子（`scheduleWebShareDerivativeGeneration` / `derivative-autogen`）；所调用的命令本身已在批次 2 覆盖。
+- **未执行**：真实导入流程触发自动生成、设置页体积随之增长的实测（待人工验收）。
