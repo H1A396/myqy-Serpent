@@ -5,6 +5,9 @@ import { prefetchQueue, type PrefetchProgress } from './prefetch-queue';
 
 const IDLE: PrefetchProgress = { images: 0, total: 0, completed: 0, tier: null, active: false };
 
+/** Keep the finished bar on screen briefly so it is not missed. */
+const DONE_LINGER_MS = 6000;
+
 /**
  * Per-tier completion, derived from the queue's strict "whole low tier, then
  * whole high tier" order: the first `images` completions are all low tier.
@@ -54,16 +57,28 @@ function TierBar({
  */
 export function PrefetchIndicator() {
   const [progress, setProgress] = useState<PrefetchProgress>(IDLE);
+  const [holdDone, setHoldDone] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = prefetchQueue.subscribe(setProgress);
+    const unsubscribe = prefetchQueue.subscribe((next) => {
+      setProgress(next);
+      if (next.total > 0 && next.completed >= next.total && !next.active) setHoldDone(true);
+      else if (next.active) setHoldDone(false);
+    });
     return () => {
       unsubscribe();
     };
   }, []);
 
+  useEffect(() => {
+    if (!holdDone) return;
+    const timer = window.setTimeout(() => setHoldDone(false), DONE_LINGER_MS);
+    return () => window.clearTimeout(timer);
+  }, [holdDone]);
+
   if (progress.total === 0) return null;
-  if (!progress.active && progress.completed >= progress.total) return null;
+  const done = progress.completed >= progress.total && !progress.active;
+  if (done && !holdDone) return null;
   const { low, high } = tierCompletion(progress);
 
   return (

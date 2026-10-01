@@ -163,4 +163,34 @@ describe('prefetch queue', () => {
     // Stopping resets the indicator to hidden.
     expect(queue.progress).toEqual({ images: 0, total: 0, completed: 0, tier: null, active: false });
   });
+
+  it('restarts when start() supersedes a run that is still in flight', async () => {
+    const cache = new FakeCache();
+    const urls: string[] = [];
+    let releaseFirst: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const fetchMock = vi.fn(async (url: string) => {
+      urls.push(String(url));
+      // Hold the very first download so the second start() lands mid-run.
+      if (urls.length === 1) await gate;
+      return { ok: true, blob: async () => new Blob([new Uint8Array(10)]) };
+    });
+    const queue = new PrefetchQueue({
+      cache: cache as unknown as PrefetchCache,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    queue.start('lib', [makeAsset('a')]);
+    await flush(3);
+    // Supersede mid-run with a different set of assets.
+    queue.start('lib', [makeAsset('b')]);
+    releaseFirst?.();
+    await flush(16);
+    queue.stop();
+
+    // The superseded run must not swallow the new start(): b is fetched.
+    expect(urls.some((url) => url.includes('/view/b'))).toBe(true);
+  });
 });

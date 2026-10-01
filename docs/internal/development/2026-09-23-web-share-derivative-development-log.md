@@ -188,3 +188,17 @@
 - headless Chromium 对重启后的服务实测 `/web-preview/`：控制台 **0 条消息**；进度条采样 `82 18/118 100 0/118` → `82 118/118 100 112/118`；236 次 `/media/view`、IndexedDB 236 条 / 67,356,046 B。
 - **未执行**：真实 Cloudflare 隧道下 Insights 表现、packaged、Windows。
 - 注：本轮改的是分享服务（Main），需重启 Electron 生效；测试页 `/web-preview/` 已重建，主线 `/` 待用户验收后再 `npm run web:build`。
+
+## 补充记录（2026-10-01 第三轮，批次 4 追加）：预取竞态修复 + 进度条完成态驻留
+
+**背景**：用户在隧道页 `/web-preview/` 仍看不到进度条，Network 里却有 `/media/view` 请求。
+
+**诊断**：无头 Chromium 对隧道实测，多数会话进度条正常出现并推进（控制台 0 消息），但暴露一个真实竞态：`PrefetchQueue.start()` 在已有运行中时因 `if (!this.#running)` 被**静默丢弃**——页面 effect 若重跑（例如启动时一次瞬态 401 导致 phase 抖动，用户控制台确有 `api/state 401`），cleanup 的 `stop()` 会中止当前 run 并复位进度，紧接着的 `start()` 却因旧 run 尚未收尾（`#running` 仍为 true）而不启动，预取从此“假死”，进度条也不再出现。这也解释了「Network 有历史请求、界面无进度」。
+
+**修复**：
+- `prefetch-queue.ts` 新增 `#ensureRunning()` 与 `#restart`：运行中的 `start()`/`resume()` 记下重启动请求，旧 run 察觉 generation 被超越后立即以最新资产重新起跑；`stop()` 清除重启动标记。
+- `PrefetchIndicator.tsx`：完成态**驻留约 6 秒**再隐藏（`DONE_LINGER_MS`），避免在快网/热缓存下“一闪而过”被用户错过；空闲或驻留结束后隐藏。
+
+**验证**：typecheck/lint 通过；`web-share-prefetch-queue`（新增“运行中 start 会重启并抓取新资产”用例）、`web-share-prefetch-indicator`（新增驻留 6 秒后隐藏用例）共 10 测试全绿；本地 `/web-preview/` 无头实测：进度条出现并推进到 `82 118/118 100 118/118` 时仍驻留、随后隐藏，`/media/view` 236 次全 200、IndexedDB 236 条、控制台 0 消息。
+- **未执行**：真实用户浏览器硬刷新后的观感（待用户验收）、packaged、Windows。
+- 注：本次仅改客户端（Vite 构建），无需重启 Electron，只需重建测试页。

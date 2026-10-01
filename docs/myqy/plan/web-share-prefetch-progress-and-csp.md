@@ -53,6 +53,17 @@
 - 新增 `PrefetchIndicator.tsx`：订阅队列，顶部工具栏最右渲染「自动缓存 82 完成/总数 · 100 完成/总数」两条细进度条（`role="progressbar"`），空闲/完成时隐藏。档位完成数由"先整库 low 再整库 high"的严格顺序推导。
 - `App.tsx` 在 `grid-density-control` 之后挂载 `<PrefetchIndicator />`；`styles.css` 用主题 token 新增样式（`--ui-content-*`、`--ui-action-accent`、`--ui-radius-pill`、`--ui-space-*`）。
 
+### 3.6 预取竞态修复 + 完成态驻留（用户复测追加）
+
+用户复测时仍看不到进度条。无头 Chromium 对隧道实测发现真实竞态：`PrefetchQueue.start()` 在已有运行中时会被 `if (!this.#running)` **静默丢弃**。页面 effect 若重跑（例如启动时一次瞬态 401 导致 `phase` 抖动），cleanup 的 `stop()` 会中止并复位当前 run，紧接着的 `start()` 因旧 run 尚未收尾而不启动——预取"假死"、进度条也不再出现。
+
+- `prefetch-queue.ts`：新增 `#ensureRunning()` / `#restart`，运行中的 `start()`/`resume()` 记下重启动请求，旧 run 察觉 generation 被超越后立刻按最新资产重新起跑；`stop()` 清除该标记。
+- `PrefetchIndicator.tsx`：完成态**驻留约 6 秒**再隐藏（`DONE_LINGER_MS`），避免快网/热缓存下"一闪而过"。
+
+### 3.7 Early Hints 在隧道下仍可能告警（记录，未处理）
+
+经 Cloudflare 隧道时，用户控制台仍偶发 `preloaded using link preload but not used`（Cloudflare 的边缘 Early Hints 处理我们无法控制；本地直连已验证 `crossorigin` 修复生效、无此告警）。属边缘层行为，暂不处理，记录待观察。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。
@@ -62,6 +73,7 @@
   - 控制台 **0 条消息**（CSP 内联、preload credentials、preload 未使用、Insights 全部消失）。
   - 进度条实测采样：`自动缓存 82 18/118 100 0/118` → `… 82 118/118 100 112/118`。
   - 236 次 `/media/view`、IndexedDB 236 条 / 67,356,046 B（low 118 + high 118）。
+- 追加修正后本地无头实测：进度条出现并推进到 `82 118/118 100 118/118` 时驻留、随后隐藏；236 次 `/media/view` 全 200、IndexedDB 236 条、控制台 0 消息。
 - 未执行：真实 Cloudflare 隧道下 Insights 表现、packaged、Windows —— 待人工验收。
 
 ## 五、关键文件

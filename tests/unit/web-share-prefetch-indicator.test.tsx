@@ -119,9 +119,20 @@ describe('PrefetchIndicator', () => {
     ).toBe('true');
   });
 
-  it('hides itself when both tiers are fully cached', async () => {
+  it('lingers briefly after both tiers are cached, then hides', async () => {
     await render();
-    await emit(progress({ images: 5, total: 10, completed: 10, tier: null, active: false }));
-    expect(container?.querySelector('.prefetch-indicator')).toBeNull();
+    vi.useFakeTimers();
+    try {
+      await emit(progress({ images: 5, total: 10, completed: 10, tier: null, active: false }));
+      // Still on screen right after finishing, so it is not missed.
+      expect(container?.querySelector('.prefetch-indicator')).not.toBeNull();
+
+      await act(async () => {
+        vi.advanceTimersByTime(6000);
+      });
+      expect(container?.querySelector('.prefetch-indicator')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

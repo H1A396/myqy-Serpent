@@ -46,6 +46,8 @@ export class PrefetchQueue {
   readonly #gapMs: number;
   #paused = false;
   #running = false;
+  /** A start()/resume() arrived mid-run; restart once the current run exits. */
+  #restart = false;
   #generation = 0;
   #libraryId: string | null = null;
   #assets: readonly AssetSummary[] = [];
@@ -79,7 +81,7 @@ export class PrefetchQueue {
     this.#libraryId = libraryId;
     this.#assets = assets;
     this.#generation += 1;
-    if (!this.#running) void this.#run(this.#generation);
+    this.#ensureRunning();
   }
 
   setAssets(libraryId: string, assets: readonly AssetSummary[]): void {
@@ -99,11 +101,12 @@ export class PrefetchQueue {
   resume(): void {
     if (!this.#paused) return;
     this.#paused = false;
-    if (!this.#running) void this.#run(this.#generation);
+    this.#ensureRunning();
   }
 
   stop(): void {
     this.#generation += 1;
+    this.#restart = false;
     this.#paused = false;
     this.#assets = [];
     this.#libraryId = null;
@@ -112,6 +115,22 @@ export class PrefetchQueue {
 
   get paused(): boolean {
     return this.#paused;
+  }
+
+  /**
+   * Guarantee a run is active. A call that arrives while a run is in flight is
+   * remembered and starts fresh as soon as that run notices its generation was
+   * superseded — otherwise a start() during a run (e.g. the page effect re-runs
+   * after a transient 401) would be silently dropped and prefetching would
+   * stop for good.
+   */
+  #ensureRunning(): void {
+    if (this.#running) {
+      this.#restart = true;
+      return;
+    }
+    this.#restart = false;
+    void this.#run(this.#generation);
   }
 
   async #run(generation: number): Promise<void> {
@@ -154,8 +173,13 @@ export class PrefetchQueue {
       }
     } finally {
       this.#running = false;
-      // A newer start()/stop() superseded this run; don't clobber its progress.
-      if (generation === this.#generation) this.#setProgress({ active: false, tier: null });
+      if (this.#restart) {
+        // A newer start()/resume() superseded this run: hand over to it.
+        this.#restart = false;
+        this.#ensureRunning();
+      } else if (generation === this.#generation) {
+        this.#setProgress({ active: false, tier: null });
+      }
     }
   }
 
