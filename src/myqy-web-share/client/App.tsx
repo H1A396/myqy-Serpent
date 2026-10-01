@@ -11,6 +11,7 @@ import {
 } from './api';
 import { DetailPanel } from './DetailPanel';
 import { t } from './i18n';
+import { PrefetchIndicator } from './PrefetchIndicator';
 import { Viewer } from './Viewer';
 import { prefetchQueue } from './prefetch-queue';
 
@@ -850,6 +851,7 @@ export function App() {
             />
             <output className="grid-density-value">{gridColumns}</output>
           </label>
+          <PrefetchIndicator />
         </div>
 
         <div className="content">

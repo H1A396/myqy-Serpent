@@ -3,6 +3,7 @@
 import type { AssetSummary } from '../../src/shared/asset-types';
 import type { PrefetchCache, PrefetchCacheKey } from '../../src/myqy-web-share/client/prefetch-cache';
 import { PrefetchQueue } from '../../src/myqy-web-share/client/prefetch-queue';
+import type { PrefetchProgress } from '../../src/myqy-web-share/client/prefetch-queue';
 vi.mock('../../src/myqy-web-share/client/api', () => ({
   viewUrl: (_libraryId: string, asset: { assetId: string }, options?: { tier?: string }) =>
     options?.tier === 'high' ? `/view/${asset.assetId}?tier=high` : `/view/${asset.assetId}`,
@@ -85,10 +86,12 @@ describe('prefetch queue', () => {
   it('skips tiers already in the cache and skips non-images', async () => {
     const cache = new FakeCache();
     cache.stored.set('a:low', 10);
-    const fetchMock = vi.fn(async (_url: string) => ({
-      ok: true,
-      blob: async () => new Blob([new Uint8Array(10)]),
-    }));
+    const fetchMock = vi.fn<(url: string) => Promise<{ ok: boolean; blob: () => Promise<Blob> }>>(
+      async () => ({
+        ok: true,
+        blob: async () => new Blob([new Uint8Array(10)]),
+      }),
+    );
     const queue = new PrefetchQueue({
       cache: cache as unknown as PrefetchCache,
       fetchImpl: fetchMock as unknown as typeof fetch,
@@ -105,7 +108,7 @@ describe('prefetch queue', () => {
 
   it('pauses while the viewer is open and resumes after close', async () => {
     const cache = new FakeCache();
-    const fetchMock = vi.fn(async (_url: string) => ({
+    const fetchMock = vi.fn(async () => ({
       ok: true,
       blob: async () => new Blob([new Uint8Array(10)]),
     }));
@@ -125,5 +128,39 @@ describe('prefetch queue', () => {
     await flush(12);
     queue.stop();
     expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('reports per-tier progress for the on-screen indicator', async () => {
+    const cache = new FakeCache();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      blob: async () => new Blob([new Uint8Array(10)]),
+    }));
+    const queue = new PrefetchQueue({
+      cache: cache as unknown as PrefetchCache,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    const seen: PrefetchProgress[] = [];
+    queue.subscribe((progress) => seen.push({ ...progress }));
+
+    // The video is excluded from the totals (only images are prefetched).
+    queue.start('lib', [makeAsset('a'), makeAsset('b'), makeAsset('v', 'video')]);
+    await flush(16);
+
+    const started = seen.find((progress) => progress.active && progress.tier === 'low');
+    expect(started).toMatchObject({ images: 2, total: 4, completed: 0, active: true });
+    expect(seen.some((progress) => progress.tier === 'high')).toBe(true);
+    // Finished: both tiers of both images counted, nothing left active.
+    expect(seen[seen.length - 1]).toEqual({
+      images: 2,
+      total: 4,
+      completed: 4,
+      tier: null,
+      active: false,
+    });
+
+    queue.stop();
+    // Stopping resets the indicator to hidden.
+    expect(queue.progress).toEqual({ images: 0, total: 0, completed: 0, tier: null, active: false });
   });
 });

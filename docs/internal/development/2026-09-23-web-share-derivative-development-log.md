@@ -168,3 +168,23 @@
 
 **验证**：typecheck/lint 通过；构建后的 Main（`.vite/build/main.js`）含新钩子（`scheduleWebShareDerivativeGeneration` / `derivative-autogen`）；所调用的命令本身已在批次 2 覆盖。
 - **未执行**：真实导入流程触发自动生成、设置页体积随之增长的实测（待人工验收）。
+
+## 补充记录（2026-10-01 第三轮，批次 4）：控制台报错修复 + 预取进度条
+
+**背景**：用户反馈控制台报错，并说"自动下载好像并没有什么作用"。
+
+**诊断（"没作用"的根因）**：headless Chromium（Playwright）对运行中的分享服务（118 张图的库）实测，一次干净会话产生 **236 次 `/media/view` 请求**、IndexedDB 236 条记录（约 67 MB）—— **预取本身正常工作，缺的是可见反馈**。首张图派生编码冷启动较慢，15s 内可能尚未写入第一条记录，20s 后两档全部完成。
+
+**旧行为 → 新行为**：
+- 入口 HTML 有一段设置 `<html lang>` 的**内联脚本**，违反 `script-src 'self'`（控制台报错）；改为在 `main.tsx` 用 `PREFERS_CHINESE` 设置，入口文档不再含内联脚本，CSP 无需 hash。计划草案里写的 sha256 与真实构建产物不匹配，故弃用 hash 方案。
+- Cloudflare 边缘注入的 `beacon.min.js` 被 CSP 拦；改为在 `script-src` 放行 `https://static.cloudflareinsights.com`、`connect-src` 放行 `https://cloudflareinsights.com https://static.cloudflareinsights.com`。
+- Early Hints 的 `Link: rel=preload` 未带 `crossorigin`，与 HTML 中带 `crossorigin` 的 module script/style 凭据模式不符而被浏览器丢弃；现追加 `; crossorigin`。
+- 缺失文件（`/favicon.ico`、缺失 `assets/*`）此前被 SPA 回退成**根 `index.html`**，其 Early Hints 又预加载永不被使用的根 bundle（"preloaded but not used" 告警来源）；`resolveStaticFile` 现对带扩展名的路径返回 404，并用 `<link rel="icon" href="data:,">` 抑制 favicon 请求。
+- 预取全程无任何界面提示；**新增进度条**：`PrefetchIndicator.tsx` 订阅队列，在顶部工具栏最右显示「自动缓存 82 完成/总数 · 100 完成/总数」两条细进度条，空闲/完成隐藏；`PrefetchProgress` 增加 `images`，`stop()` 复位、`finally` 防旧运行覆盖新进度。
+
+**验证**：
+- `npm run typecheck`、改动文件 `npx eslint` 通过。
+- 定向单测 6 文件 58 测试全绿；全量 `vitest run tests/unit` 4174 通过 / 5 跳过 / 4 失败（4 个均为 Windows `symlinkSync EPERM`：plugin-install-failure-detail、artifact-response、desktop-ingestion，与本次改动无关）。
+- headless Chromium 对重启后的服务实测 `/web-preview/`：控制台 **0 条消息**；进度条采样 `82 18/118 100 0/118` → `82 118/118 100 112/118`；236 次 `/media/view`、IndexedDB 236 条 / 67,356,046 B。
+- **未执行**：真实 Cloudflare 隧道下 Insights 表现、packaged、Windows。
+- 注：本轮改的是分享服务（Main），需重启 Electron 生效；测试页 `/web-preview/` 已重建，主线 `/` 待用户验收后再 `npm run web:build`。

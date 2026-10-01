@@ -27,6 +27,19 @@ export interface PrefetchQueueOptions {
   gapMs?: number;
 }
 
+/** Aggregate background-prefetch progress for the on-screen indicator. */
+export interface PrefetchProgress {
+  /** Number of image assets being prefetched (each contributes two tiers). */
+  images: number;
+  /** Total downloads to attempt (images x 2 tiers). */
+  total: number;
+  /** Downloads finished (successful cache writes), including skipped hits. */
+  completed: number;
+  /** Tier currently downloading, or `null` when idle/done. */
+  tier: 'low' | 'high' | null;
+  active: boolean;
+}
+
 export class PrefetchQueue {
   readonly #cache: PrefetchCache;
   readonly #fetchImpl: typeof fetch;
@@ -36,11 +49,29 @@ export class PrefetchQueue {
   #generation = 0;
   #libraryId: string | null = null;
   #assets: readonly AssetSummary[] = [];
+  readonly #listeners = new Set<(progress: PrefetchProgress) => void>();
+  #progress: PrefetchProgress = { images: 0, total: 0, completed: 0, tier: null, active: false };
 
   constructor(options: PrefetchQueueOptions = {}) {
     this.#cache = options.cache ?? prefetchCache;
     this.#fetchImpl = options.fetchImpl ?? fetch;
     this.#gapMs = options.gapMs ?? 0;
+  }
+
+  /** Subscribe to progress changes; returns an unsubscribe function. */
+  subscribe(listener: (progress: PrefetchProgress) => void): () => void {
+    this.#listeners.add(listener);
+    listener(this.#progress);
+    return () => this.#listeners.delete(listener);
+  }
+
+  get progress(): PrefetchProgress {
+    return this.#progress;
+  }
+
+  #setProgress(next: Partial<PrefetchProgress>): void {
+    this.#progress = { ...this.#progress, ...next };
+    for (const listener of this.#listeners) listener(this.#progress);
   }
 
   /** Start (or restart) prefetching the given library's assets. */
@@ -76,6 +107,7 @@ export class PrefetchQueue {
     this.#paused = false;
     this.#assets = [];
     this.#libraryId = null;
+    this.#setProgress({ images: 0, total: 0, completed: 0, tier: null, active: false });
   }
 
   get paused(): boolean {
@@ -84,32 +116,46 @@ export class PrefetchQueue {
 
   async #run(generation: number): Promise<void> {
     this.#running = true;
+    const images = this.#assets.filter((asset) => asset.mediaType === 'image');
+    this.#setProgress({
+      images: images.length,
+      total: images.length * 2,
+      completed: 0,
+      tier: 'low',
+      active: true,
+    });
     try {
       // Whole library low tier first, then whole library high tier.
       for (const tier of ['low', 'high'] as const) {
         const libraryId = this.#libraryId;
         if (libraryId === null) return;
-        for (const asset of this.#assets) {
+        this.#setProgress({ tier });
+        for (const asset of images) {
           if (generation !== this.#generation) return;
           // Spin while paused so a resume continues without re-scanning.
           while (this.#paused) {
             if (generation !== this.#generation) return;
             await delay(this.#gapMs > 0 ? this.#gapMs : 200);
           }
-          if (asset.mediaType !== 'image') continue;
           const descriptor = {
             libraryId,
             assetId: asset.assetId,
             revisionId: asset.currentRevisionId,
             tier,
           };
-          if (await this.#cache.has(descriptor)) continue;
+          if (await this.#cache.has(descriptor)) {
+            this.#setProgress({ completed: this.#progress.completed + 1 });
+            continue;
+          }
           await this.#download(viewUrl(libraryId, asset, tier === 'high' ? { tier: 'high' } : undefined), descriptor, generation);
+          this.#setProgress({ completed: this.#progress.completed + 1 });
           if (this.#gapMs > 0) await delay(this.#gapMs);
         }
       }
     } finally {
       this.#running = false;
+      // A newer start()/stop() superseded this run; don't clobber its progress.
+      if (generation === this.#generation) this.#setProgress({ active: false, tier: null });
     }
   }
 

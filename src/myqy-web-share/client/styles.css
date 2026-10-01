@@ -400,6 +400,57 @@ button {
   text-align: right;
 }
 
+.prefetch-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  color: var(--ui-content-secondary);
+  font-size: var(--ui-font-size-micro);
+  white-space: nowrap;
+}
+
+.prefetch-label {
+  color: var(--ui-content-secondary);
+}
+
+.prefetch-tier {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  color: var(--ui-content-tertiary);
+}
+
+.prefetch-tier[data-active='true'] .prefetch-tier-label {
+  color: var(--ui-content-primary);
+}
+
+.prefetch-tier-label {
+  font-variant-numeric: tabular-nums;
+}
+
+.prefetch-tier-bar {
+  display: block;
+  width: 48px;
+  height: var(--ui-space-1);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ui-content-tertiary) 22%, transparent);
+  border-radius: var(--ui-radius-pill);
+}
+
+.prefetch-tier-fill {
+  display: block;
+  height: 100%;
+  background: var(--ui-action-accent);
+  border-radius: inherit;
+  transition: width 140ms ease;
+}
+
+.prefetch-tier-count {
+  color: var(--ui-content-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+
 .select {
   height: var(--ui-size-control-md);
   padding: 0 var(--ui-space-2);
