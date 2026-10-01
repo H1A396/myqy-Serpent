@@ -120,9 +120,9 @@ export class PrefetchCache {
   }
 
   /** Store bytes, refreshing recency and evicting LRU entries over budget. */
-  async put(input: PrefetchCacheKey, blob: Blob): Promise<void> {
+  async put(input: PrefetchCacheKey, blob: Blob): Promise<boolean> {
     const db = await this.#database();
-    if (db === null) return;
+    if (db === null) return false;
     try {
       const record: CacheRecord = {
         key: recordKey(input),
@@ -138,8 +138,10 @@ export class PrefetchCache {
       tx.objectStore(STORE).put(record);
       await txDone(tx);
       await this.#evict(db);
+      return true;
     } catch {
       // Best effort; a full/blocked IndexedDB must not break the viewer.
+      return false;
     }
   }
 

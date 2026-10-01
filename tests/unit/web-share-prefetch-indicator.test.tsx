@@ -7,7 +7,7 @@ import type { PrefetchProgress } from '../../src/myqy-web-share/client/prefetch-
 
 const { queueMock } = vi.hoisted(() => {
   const listeners = new Set<(progress: PrefetchProgress) => void>();
-  let current: PrefetchProgress = { images: 0, total: 0, completed: 0, tier: null, active: false };
+  let current: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
   return {
     queueMock: {
       subscribe(listener: (progress: PrefetchProgress) => void) {
@@ -35,7 +35,7 @@ import { PrefetchIndicator, tierCompletion } from '../../src/myqy-web-share/clie
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 function progress(partial: Partial<PrefetchProgress>): PrefetchProgress {
-  return { images: 0, total: 0, completed: 0, tier: null, active: false, ...partial };
+  return { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false, ...partial };
 }
 
 describe('PrefetchIndicator', () => {

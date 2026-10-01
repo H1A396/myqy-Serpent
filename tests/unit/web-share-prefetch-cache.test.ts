@@ -18,7 +18,7 @@ describe('prefetch cache', () => {
     const key = { libraryId: 'l', assetId: 'a', revisionId: 'r', tier: 'low' as const };
     expect(await cache.get(key)).toBeUndefined();
     expect(await cache.has(key)).toBe(false);
-    await expect(cache.put(key, new Blob([new Uint8Array(4)]))).resolves.toBeUndefined();
+    await expect(cache.put(key, new Blob([new Uint8Array(4)]))).resolves.toBe(false);
   });
 
   it('stores and reads bytes back, and reports recency/has', async () => {

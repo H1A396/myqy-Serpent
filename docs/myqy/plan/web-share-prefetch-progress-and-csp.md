@@ -64,6 +64,15 @@
 
 经 Cloudflare 隧道时，用户控制台仍偶发 `preloaded using link preload but not used`（Cloudflare 的边缘 Early Hints 处理我们无法控制；本地直连已验证 `crossorigin` 修复生效、无此告警）。属边缘层行为，暂不处理，记录待观察。
 
+### 3.8 预取准确计数 + 并发加速（用户复测追加二）
+
+用户复测反馈"进度显示完成、但下载到本机后并无帮助，等很久打开图仍慢"。无头 Chromium 隧道实测确认缓存链路正常（完整 236 次全 200、IndexedDB 235 条、打开查看器 0 网络请求），真正问题是**预取太慢**（顺序下载，隧道下需数分钟）且**计数不诚实**（失败也计 `completed`，进度条可 100% 而无任何缓存）。
+
+- `prefetch-cache.ts`：`put()` 返回 `boolean`，仅真正写入成功才算成功。
+- `prefetch-queue.ts`：新增 `failed`；仅成功写入/缓存命中计 `completed`；`#download` 失败重试一次（300ms）；同档内 3 个并发 worker（`concurrency` 选项，测试默认 1）。
+- `PrefetchIndicator.tsx`：完成判定 `completed + failed >= total`；有失败显示「失败 N」。
+- 隧道实测：并发 3 下 42s 内约 170 次 `/media/view`（此前顺序约 79，约 2 倍）。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。

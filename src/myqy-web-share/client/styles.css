@@ -450,6 +450,11 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.prefetch-failed {
+  color: var(--ui-status-danger-content);
+  font-variant-numeric: tabular-nums;
+}
+
 
 .select {
   height: var(--ui-size-control-md);

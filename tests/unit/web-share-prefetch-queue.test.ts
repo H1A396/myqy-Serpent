@@ -44,8 +44,9 @@ class FakeCache {
   async has(input: PrefetchCacheKey): Promise<boolean> {
     return this.stored.has(this.privateKey(input));
   }
-  async put(input: PrefetchCacheKey, blob: Blob): Promise<void> {
+  async put(input: PrefetchCacheKey, blob: Blob): Promise<boolean> {
     this.stored.set(this.privateKey(input), blob.size);
+    return true;
   }
 }
 
@@ -155,13 +156,21 @@ describe('prefetch queue', () => {
       images: 2,
       total: 4,
       completed: 4,
+      failed: 0,
       tier: null,
       active: false,
     });
 
     queue.stop();
     // Stopping resets the indicator to hidden.
-    expect(queue.progress).toEqual({ images: 0, total: 0, completed: 0, tier: null, active: false });
+    expect(queue.progress).toEqual({
+      images: 0,
+      total: 0,
+      completed: 0,
+      failed: 0,
+      tier: null,
+      active: false,
+    });
   });
 
   it('restarts when start() supersedes a run that is still in flight', async () => {
@@ -192,5 +201,36 @@ describe('prefetch queue', () => {
 
     // The superseded run must not swallow the new start(): b is fetched.
     expect(urls.some((url) => url.includes('/view/b'))).toBe(true);
+  });
+
+  it('downloads every tier when several run in parallel', async () => {
+    const cache = new FakeCache();
+    const urls: string[] = [];
+    const fetchMock = vi.fn(async (url: string) => {
+      urls.push(String(url));
+      return { ok: true, blob: async () => new Blob([new Uint8Array(10)]) };
+    });
+    const queue = new PrefetchQueue({
+      cache: cache as unknown as PrefetchCache,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      concurrency: 3,
+    });
+
+    queue.start('lib', [makeAsset('a'), makeAsset('b'), makeAsset('c')]);
+    await flush(20);
+    queue.stop();
+
+    expect(new Set(urls)).toEqual(
+      new Set([
+        '/view/a',
+        '/view/b',
+        '/view/c',
+        '/view/a?tier=high',
+        '/view/b?tier=high',
+        '/view/c?tier=high',
+      ]),
+    );
+    // The whole low tier still goes first, even with a worker pool.
+    expect(urls.slice(0, 3).some((url) => url.includes('tier=high'))).toBe(false);
   });
 });

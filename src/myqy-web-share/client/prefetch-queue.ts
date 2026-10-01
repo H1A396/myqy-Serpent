@@ -25,6 +25,8 @@ export interface PrefetchQueueOptions {
   fetchImpl?: typeof fetch;
   /** Delay between starting one download and the next (throttles the tunnel). */
   gapMs?: number;
+  /** Parallel downloads. Higher finishes faster but competes with the grid. */
+  concurrency?: number;
 }
 
 /** Aggregate background-prefetch progress for the on-screen indicator. */
@@ -35,6 +37,8 @@ export interface PrefetchProgress {
   total: number;
   /** Downloads finished (successful cache writes), including skipped hits. */
   completed: number;
+  /** Downloads that failed (after a retry) and are not cached. */
+  failed: number;
   /** Tier currently downloading, or `null` when idle/done. */
   tier: 'low' | 'high' | null;
   active: boolean;
@@ -44,6 +48,7 @@ export class PrefetchQueue {
   readonly #cache: PrefetchCache;
   readonly #fetchImpl: typeof fetch;
   readonly #gapMs: number;
+  readonly #concurrency: number;
   #paused = false;
   #running = false;
   /** A start()/resume() arrived mid-run; restart once the current run exits. */
@@ -52,12 +57,13 @@ export class PrefetchQueue {
   #libraryId: string | null = null;
   #assets: readonly AssetSummary[] = [];
   readonly #listeners = new Set<(progress: PrefetchProgress) => void>();
-  #progress: PrefetchProgress = { images: 0, total: 0, completed: 0, tier: null, active: false };
+  #progress: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
 
   constructor(options: PrefetchQueueOptions = {}) {
     this.#cache = options.cache ?? prefetchCache;
     this.#fetchImpl = options.fetchImpl ?? fetch;
     this.#gapMs = options.gapMs ?? 0;
+    this.#concurrency = Math.max(1, options.concurrency ?? 1);
   }
 
   /** Subscribe to progress changes; returns an unsubscribe function. */
@@ -110,7 +116,7 @@ export class PrefetchQueue {
     this.#paused = false;
     this.#assets = [];
     this.#libraryId = null;
-    this.#setProgress({ images: 0, total: 0, completed: 0, tier: null, active: false });
+    this.#setProgress({ images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false });
   }
 
   get paused(): boolean {
@@ -140,36 +146,54 @@ export class PrefetchQueue {
       images: images.length,
       total: images.length * 2,
       completed: 0,
+      failed: 0,
       tier: 'low',
       active: true,
     });
     try {
-      // Whole library low tier first, then whole library high tier.
+      // Whole library low tier first, then whole library high tier. Within a
+      // tier a small worker pool downloads in parallel: over a high-latency
+      // tunnel a strictly sequential pass took minutes, so the cache did not
+      // help until long after the visitor started browsing.
       for (const tier of ['low', 'high'] as const) {
         const libraryId = this.#libraryId;
         if (libraryId === null) return;
         this.#setProgress({ tier });
-        for (const asset of images) {
-          if (generation !== this.#generation) return;
-          // Spin while paused so a resume continues without re-scanning.
-          while (this.#paused) {
+        let cursor = 0;
+        const worker = async (): Promise<void> => {
+          for (;;) {
             if (generation !== this.#generation) return;
-            await delay(this.#gapMs > 0 ? this.#gapMs : 200);
+            const index = cursor++;
+            if (index >= images.length) return;
+            const asset = images[index]!;
+            // Spin while paused so a resume continues without re-scanning.
+            while (this.#paused) {
+              if (generation !== this.#generation) return;
+              await delay(this.#gapMs > 0 ? this.#gapMs : 200);
+            }
+            const descriptor = {
+              libraryId,
+              assetId: asset.assetId,
+              revisionId: asset.currentRevisionId,
+              tier,
+            };
+            if (await this.#cache.has(descriptor)) {
+              this.#setProgress({ completed: this.#progress.completed + 1 });
+              continue;
+            }
+            const ok = await this.#download(
+              viewUrl(libraryId, asset, tier === 'high' ? { tier: 'high' } : undefined),
+              descriptor,
+              generation,
+            );
+            if (ok) this.#setProgress({ completed: this.#progress.completed + 1 });
+            else this.#setProgress({ failed: this.#progress.failed + 1 });
+            if (this.#gapMs > 0) await delay(this.#gapMs);
           }
-          const descriptor = {
-            libraryId,
-            assetId: asset.assetId,
-            revisionId: asset.currentRevisionId,
-            tier,
-          };
-          if (await this.#cache.has(descriptor)) {
-            this.#setProgress({ completed: this.#progress.completed + 1 });
-            continue;
-          }
-          await this.#download(viewUrl(libraryId, asset, tier === 'high' ? { tier: 'high' } : undefined), descriptor, generation);
-          this.#setProgress({ completed: this.#progress.completed + 1 });
-          if (this.#gapMs > 0) await delay(this.#gapMs);
-        }
+        };
+        const workers = Math.min(this.#concurrency, Math.max(1, images.length));
+        await Promise.all(Array.from({ length: workers }, () => worker()));
+        if (generation !== this.#generation) return;
       }
     } finally {
       this.#running = false;
@@ -183,26 +207,32 @@ export class PrefetchQueue {
     }
   }
 
+  /** Fetch one tier into the cache; `true` only once the bytes are stored. */
   async #download(url: string, descriptor: {
     libraryId: string;
     assetId: string;
     revisionId: string;
     tier: 'low' | 'high';
-  }, generation: number): Promise<void> {
-    try {
-      const response = await this.#fetchImpl(url, {
-        // Low priority so the grid's thumbnails and any on-screen image win.
-        fetchPriority: 'low',
-        credentials: 'same-origin',
-      } as RequestInit);
-      if (!response.ok) return;
-      if (generation !== this.#generation) return;
-      const blob = await response.blob();
-      if (generation !== this.#generation) return;
-      await this.#cache.put(descriptor, blob);
-    } catch {
-      // Network hiccup / aborted; the next pass retries.
+  }, generation: number): Promise<boolean> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await this.#fetchImpl(url, {
+          // Low priority so the grid's thumbnails and any on-screen image win.
+          fetchPriority: 'low',
+          credentials: 'same-origin',
+        } as RequestInit);
+        if (response.ok) {
+          const blob = await response.blob();
+          if (generation !== this.#generation) return false;
+          if (await this.#cache.put(descriptor, blob)) return true;
+        }
+      } catch {
+        // Network hiccup / aborted; retry once below.
+      }
+      if (generation !== this.#generation) return false;
+      await delay(300);
     }
+    return false;
   }
 }
 
@@ -212,4 +242,4 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-export const prefetchQueue = new PrefetchQueue();
+export const prefetchQueue = new PrefetchQueue({ concurrency: 3 });

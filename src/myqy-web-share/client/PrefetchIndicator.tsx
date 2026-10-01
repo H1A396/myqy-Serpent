@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { t } from './i18n';
 import { prefetchQueue, type PrefetchProgress } from './prefetch-queue';
 
-const IDLE: PrefetchProgress = { images: 0, total: 0, completed: 0, tier: null, active: false };
+const IDLE: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
 
 /** Keep the finished bar on screen briefly so it is not missed. */
 const DONE_LINGER_MS = 6000;
@@ -62,7 +62,9 @@ export function PrefetchIndicator() {
   useEffect(() => {
     const unsubscribe = prefetchQueue.subscribe((next) => {
       setProgress(next);
-      if (next.total > 0 && next.completed >= next.total && !next.active) setHoldDone(true);
+      const finished =
+        next.total > 0 && !next.active && next.completed + next.failed >= next.total;
+      if (finished) setHoldDone(true);
       else if (next.active) setHoldDone(false);
     });
     return () => {
@@ -77,7 +79,7 @@ export function PrefetchIndicator() {
   }, [holdDone]);
 
   if (progress.total === 0) return null;
-  const done = progress.completed >= progress.total && !progress.active;
+  const done = !progress.active && progress.completed + progress.failed >= progress.total;
   if (done && !holdDone) return null;
   const { low, high } = tierCompletion(progress);
 
@@ -90,6 +92,11 @@ export function PrefetchIndicator() {
       <span className="prefetch-label">{t('自动缓存', 'Auto cache')}</span>
       <TierBar current={progress.tier === 'low'} done={low} label="82" total={progress.images} />
       <TierBar current={progress.tier === 'high'} done={high} label="100" total={progress.images} />
+      {progress.failed > 0 ? (
+        <span className="prefetch-failed">
+          {t(`失败 ${progress.failed}`, `${progress.failed} failed`)}
+        </span>
+      ) : null}
     </span>
   );
 }
