@@ -117,3 +117,17 @@
 - `npm run typecheck`、lint 通过；`web-share-server`（含新的 immutable + Early Hints 断言）、`web-share-viewer`、`web-share-app` 全绿。
 - 本机 HTTP 实测：`/web-preview/` 返回 4 个 4 片请求已不复存在，只看单次 `/media/view`；`assets/*` 返回 `immutable`；入口 HTML 带 `Link: rel=preload`。
 - **未执行**：真实浏览器/Cloudflare 边缘缓存命中、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 1）：查看器大图 LOD（82→100）
+
+**新行为**：查看器大图分两档 LOD——默认加载 **webp82**（2560 上限）；访客**放大**（scale>1）后，后台预加载 **webp100**，**解码完成后**才切换显示（双层叠放 + 短淡入，不闪白）；100 未就绪期间继续显示 82；**缩回 1 保留 100 直到关闭查看器**。切换只改 `<img src>`、**不重挂载不重置**，因此缩放比例与拖动位置保持不变。
+
+**实现**：
+- `src/shared/web-share.ts`：新增 `WEB_SHARE_DERIVATIVE_QUALITY_HIGH = 100`。
+- `web-share-server.ts` `/media/view`：`?quality=100` → 100 档（下载忽略该参数）。缓存 key 含 quality，两档各自持久缓存。
+- `api.ts`：`viewUrl(..., { tier: 'low' | 'high' })`。
+- `Viewer.tsx` `ZoomImage`：新增 `srcHigh`；`scale>1` 时 `new Image().decode()` 预加载 100，`pendingSrc` 层 `onLoad` 后成为显示层；缩放/位置 state 不动。
+- `styles.css`：`.zoom-layer-pending` 叠放 + 140ms 淡入（尊重 `prefers-reduced-motion`）。
+
+**验证**：typecheck/lint 通过；`web-share-viewer`（含低档初始、放大预加载高档、换档后 transform 不变）与 `web-share-server`（`quality=100` 分档）单测全绿；本机 HTTP 实测同一张图 默认档 **160,022 B**、`quality=100` 档 **511,396 B**。
+- **未执行**：真实浏览器放大观感、packaged、Windows。

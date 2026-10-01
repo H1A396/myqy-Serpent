@@ -14,6 +14,7 @@ import { parseSearchExpression } from '../../shared/search-expression';
 import {
   WEB_SHARE_DERIVATIVE_MAX_EDGE,
   WEB_SHARE_DERIVATIVE_QUALITY,
+  WEB_SHARE_DERIVATIVE_QUALITY_HIGH,
   WEB_SHARE_SESSION_COOKIE,
   WEB_SHARE_SESSION_TTL_MS,
   WEB_SHARE_THUMBNAIL_FORMAT,
@@ -884,6 +885,9 @@ export class WebShareServer {
         writeJson(response, 403, { error: 'Downloading is disabled.', code: 'WEB_SHARE_DOWNLOAD_DISABLED' });
         return;
       }
+      // The viewer upgrades from the 82 tier to the 100 tier when the visitor
+      // zooms in; `quality=100` asks for the second tier. Downloads ignore it.
+      const highTier = url.searchParams.get('quality') === String(WEB_SHARE_DERIVATIVE_QUALITY_HIGH);
       const derivative = await media.resolveDerivative({
         libraryId,
         assetId: identifier,
@@ -892,7 +896,9 @@ export class WebShareServer {
         maxEdge: WEB_SHARE_DERIVATIVE_MAX_EDGE,
         quality: download
           ? this.#store.preferences.downloadQuality
-          : WEB_SHARE_DERIVATIVE_QUALITY,
+          : highTier
+            ? WEB_SHARE_DERIVATIVE_QUALITY_HIGH
+            : WEB_SHARE_DERIVATIVE_QUALITY,
         fullSize: download,
         progressive: download && this.#store.preferences.downloadProgressive,
       });

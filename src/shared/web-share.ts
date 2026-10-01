@@ -28,6 +28,12 @@ export const WEB_SHARE_MIN_PASSWORD_LENGTH = 4;
  */
 export const WEB_SHARE_DERIVATIVE_MAX_EDGE = 2_560;
 export const WEB_SHARE_DERIVATIVE_QUALITY = 82;
+/**
+ * Second LOD tier. The viewer loads the 82 tier first; when the visitor zooms
+ * in, it upgrades to this one. Same bounding edge, higher quality (larger
+ * bytes). The settings page can pre-generate and size both tiers.
+ */
+export const WEB_SHARE_DERIVATIVE_QUALITY_HIGH = 100;
 export const WEB_SHARE_DERIVATIVE_FORMATS = ['webp', 'jpeg', 'png'] as const;
 export const webShareDerivativeFormatSchema = z.enum(WEB_SHARE_DERIVATIVE_FORMATS);
 export type WebShareDerivativeFormat = z.infer<typeof webShareDerivativeFormatSchema>;

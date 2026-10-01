@@ -25,6 +25,7 @@ import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from '.
 import {
   WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
   WEB_SHARE_DERIVATIVE_QUALITY,
+  WEB_SHARE_DERIVATIVE_QUALITY_HIGH,
 } from '../../src/shared/web-share';
 import type { WebShareLibrarySummary } from '../../src/shared/web-share';
 
@@ -668,6 +669,21 @@ describe('WebShareServer', () => {
       format: 'webp',
       fullSize: false,
       quality: WEB_SHARE_DERIVATIVE_QUALITY,
+    });
+  });
+
+  it('serves the second LOD tier when quality=100 is requested', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const response = await fetch(
+      `${baseUrl}/media/view/lib-a/asset-1?revision=rev-1&quality=100`,
+      { headers: { Cookie: cookie! } },
+    );
+    expect(response.status).toBe(200);
+    expect(media.lastDerivative).toMatchObject({
+      format: 'webp',
+      fullSize: false,
+      quality: WEB_SHARE_DERIVATIVE_QUALITY_HIGH,
     });
   });
 

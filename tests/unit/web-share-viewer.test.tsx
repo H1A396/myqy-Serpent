@@ -8,7 +8,8 @@ import type { AssetSummary } from '../../src/shared/asset-types';
 vi.mock('../../src/myqy-web-share/client/api', () => ({
   sourceUrl: () => '/media/source',
   downloadUrl: () => '/media/download',
-  viewUrl: () => '/media/view',
+  viewUrl: (_libraryId: string, _asset: unknown, options?: { tier?: string }) =>
+    options?.tier === 'high' ? '/media/view?tier=high' : '/media/view',
 }));
 
 import { Viewer } from '../../src/myqy-web-share/client/Viewer';
@@ -122,6 +123,52 @@ describe('web share Viewer', () => {
     const image = container?.querySelector('.zoom-stage img');
     expect(image?.getAttribute('fetchpriority')).toBe('high');
     expect(image?.getAttribute('decoding')).toBe('async');
+  });
+
+  it('starts on the low LOD tier and offers the high tier on zoom', async () => {
+    await renderViewer(vi.fn());
+    // The displayed layer starts on the default (82) tier; no high layer yet.
+    const shown = container?.querySelector('.zoom-stage img:not(.zoom-layer-pending)');
+    expect(shown?.getAttribute('src')).toBe('/media/view');
+    expect(container?.querySelector('.zoom-layer-pending')).toBeNull();
+
+    // Zoom in with the wheel: the component begins preloading the high tier.
+    const stage = container?.querySelector('.zoom-stage img:not(.zoom-layer-pending)');
+    await act(async () => {
+      stage?.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -1 }));
+    });
+    // The high tier is layered on top (pending reveal), while the low tier stays
+    // shown underneath so nothing flashes.
+    const pending = container?.querySelector('.zoom-layer-pending');
+    expect(pending?.getAttribute('src')).toBe('/media/view?tier=high');
+    expect(
+      container?.querySelector('.zoom-stage img:not(.zoom-layer-pending)')?.getAttribute('src'),
+    ).toBe('/media/view');
+  });
+
+  it('keeps the zoom transform when the high tier swaps in', async () => {
+    await renderViewer(vi.fn());
+    const shown = container?.querySelector<HTMLImageElement>(
+      '.zoom-stage img:not(.zoom-layer-pending)',
+    );
+    await act(async () => {
+      shown?.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -1 }));
+    });
+    const before = shown?.getAttribute('style') ?? '';
+    const scaleBefore = /scale\(([\d.]+)\)/u.exec(before)?.[1];
+
+    // The pending layer finishes loading: it becomes the shown layer without a
+    // remount, so the transform (and therefore zoom) is preserved.
+    const pending = container?.querySelector<HTMLImageElement>('.zoom-layer-pending');
+    await act(async () => {
+      pending?.dispatchEvent(new Event('load'));
+    });
+    const after = container
+      ?.querySelector<HTMLImageElement>('.zoom-stage img:not(.zoom-layer-pending)')
+      ?.getAttribute('style') ?? '';
+    const scaleAfter = /scale\(([\d.]+)\)/u.exec(after)?.[1];
+    expect(scaleAfter).toBe(scaleBefore);
+    expect(after).toBe(before);
   });
 
   it('offers a re-encoded Download and a Download original button', async () => {

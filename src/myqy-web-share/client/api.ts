@@ -191,13 +191,17 @@ export function downloadUrl(libraryId: string, asset: AssetSummary): string {
 /**
  * Bounded WebP for the viewer, or — with `download` — the full-resolution JPEG
  * the "Download" button saves (the server re-encodes from the original).
+ *
+ * `tier: 'high'` asks for the second LOD tier (quality 100, same bounding
+ * edge). The viewer starts on the default tier and upgrades when zooming in.
  */
 export function viewUrl(
   libraryId: string,
   asset: AssetSummary,
-  options?: { download?: boolean },
+  options?: { download?: boolean; tier?: 'low' | 'high' },
 ): string {
   const query = new URLSearchParams({ revision: asset.currentRevisionId });
   if (options?.download === true) query.set('download', '1');
+  if (options?.tier === 'high') query.set('quality', '100');
   return `/media/view/${encodeURIComponent(libraryId)}/${encodeURIComponent(asset.assetId)}?${query.toString()}`;
 }

@@ -993,6 +993,30 @@ button {
   touch-action: none;
 }
 
+/* The preloading LOD tier overlays the shown one so the upgrade cross-fades
+   with no blank frame. It is not interactive (the displayed layer below owns
+   the pointer gestures) and shares the same transform, so the two align. */
+.zoom-layer-pending {
+  position: absolute;
+  pointer-events: none;
+  animation: zoom-layer-fade-in 140ms ease-out;
+}
+
+@keyframes zoom-layer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zoom-layer-pending {
+    animation: none;
+  }
+}
+
 .zoom-reset {
   position: absolute;
   bottom: var(--ui-space-2);

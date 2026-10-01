@@ -8,21 +8,35 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 8;
 
 /**
- * Zoomable/pannable image that loads the original source only in the viewer.
+ * Zoomable/pannable image with a two-tier LOD.
+ *
+ * `src` is the default (quality-82) derivative, shown immediately. Once the
+ * visitor zooms in (scale > 1), `srcHigh` (quality-100) is preloaded and swapped
+ * in only after it has decoded, so the upgrade never flashes a blank frame. The
+ * scale/offset live here and are deliberately *not* reset when the source swaps:
+ * both tiers share the same bounding edge, so the transform stays visually
+ * identical. Zooming back to 1 keeps the high tier until the viewer closes.
+ *
  * `dragMovedRef` records whether the current gesture actually panned, so the
  * viewer's background-click handler can ignore the click that ends a drag.
  */
 function ZoomImage({
   src,
+  srcHigh,
   alt,
   dragMovedRef,
 }: {
   src: string;
+  srcHigh?: string;
   alt: string;
   dragMovedRef: { current: boolean };
 }): ReactNode {
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  // The image actually painted (may be upgraded from `src` to `srcHigh`).
+  const [displaySrc, setDisplaySrc] = useState(src);
+  // The other layer: kept until it has loaded, then revealed (cross-fade).
+  const [pendingSrc, setPendingSrc] = useState<string | null>(null);
   // The only zoom gesture is the wheel, so the pointer is a grab hand — never a
   // magnifier. `grabbing` shows while a pan drag is in progress.
   const [dragging, setDragging] = useState(false);
@@ -38,6 +52,32 @@ function ZoomImage({
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, []);
+
+  // Swap in the high tier once the visitor zooms in, but only after the bytes
+  // have fully decoded — a preload + decode, then a layered reveal. Zooming back
+  // out keeps what is shown (per product decision, the high tier stays until the
+  // viewer closes), so this never downgrades.
+  useEffect(() => {
+    if (srcHigh === undefined || scale <= 1) return;
+    if (displaySrc === srcHigh || pendingSrc === srcHigh) return;
+    let active = true;
+    const probe = new Image();
+    probe.src = srcHigh;
+    const reveal = () => {
+      if (!active) return;
+      setPendingSrc(srcHigh);
+    };
+    if (typeof probe.decode === 'function') {
+      probe.decode().then(reveal, () => undefined).catch(() => undefined);
+    } else if (probe.complete) {
+      reveal();
+    } else {
+      probe.onload = reveal;
+    }
+    return () => {
+      active = false;
+    };
+  }, [displaySrc, pendingSrc, scale, srcHigh]);
 
   const zoomBy = useCallback((factor: number, originX?: number, originY?: number) => {
     const current = scaleRef.current;
@@ -83,44 +123,70 @@ function ZoomImage({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [reset, zoomBy]);
 
+  const transform = `translate(${offset.x}px, ${offset.y}px) scale(${scale})`;
+  const imageStyle = {
+    cursor: dragging ? 'grabbing' : 'grab',
+    transform,
+  };
+
+  // Pointer/double-click handlers are shared by both layers so the gesture works
+  // whichever layer is on top.
+  const interactiveHandlers = {
+    onDoubleClick: () => (scale > 1 ? reset() : setScale(2)),
+    onPointerDown: (event: React.PointerEvent<HTMLImageElement>) => {
+      dragMovedRef.current = false;
+      if (scale <= 1) return;
+      dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setDragging(true);
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLImageElement>) => {
+      const drag = dragRef.current;
+      if (drag === null) return;
+      dragMovedRef.current = true;
+      setOffset({
+        x: drag.ox + (event.clientX - drag.x),
+        y: drag.oy + (event.clientY - drag.y),
+      });
+    },
+    onPointerUp: () => {
+      dragRef.current = null;
+      setDragging(false);
+    },
+    onPointerCancel: () => {
+      dragRef.current = null;
+      setDragging(false);
+    },
+  };
+
   return (
     <div className="zoom-stage">
+      {pendingSrc !== null ? (
+        <img
+          alt=""
+          aria-hidden="true"
+          className="zoom-layer zoom-layer-pending"
+          decoding="async"
+          draggable={false}
+          src={pendingSrc}
+          style={imageStyle}
+          onLoad={() => {
+            // Reveal only once the high tier has painted, then it becomes the
+            // displayed layer (no remount, so scale/offset are preserved).
+            setDisplaySrc(pendingSrc);
+            setPendingSrc(null);
+          }}
+        />
+      ) : null}
       <img
         alt={alt}
         decoding="async"
         draggable={false}
         fetchPriority="high"
         ref={imageRef}
-        src={src}
-        style={{
-          cursor: dragging ? 'grabbing' : 'grab',
-          transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-        }}
-        onDoubleClick={() => (scale > 1 ? reset() : setScale(2))}
-        onPointerDown={(event) => {
-          dragMovedRef.current = false;
-          if (scale <= 1) return;
-          dragRef.current = { x: event.clientX, y: event.clientY, ox: offset.x, oy: offset.y };
-          event.currentTarget.setPointerCapture(event.pointerId);
-          setDragging(true);
-        }}
-        onPointerMove={(event) => {
-          const drag = dragRef.current;
-          if (drag === null) return;
-          dragMovedRef.current = true;
-          setOffset({
-            x: drag.ox + (event.clientX - drag.x),
-            y: drag.oy + (event.clientY - drag.y),
-          });
-        }}
-        onPointerUp={() => {
-          dragRef.current = null;
-          setDragging(false);
-        }}
-        onPointerCancel={() => {
-          dragRef.current = null;
-          setDragging(false);
-        }}
+        src={displaySrc}
+        style={imageStyle}
+        {...interactiveHandlers}
       />
       {scale > 1 ? (
         <button className="zoom-reset" type="button" onClick={reset}>
@@ -284,6 +350,7 @@ export function Viewer({
           <ZoomImage
             key={asset.assetId}
             src={src}
+            srcHigh={viewUrl(libraryId, asset, { tier: 'high' })}
             alt={asset.displayName}
             dragMovedRef={dragMovedRef}
           />
