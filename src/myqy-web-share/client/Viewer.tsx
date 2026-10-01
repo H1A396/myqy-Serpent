@@ -55,6 +55,16 @@ function ZoomImage({
     setOffset({ x: 0, y: 0 });
   }, []);
 
+  // Follow a changed `src` (e.g. the prefetch blob arrives just after mount),
+  // without ever downgrading an already-revealed high tier back to the low one.
+  // Adjusting state during render is React's recommended alternative to a
+  // setState-in-effect here.
+  const [prevSrc, setPrevSrc] = useState(src);
+  if (src !== prevSrc) {
+    setPrevSrc(src);
+    if (displaySrc !== srcHigh) setDisplaySrc(src);
+  }
+
   // Swap in the high tier once the visitor zooms in, but only after the bytes
   // have fully decoded — a preload + decode, then a layered reveal. Zooming back
   // out keeps what is shown (per product decision, the high tier stays until the
@@ -247,47 +257,47 @@ export function Viewer({
   }, []);
 
   // Prefer an already-prefetched tier (persistent cache) over the network. The
-  // object URLs are revoked when the asset changes or the viewer closes.
+  // cached URLs are keyed by asset+revision so a stale blob from the *previous*
+  // asset is never used for the new one (that showed a revoked URL and a broken
+  // image when navigating). Object URLs are revoked when the asset changes.
   const lowUrl = asset !== undefined && asset.mediaType === 'image'
     ? viewUrl(libraryId, asset)
     : undefined;
   const highUrl = asset !== undefined && asset.mediaType === 'image'
     ? viewUrl(libraryId, asset, { tier: 'high' })
     : undefined;
-  const [cachedLow, setCachedLow] = useState<string | undefined>(undefined);
-  const [cachedHigh, setCachedHigh] = useState<string | undefined>(undefined);
+  const cacheAssetId = asset?.assetId;
+  const cacheRevisionId = asset?.currentRevisionId;
+  const cacheKey =
+    asset !== undefined && asset.mediaType === 'image' && cacheAssetId !== undefined && cacheRevisionId !== undefined
+      ? `${libraryId}\u0001${cacheAssetId}\u0001${cacheRevisionId}`
+      : null;
+  const [cached, setCached] = useState<{ key: string; low?: string; high?: string } | null>(null);
   useEffect(() => {
-    if (asset === undefined || asset.mediaType !== 'image') return;
+    if (cacheKey === null || cacheAssetId === undefined || cacheRevisionId === undefined) return;
     let active = true;
     const created: string[] = [];
-    const base = {
-      libraryId,
-      assetId: asset.assetId,
-      revisionId: asset.currentRevisionId,
-    };
+    const base = { libraryId, assetId: cacheAssetId, revisionId: cacheRevisionId };
     void (async () => {
       const lowBlob = await prefetchCache.get({ ...base, tier: 'low' });
       const highBlob = await prefetchCache.get({ ...base, tier: 'high' });
       if (!active) return;
+      const next: { key: string; low?: string; high?: string } = { key: cacheKey };
       if (lowBlob !== undefined) {
-        const url = URL.createObjectURL(lowBlob);
-        created.push(url);
-        setCachedLow(url);
+        next.low = URL.createObjectURL(lowBlob);
+        created.push(next.low);
       }
       if (highBlob !== undefined) {
-        const url = URL.createObjectURL(highBlob);
-        created.push(url);
-        setCachedHigh(url);
+        next.high = URL.createObjectURL(highBlob);
+        created.push(next.high);
       }
+      setCached(next);
     })();
     return () => {
       active = false;
       for (const url of created) URL.revokeObjectURL(url);
-      // Clear for the next asset so a stale blob URL is never reused.
-      setCachedLow(undefined);
-      setCachedHigh(undefined);
     };
-  }, [asset, libraryId]);
+  }, [cacheKey, cacheAssetId, cacheRevisionId, libraryId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -317,10 +327,11 @@ export function Viewer({
   // Images use the bounded derivative so a slow tunnel is not asked for a
   // 10–30 MB source; the download menu still offers the original. Video and
   // audio have no bounded derivative yet and keep streaming their source.
+  const activeCached = cached !== null && cached.key === cacheKey ? cached : null;
   const src = asset.mediaType === 'image'
-    ? (cachedLow ?? lowUrl ?? viewUrl(libraryId, asset))
+    ? (activeCached?.low ?? lowUrl ?? viewUrl(libraryId, asset))
     : sourceUrl(libraryId, asset);
-  const srcHigh = asset.mediaType === 'image' ? (cachedHigh ?? highUrl) : undefined;
+  const srcHigh = asset.mediaType === 'image' ? (activeCached?.high ?? highUrl) : undefined;
   const hasPrevious = index > 0;
   const hasNext = index + 1 < assets.length;
 

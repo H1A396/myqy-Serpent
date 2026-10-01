@@ -91,6 +91,12 @@
 - `PrefetchIndicator.tsx`：`progress.active && speed > 0` 时在「自动缓存」后显示 `formatBytes(speed)/s`。
 - 验证：隧道实测显示 `55 KB/s → 1007 KB/s`；单测覆盖速度上报与显示。
 
+### 3.11 查看器残留 blob 破图 + 关闭查看器重载缩略图（用户复测追加四）
+
+- 破图根因：`Viewer` 的 `cachedLow/cachedHigh` 状态在切图首帧仍存有**上一张**的 `blob:` URL，被新 `ZoomImage` 当作初始 `src`，随后该 URL 被 revoke；且 `ZoomImage` 的 `displaySrc` 不跟随 `src` 变化。修复：缓存改为 `{key,low,high}` 且仅在 key 匹配当前资产时使用；`ZoomImage` 渲染期跟随 `src`（不把高档降回低档）。
+- 关闭重载根因：`Thumb` 在查看器打开时返回占位 `<span>`，关闭时 `<img>` 重新挂载。修复：保持缩略图挂载。
+- 验证：真实浏览器连续翻 10 张全部 `blob:` 命中、0 破图；关闭后 `/media/thumbnail` 0 次新请求。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。

@@ -248,3 +248,19 @@
 
 **验证**：typecheck/lint、队列/缓存/指标 17 测试全绿（新增速度上报与显示用例）；隧道不打补丁探针实测读数 `55 KB/s → 1007 KB/s`；本地因回环过快（<1s 完成）不显示采样属预期。
 - **未执行**：用户浏览器的观感（待用户验收）、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 4 追加五）：查看器残留 blob 导致破图 + 关闭查看器重载缩略图
+
+**背景**：用户反馈「很多图片显示不出来（破图）」，并发现「关闭大图模式后网格缩略图会重新加载」。
+
+**根因一（破图）**：`Viewer` 用 `cachedLow/cachedHigh` 状态保存上一张图的 `blob:` 对象 URL；切换到下一张时，新一张的 `ZoomImage`（`key=assetId` 会重挂载）在**第一帧**仍从旧状态取到**上一张的 blob URL** 作为初始 `src`，紧接着 effect cleanup 又把该 URL `revoke`；而 `ZoomImage` 的 `displaySrc` 是 `useState(src)` 初值、**从不跟随 `src` 变化**，于是永远停在已 revoke 的 URL → 破图。快速翻图时尤为明显。
+
+**根因二（关闭重载）**：`Thumb` 在 `paused`（查看器打开）时返回占位 `<span>` 而不渲染 `<img>`，关闭时 `<img>` 重新挂载 → 每个可见缩略图重新请求/解码，肉眼可见闪一下。
+
+**修复**：
+- `Viewer.tsx`：缓存 URL 改为按 `libraryId+assetId+revisionId` 记录的 `{key, low, high}`，渲染时**仅当 key 与当前资产一致才使用**，杜绝复用上一张的 blob；对象 URL 在资产变化时 revoke。
+- `Viewer.tsx` `ZoomImage`：用 React 推荐的渲染期状态调整跟随 `src` 变化，且**不把已显示的高档降回低档**。
+- `App.tsx`：`Thumb` 去掉 `paused` 占位分支，查看器打开期间缩略图**保持挂载**（不卸载、不重载）。
+
+**验证**：单测新增「导航后不得复用上一张缓存 blob」「查看器打开时缩略图仍挂载」两用例；typecheck/lint、viewer/app/队列/指标 30 测试全绿。真实浏览器（不打补丁）实测：连续翻 10 张全部命中缓存（`blob:`）且 `naturalWidth>0`，**0 破图**；关闭查看器后 `/media/thumbnail` **0 次新请求**。
+- **未执行**：用户浏览器观感（待用户验收）、packaged、Windows。

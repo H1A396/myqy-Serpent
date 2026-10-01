@@ -12,6 +12,14 @@ vi.mock('../../src/myqy-web-share/client/api', () => ({
     options?.tier === 'high' ? '/media/view?tier=high' : '/media/view',
 }));
 
+const { cacheStore } = vi.hoisted(() => ({ cacheStore: new Map<string, Blob>() }));
+vi.mock('../../src/myqy-web-share/client/prefetch-cache', () => ({
+  prefetchCache: {
+    get: async (key: { assetId: string; tier: string }) =>
+      cacheStore.get(`${key.assetId}:${key.tier}`),
+  },
+}));
+
 import { Viewer } from '../../src/myqy-web-share/client/Viewer';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -47,6 +55,18 @@ describe('web share Viewer', () => {
   let container: HTMLDivElement | undefined;
 
   beforeEach(() => {
+    cacheStore.clear();
+    let objectUrlCount = 0;
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      writable: true,
+      value: () => `blob:mock-${++objectUrlCount}`,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      writable: true,
+      value: () => undefined,
+    });
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -184,5 +204,41 @@ describe('web share Viewer', () => {
       '/media/download',
     ]);
     expect(links.every((element) => element.hasAttribute('download'))).toBe(true);
+  });
+
+  it('does not reuse the previous asset cached blob when navigating', async () => {
+    cacheStore.set('a1:low', new Blob([new Uint8Array([1])]));
+    const assets = [makeAsset('a1', 'one.png'), makeAsset('a2', 'two.png')];
+    const renderAt = async (index: number): Promise<void> => {
+      await act(async () => {
+        root?.render(
+          createElement(Viewer, {
+            libraryId: 'lib-a',
+            assets,
+            index,
+            allowDownload: true,
+            marks: { favorite: false, rating: 0 },
+            onMarksChange: () => undefined,
+            onClose: () => undefined,
+            onNavigate: () => undefined,
+          }),
+        );
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    };
+
+    await renderAt(0);
+    expect(
+      container?.querySelector('.zoom-stage img:not(.zoom-layer-pending)')?.getAttribute('src'),
+    ).toMatch(/^blob:mock-/u);
+
+    // a2 is not cached: it must fall back to the network, never the previous
+    // asset's (now revoked) blob URL — which rendered a broken image.
+    await renderAt(1);
+    expect(
+      container?.querySelector('.zoom-stage img:not(.zoom-layer-pending)')?.getAttribute('src'),
+    ).toBe('/media/view');
   });
 });

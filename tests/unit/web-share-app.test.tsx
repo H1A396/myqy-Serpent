@@ -182,13 +182,14 @@ clickCard(0);
     expect(thumb?.getAttribute('decoding')).toBe('async');
   });
 
-  it('pauses grid thumbnails while the viewer is open so the big image wins', async () => {
+  it('keeps grid thumbnails mounted while the viewer is open so closing does not reload them', async () => {
     await act(async () => {
       root?.render(createElement(App));
     });
     await flush();
 
-    expect(container?.querySelectorAll('.card-thumb img').length).toBeGreaterThan(0);
+    const before = container?.querySelectorAll('.card-thumb img').length ?? 0;
+    expect(before).toBeGreaterThan(0);
 
     const open = container?.querySelector('.card .card-open');
     if (open === undefined || open === null) throw new Error('viewer open button missing');
@@ -198,8 +199,9 @@ clickCard(0);
     await flush();
 
     expect(container?.querySelector('.viewer')).not.toBeNull();
-    expect(container?.querySelectorAll('.card-thumb img').length).toBe(0);
-    expect(container?.querySelectorAll('.card-thumb .placeholder').length).toBeGreaterThan(0);
+    // The thumbnail elements stay mounted (no placeholder swap), so closing the
+    // viewer does not re-request / re-decode every visible thumbnail.
+    expect(container?.querySelectorAll('.card-thumb img').length).toBe(before);
   });
 
 it('uses an integer grid-density slider bounded to 5–10 columns', async () => {
