@@ -236,3 +236,15 @@
 - **不打补丁**的真实流程探针（UI 登录）：修复前 4/4 失败（145 失败、0 条、0 请求）；修复后本地 236 请求全 200、236 条记录；隧道 130 请求全 200、记录持续写入。
 - typecheck/lint、队列/缓存/指标 15 测试全绿。
 - **未执行**：用户真实浏览器硬刷新后的体感（待用户验收）、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 4 追加四）：预取实时速度显示
+
+**新行为**：用户要求顶部「自动缓存」进度条前显示实时下载速度（3 路并发合计）。
+
+**实现**：
+- `prefetch-queue.ts`：`#download` 成功写入时累加 `#totalBytes`；新增 `#startSpeedSampling()`，每秒采样 `(Δbytes × 1000 / Δms)` 并以 0.5 EMA 平滑，写入 `PrefetchProgress.speed`（字节/秒）；运行开始启动，`finally`/`stop()` 清除。
+- `PrefetchIndicator.tsx`：`active && speed > 0` 时显示 `formatBytes(speed)/s`。
+- `styles.css`：`.prefetch-speed`（主题 token）。
+
+**验证**：typecheck/lint、队列/缓存/指标 17 测试全绿（新增速度上报与显示用例）；隧道不打补丁探针实测读数 `55 KB/s → 1007 KB/s`；本地因回环过快（<1s 完成）不显示采样属预期。
+- **未执行**：用户浏览器的观感（待用户验收）、packaged、Windows。

@@ -83,6 +83,14 @@
 
 修复：构造函数 `this.#fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis)`；新增回归单测。不打补丁探针验证：修复前 4/4 失败，修复后本地 236 全 200 / 236 条，隧道 130 全 200 且持续写入。
 
+### 3.10 实时下载速度显示（用户要求）
+
+用户要求在进度条前显示自动下载的实时速度（3 路并发合计）。
+
+- `prefetch-queue.ts`：新增 `#totalBytes`（每个成功写入累加 `blob.size`）；`#startSpeedSampling()` 每秒采样一次，用 0.5 EMA 平滑，写入 `PrefetchProgress.speed`（字节/秒）；运行时启动、结束/中止/停止时清除。
+- `PrefetchIndicator.tsx`：`progress.active && speed > 0` 时在「自动缓存」后显示 `formatBytes(speed)/s`。
+- 验证：隧道实测显示 `55 KB/s → 1007 KB/s`；单测覆盖速度上报与显示。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。

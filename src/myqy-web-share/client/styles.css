@@ -413,6 +413,11 @@ button {
   color: var(--ui-content-secondary);
 }
 
+.prefetch-speed {
+  color: var(--ui-content-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 .prefetch-tier {
   display: flex;
   align-items: center;

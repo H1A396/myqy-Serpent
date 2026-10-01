@@ -7,7 +7,7 @@ import type { PrefetchProgress } from '../../src/myqy-web-share/client/prefetch-
 
 const { queueMock } = vi.hoisted(() => {
   const listeners = new Set<(progress: PrefetchProgress) => void>();
-  let current: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
+  let current: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, speed: 0, tier: null, active: false };
   return {
     queueMock: {
       subscribe(listener: (progress: PrefetchProgress) => void) {
@@ -35,7 +35,7 @@ import { PrefetchIndicator, tierCompletion } from '../../src/myqy-web-share/clie
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 function progress(partial: Partial<PrefetchProgress>): PrefetchProgress {
-  return { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false, ...partial };
+  return { images: 0, total: 0, completed: 0, failed: 0, speed: 0, tier: null, active: false, ...partial };
 }
 
 describe('PrefetchIndicator', () => {
@@ -104,6 +104,14 @@ describe('PrefetchIndicator', () => {
     expect(tiers[0]?.getAttribute('data-active')).toBe('true');
     expect(tiers[1]?.getAttribute('data-active')).toBe('false');
     expect(tiers[0]?.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('3');
+  });
+
+  it('shows the combined download speed while prefetching', async () => {
+    await render();
+    await emit(
+      progress({ images: 5, total: 10, completed: 3, speed: 2 * 1024 * 1024, tier: 'low', active: true }),
+    );
+    expect(container?.querySelector('.prefetch-speed')?.textContent).toBe('2.0 MB/s');
   });
 
   it('advances the high tier once the low tier is complete', async () => {

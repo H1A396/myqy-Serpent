@@ -39,6 +39,8 @@ export interface PrefetchProgress {
   completed: number;
   /** Downloads that failed (after a retry) and are not cached. */
   failed: number;
+  /** Combined download speed of the active workers, in bytes per second. */
+  speed: number;
   /** Tier currently downloading, or `null` when idle/done. */
   tier: 'low' | 'high' | null;
   active: boolean;
@@ -57,7 +59,20 @@ export class PrefetchQueue {
   #libraryId: string | null = null;
   #assets: readonly AssetSummary[] = [];
   readonly #listeners = new Set<(progress: PrefetchProgress) => void>();
-  #progress: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
+  #progress: PrefetchProgress = {
+    images: 0,
+    total: 0,
+    completed: 0,
+    failed: 0,
+    speed: 0,
+    tier: null,
+    active: false,
+  };
+  #totalBytes = 0;
+  #speed = 0;
+  #speedTimer: ReturnType<typeof setInterval> | undefined;
+  #sampleAt = 0;
+  #sampleBytes = 0;
 
   constructor(options: PrefetchQueueOptions = {}) {
     this.#cache = options.cache ?? prefetchCache;
@@ -120,7 +135,8 @@ export class PrefetchQueue {
     this.#paused = false;
     this.#assets = [];
     this.#libraryId = null;
-    this.#setProgress({ images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false });
+    this.#stopSpeedSampling();
+    this.#setProgress({ images: 0, total: 0, completed: 0, failed: 0, speed: 0, tier: null, active: false });
   }
 
   get paused(): boolean {
@@ -146,14 +162,18 @@ export class PrefetchQueue {
   async #run(generation: number): Promise<void> {
     this.#running = true;
     const images = this.#assets.filter((asset) => asset.mediaType === 'image');
+    this.#totalBytes = 0;
+    this.#speed = 0;
     this.#setProgress({
       images: images.length,
       total: images.length * 2,
       completed: 0,
       failed: 0,
+      speed: 0,
       tier: 'low',
       active: true,
     });
+    if (images.length > 0) this.#startSpeedSampling();
     try {
       // Whole library low tier first, then whole library high tier. Within a
       // tier a small worker pool downloads in parallel: over a high-latency
@@ -201,14 +221,43 @@ export class PrefetchQueue {
       }
     } finally {
       this.#running = false;
+      this.#stopSpeedSampling();
       if (this.#restart) {
         // A newer start()/resume() superseded this run: hand over to it.
         this.#restart = false;
         this.#ensureRunning();
       } else if (generation === this.#generation) {
-        this.#setProgress({ active: false, tier: null });
+        this.#setProgress({ active: false, tier: null, speed: 0 });
       }
     }
+  }
+
+  /** Sample the combined throughput of the parallel workers once a second. */
+  #startSpeedSampling(): void {
+    if (this.#speedTimer !== undefined) return;
+    this.#sampleAt = Date.now();
+    this.#sampleBytes = this.#totalBytes;
+    this.#speedTimer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - this.#sampleAt;
+      if (elapsed <= 0) return;
+      const bytes = this.#totalBytes - this.#sampleBytes;
+      this.#sampleAt = now;
+      this.#sampleBytes = this.#totalBytes;
+      const instant = (bytes * 1000) / elapsed;
+      // Smooth a little so the readout is not spiky between completions.
+      this.#speed = this.#speed === 0 ? instant : this.#speed * 0.5 + instant * 0.5;
+      this.#setProgress({ speed: Math.round(this.#speed) });
+    }, 1000);
+  }
+
+  #stopSpeedSampling(): void {
+    if (this.#speedTimer !== undefined) {
+      clearInterval(this.#speedTimer);
+      this.#speedTimer = undefined;
+    }
+    this.#speed = 0;
+    this.#totalBytes = 0;
   }
 
   /** Fetch one tier into the cache; `true` only once the bytes are stored. */
@@ -228,7 +277,10 @@ export class PrefetchQueue {
         if (response.ok) {
           const blob = await response.blob();
           if (generation !== this.#generation) return false;
-          if (await this.#cache.put(descriptor, blob)) return true;
+          if (await this.#cache.put(descriptor, blob)) {
+            this.#totalBytes += blob.size;
+            return true;
+          }
         }
       } catch {
         // Network hiccup / aborted; retry once below.

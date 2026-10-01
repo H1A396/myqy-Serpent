@@ -157,6 +157,7 @@ describe('prefetch queue', () => {
       total: 4,
       completed: 4,
       failed: 0,
+      speed: 0,
       tier: null,
       active: false,
     });
@@ -168,6 +169,7 @@ describe('prefetch queue', () => {
       total: 0,
       completed: 0,
       failed: 0,
+      speed: 0,
       tier: null,
       active: false,
     });
@@ -254,5 +256,27 @@ describe('prefetch queue', () => {
     queue.stop();
 
     expect(urls.length).toBeGreaterThan(0);
+  });
+
+  it('reports a combined download speed while running', async () => {
+    const cache = new FakeCache();
+    const fetchMock = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      return { ok: true, blob: async () => new Blob([new Uint8Array(1000)]) };
+    });
+    const queue = new PrefetchQueue({
+      cache: cache as unknown as PrefetchCache,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    // Enough assets at ~80ms each that the run is still active after a sample.
+    const assets = Array.from({ length: 40 }, (_, index) => makeAsset(`a${index}`));
+    queue.start('lib', assets);
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+
+    expect(queue.progress.active).toBe(true);
+    expect(queue.progress.speed).toBeGreaterThan(0);
+
+    queue.stop();
+    await flush(4);
   });
 });

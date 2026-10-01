@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
 
+import { formatBytes } from './format';
 import { t } from './i18n';
 import { prefetchQueue, type PrefetchProgress } from './prefetch-queue';
 
-const IDLE: PrefetchProgress = { images: 0, total: 0, completed: 0, failed: 0, tier: null, active: false };
+const IDLE: PrefetchProgress = {
+  images: 0,
+  total: 0,
+  completed: 0,
+  failed: 0,
+  speed: 0,
+  tier: null,
+  active: false,
+};
 
 /** Keep the finished bar on screen briefly so it is not missed. */
 const DONE_LINGER_MS = 6000;
@@ -90,6 +99,9 @@ export function PrefetchIndicator() {
       role="group"
     >
       <span className="prefetch-label">{t('自动缓存', 'Auto cache')}</span>
+      {progress.active && progress.speed > 0 ? (
+        <span className="prefetch-speed">{`${formatBytes(progress.speed)}/s`}</span>
+      ) : null}
       <TierBar current={progress.tier === 'low'} done={low} label="82" total={progress.images} />
       <TierBar current={progress.tier === 'high'} done={high} label="100" total={progress.images} />
       {progress.failed > 0 ? (
