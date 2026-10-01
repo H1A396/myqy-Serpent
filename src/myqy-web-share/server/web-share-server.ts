@@ -1213,7 +1213,9 @@ export function entryAssetHintHeaders(html: string, pathname: string): string[] 
     if (seen.has(href)) continue;
     seen.add(href);
     const isScript = /\.js$/iu.test(reference);
-    hints.push(`<${href}>; rel=preload; as=${isScript ? 'script' : 'style'}`);
+    // Vite tags module scripts/styles with `crossorigin`, so the preload must
+    // carry the matching credentials mode or the browser discards it.
+    hints.push(`<${href}>; rel=preload; as=${isScript ? 'script' : 'style'}; crossorigin`);
   }
   return hints;
 }
@@ -1223,8 +1225,13 @@ const WEB_SHARE_CSP = [
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self'",
-  "connect-src 'self'",
+  // The entry document carries no inline script, so `'self'` alone covers our
+  // own bundle. Cloudflare injects its Web Analytics beacon at the edge
+  // (`static.cloudflareinsights.com`), which then posts its report to
+  // `cloudflareinsights.com`; allow both so the console is not filled with CSP
+  // violations the page cannot control.
+  "script-src 'self' https://static.cloudflareinsights.com",
+  "connect-src 'self' https://cloudflareinsights.com https://static.cloudflareinsights.com",
   "font-src 'self' data:",
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -1293,6 +1300,12 @@ async function resolveStaticFile(
     const entry = path.join(candidate, 'index.html');
     return (await isFile(entry)) ? entry : null;
   }
+  // A request that names a file we do not have (a missing asset, favicon, …)
+  // must 404 rather than fall back to an HTML document: that document's Early
+  // Hints would make the browser preload a bundle nobody uses, and an HTML body
+  // behind a `.js` URL is a confusing parse error. Only extension-less paths
+  // (client routes) fall through to the SPA entry.
+  if (path.extname(candidate) !== '') return null;
   // Deep link inside a nested build: stay inside that build.
   for (
     let enclosing = path.dirname(candidate);

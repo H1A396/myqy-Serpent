@@ -761,9 +761,17 @@ describe('WebShareServer', () => {
       // The entry document is revalidated and announces its own hashed assets
       // as Early Hints so the browser can start them before the body is read.
       expect(index.headers.get('cache-control')).toBe('no-cache');
+      const csp = index.headers.get('content-security-policy') ?? '';
+      // The entry document has no inline script, so `script-src 'self'` is
+      // enough; Cloudflare's injected analytics host is allowed so the edge
+      // beacon does not log a CSP violation.
+      expect(csp).toContain("script-src 'self' https://static.cloudflareinsights.com");
+      expect(csp).not.toContain('sha256-');
       const link = index.headers.get('link') ?? '';
-      expect(link).toContain('</assets/main-abc.js>; rel=preload; as=script');
-      expect(link).toContain('</assets/main-abc.css>; rel=preload; as=style');
+      // Vite tags the module script/stylesheet with `crossorigin`, so the
+      // preload must match or the browser discards it.
+      expect(link).toContain('</assets/main-abc.js>; rel=preload; as=script; crossorigin');
+      expect(link).toContain('</assets/main-abc.css>; rel=preload; as=style; crossorigin');
 
       const directoryWithoutSlash = await fetch(`${origin}/web-preview`, { redirect: 'manual' });
       expect(directoryWithoutSlash.status).toBe(301);
@@ -774,7 +782,7 @@ describe('WebShareServer', () => {
       expect(await previewIndex.text()).toContain('Preview build');
       // A nested build preloads *its own* bundle, not the root one.
       expect(previewIndex.headers.get('link') ?? '').toContain(
-        '</web-preview/assets/preview.js>; rel=preload; as=script',
+        '</web-preview/assets/preview.js>; rel=preload; as=script; crossorigin',
       );
 
       const previewAsset = await fetch(`${origin}/web-preview/assets/preview.js`);
@@ -795,6 +803,13 @@ describe('WebShareServer', () => {
       const fallback = await fetch(`${origin}/some/deep/path`);
       expect(fallback.status).toBe(200);
       expect(await fallback.text()).toContain('Serpent');
+
+      // A missing file is a 404, not the SPA entry document: otherwise its
+      // Early Hints would make the browser preload a bundle it never uses.
+      const missingAsset = await fetch(`${origin}/assets/missing.js`);
+      expect(missingAsset.status).toBe(404);
+      const favicon = await fetch(`${origin}/favicon.ico`);
+      expect(favicon.status).toBe(404);
 
       const traversal = await rawGet(origin, '/..%2f..%2fpackage.json');
       expect(traversal.status).toBe(400);

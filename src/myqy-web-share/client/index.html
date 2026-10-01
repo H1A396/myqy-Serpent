@@ -7,15 +7,10 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#252729" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#ebeceb" media="(prefers-color-scheme: light)" />
+    <!-- An explicit empty icon stops the browser's automatic /favicon.ico probe,
+         which would otherwise be served the SPA entry document. -->
+    <link rel="icon" href="data:," />
     <title>Serpent</title>
-    <script>
-      // The client picks its language from navigator.language, so <html lang>
-      // must follow it too — a hardcoded zh-CN misleads screen readers and
-      // hyphenation when an English speaker opens the share.
-      document.documentElement.lang = navigator.language.toLowerCase().startsWith('zh')
-        ? 'zh-CN'
-        : 'en';
-    </script>
   </head>
   <body>
     <div id="root"></div>
