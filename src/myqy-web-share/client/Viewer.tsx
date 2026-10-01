@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { AssetSummary } from '../../shared/asset-types';
 import { downloadUrl, sourceUrl, viewUrl, type VisitorMarks } from './api';
 import { t } from './i18n';
+import { prefetchCache } from './prefetch-cache';
+import { prefetchQueue } from './prefetch-queue';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
@@ -237,6 +239,56 @@ export function Viewer({
   const asset = assets[index];
   const dragMovedRef = useRef(false);
 
+  // Background prefetch must yield to the visitor: while the viewer is open the
+  // queue pauses, and resumes (from where it stopped) on close.
+  useEffect(() => {
+    prefetchQueue.pause();
+    return () => prefetchQueue.resume();
+  }, []);
+
+  // Prefer an already-prefetched tier (persistent cache) over the network. The
+  // object URLs are revoked when the asset changes or the viewer closes.
+  const lowUrl = asset !== undefined && asset.mediaType === 'image'
+    ? viewUrl(libraryId, asset)
+    : undefined;
+  const highUrl = asset !== undefined && asset.mediaType === 'image'
+    ? viewUrl(libraryId, asset, { tier: 'high' })
+    : undefined;
+  const [cachedLow, setCachedLow] = useState<string | undefined>(undefined);
+  const [cachedHigh, setCachedHigh] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (asset === undefined || asset.mediaType !== 'image') return;
+    let active = true;
+    const created: string[] = [];
+    const base = {
+      libraryId,
+      assetId: asset.assetId,
+      revisionId: asset.currentRevisionId,
+    };
+    void (async () => {
+      const lowBlob = await prefetchCache.get({ ...base, tier: 'low' });
+      const highBlob = await prefetchCache.get({ ...base, tier: 'high' });
+      if (!active) return;
+      if (lowBlob !== undefined) {
+        const url = URL.createObjectURL(lowBlob);
+        created.push(url);
+        setCachedLow(url);
+      }
+      if (highBlob !== undefined) {
+        const url = URL.createObjectURL(highBlob);
+        created.push(url);
+        setCachedHigh(url);
+      }
+    })();
+    return () => {
+      active = false;
+      for (const url of created) URL.revokeObjectURL(url);
+      // Clear for the next asset so a stale blob URL is never reused.
+      setCachedLow(undefined);
+      setCachedHigh(undefined);
+    };
+  }, [asset, libraryId]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -265,7 +317,10 @@ export function Viewer({
   // Images use the bounded derivative so a slow tunnel is not asked for a
   // 10–30 MB source; the download menu still offers the original. Video and
   // audio have no bounded derivative yet and keep streaming their source.
-  const src = asset.mediaType === 'image' ? viewUrl(libraryId, asset) : sourceUrl(libraryId, asset);
+  const src = asset.mediaType === 'image'
+    ? (cachedLow ?? lowUrl ?? viewUrl(libraryId, asset))
+    : sourceUrl(libraryId, asset);
+  const srcHigh = asset.mediaType === 'image' ? (cachedHigh ?? highUrl) : undefined;
   const hasPrevious = index > 0;
   const hasNext = index + 1 < assets.length;
 
@@ -350,7 +405,7 @@ export function Viewer({
           <ZoomImage
             key={asset.assetId}
             src={src}
-            srcHigh={viewUrl(libraryId, asset, { tier: 'high' })}
+            srcHigh={srcHigh}
             alt={asset.displayName}
             dragMovedRef={dragMovedRef}
           />

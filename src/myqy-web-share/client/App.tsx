@@ -12,8 +12,10 @@ import {
 import { DetailPanel } from './DetailPanel';
 import { t } from './i18n';
 import { Viewer } from './Viewer';
+import { prefetchQueue } from './prefetch-queue';
 
 const PAGE_SIZE = 100;
+const PREFETCH_ENUMERATE_PAGE = 200;
 const THUMBNAIL_RETRY_LIMIT = 6;
 const SKELETON_TILES = 12;
 const SEARCH_CACHE_LIMIT = 24;
@@ -436,12 +438,49 @@ export function App() {
     [libraryId, debouncedQuery, searchScope, sort, order, tagFilter, rating, favorite],
   );
 
+  // Background prefetch: once the visitor is past login, enumerate every image
+  // asset of the shared library (paged) and hand it to the low-priority queue.
+  // The queue downloads the two LOD tiers into the persistent cache so opening
+  // the viewer is usually a hit. It pauses whenever the viewer is open.
+  useEffect(() => {
+    if (phase !== 'ready' || libraryId === null) return;
+    let cancelled = false;
+    void (async () => {
+      const collected: AssetSummary[] = [];
+      let offset = 0;
+      try {
+        for (;;) {
+          const result = await api.search({
+            libraryId,
+            query: '',
+            scope: { kind: 'folder', folderId: null, recursive: true },
+            sort: 'name',
+            order: 'asc',
+            limit: PREFETCH_ENUMERATE_PAGE,
+            offset,
+          });
+          if (cancelled) return;
+          collected.push(...result.items);
+          offset += result.items.length;
+          if (result.items.length < PREFETCH_ENUMERATE_PAGE || offset >= result.total) break;
+        }
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      prefetchQueue.start(libraryId, collected.filter((asset) => asset.mediaType === 'image'));
+    })();
+    return () => {
+      cancelled = true;
+      prefetchQueue.stop();
+    };
+  }, [phase, libraryId]);
+
   useEffect(() => {
     if (phase !== 'ready' || libraryId === null) return;
     // Switch the grid the instant the scope/sort changes: show the cached
     // listing if we have one, otherwise a skeleton — never freeze the previous
-    // collection while the request is in flight. The fetch below then refreshes
-    // in the background (stale-while-revalidate).
+    // collection while the request is in flight. The fetch below then refreshes    // in the background (stale-while-revalidate).
     detailRequestIdRef.current += 1;
     const key = searchCacheKey([
       libraryId,

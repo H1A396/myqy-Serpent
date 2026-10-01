@@ -146,3 +146,16 @@
 
 **验证**：typecheck/lint 通过；`web-share-derivative-cache`（分档统计、按档删除）、`web-share-contract`（tier schema 与两个设置动作）、`web-share-server` 单测全绿；`npm run test:library-availability` 9 文件 / 228 通过 / 1 跳过；本机磁盘实测 `.serpent/share-derivatives/` 分档计数正确（82 档 105 文件、100 档 1 文件）。
 - **未执行**：设置页 UI 观感、真实生成/删除按钮点击、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 3）：访客端后台预取（IndexedDB，持久、暂停式）
+
+**新行为**：访客进入主页面后，浏览器后台把当前分享库**全部图片资产**的两档 LOD（先整个库 webp82，再整个库 webp100）下载进 **IndexedDB 持久缓存**；打开大图（及放大切 100）时**优先命中缓存**，秒显。**用户打开大图即暂停预取、关闭后断点续传**；缩略图仍由现有 visible-window 机制保持最高优先级，预取次之（`fetchPriority: low`）。两档缓存**总上限 1GB**，超出按 LRU 淘汰；`revision` 变化即失效。
+
+**实现**：
+- `prefetch-cache.ts`：IndexedDB 存储 `{libraryId,assetId,revisionId,tier,blob,bytes,savedAt}`；`get/has/put`，`put` 后按 `savedAt` 做 LRU 淘汰至 1GB 以内；IndexedDB 不可用时优雅降级为空操作。
+- `prefetch-queue.ts`：`start/setAssets/pause/resume/stop`；顺序 low→high、跳过已缓存与非图片；暂停时保留进度、恢复从断点继续。
+- `Viewer.tsx`：挂载即 `prefetchQueue.pause()`、卸载 `resume()`；按 asset+revision 从缓存取低/高档 blob → `objectURL`，优先于网络 URL；切换资产时 revoke 旧 URL。
+- `App.tsx`：phase=ready 后分页枚举当前分享库全部图片资产交给队列。
+
+**验证**：typecheck/lint 通过；`web-share-prefetch-queue`（low 先于 high、跳过已缓存/非图片、暂停不下载-恢复后继续）与 `web-share-prefetch-cache`（无 IndexedDB 时降级；有则读写/总量/LRU）单测全绿；预览与主线构建产物含 IndexedDB 缓存与暂停逻辑；`/` 与 `/web-preview/` 引用同一 bundle。
+- **未执行**：真实浏览器预取/暂停/命中观感、Cloudflare 隧道实测、packaged、Windows。
