@@ -233,4 +233,26 @@ describe('prefetch queue', () => {
     // The whole low tier still goes first, even with a worker pool.
     expect(urls.slice(0, 3).some((url) => url.includes('tier=high'))).toBe(false);
   });
+
+  it('binds the fetch implementation so it is not called with the queue as `this`', async () => {
+    const cache = new FakeCache();
+    const urls: string[] = [];
+    // The browser's `fetch` throws `Illegal invocation` when called off the
+    // global; emulate that so an unbound queue fails this test.
+    function rawFetch(this: unknown, url: string): Promise<{ ok: boolean; blob: () => Promise<Blob> }> {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      urls.push(url);
+      return Promise.resolve({ ok: true, blob: async () => new Blob([new Uint8Array(10)]) });
+    }
+    const queue = new PrefetchQueue({
+      cache: cache as unknown as PrefetchCache,
+      fetchImpl: rawFetch as unknown as typeof fetch,
+    });
+
+    queue.start('lib', [makeAsset('a')]);
+    await flush(12);
+    queue.stop();
+
+    expect(urls.length).toBeGreaterThan(0);
+  });
 });

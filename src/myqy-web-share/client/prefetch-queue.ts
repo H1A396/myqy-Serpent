@@ -61,7 +61,11 @@ export class PrefetchQueue {
 
   constructor(options: PrefetchQueueOptions = {}) {
     this.#cache = options.cache ?? prefetchCache;
-    this.#fetchImpl = options.fetchImpl ?? fetch;
+    // `fetch` must be bound to the global: it is stored on the instance and
+    // invoked as `this.#fetchImpl(...)`, which would otherwise give `fetch` a
+    // `this` of the queue and make the browser throw `Illegal invocation`
+    // before any request — every prefetch silently failing.
+    this.#fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
     this.#gapMs = options.gapMs ?? 0;
     this.#concurrency = Math.max(1, options.concurrency ?? 1);
   }

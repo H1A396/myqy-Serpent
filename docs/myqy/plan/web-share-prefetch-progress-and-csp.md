@@ -73,6 +73,16 @@
 - `PrefetchIndicator.tsx`：完成判定 `completed + failed >= total`；有失败显示「失败 N」。
 - 隧道实测：并发 3 下 42s 内约 170 次 `/media/view`（此前顺序约 79，约 2 倍）。
 
+### 3.9 预取全部失败的根因：fetch `Illegal invocation`（用户复测追加三）
+
+用户截图「82 0/118 · 100 0/118 · 失败 42」——每次下载都失败、什么都没缓存，这才是“自动下载没帮助、等多久都慢”的**根因**。
+
+`PrefetchQueue` 把 `fetch` 裸存实例字段，却以 `this.#fetchImpl(url,…)` 调用，浏览器因此以队列实例为 `this` 调用 `fetch` → 抛 `TypeError: Illegal invocation`，**在任何请求前**就失败；`#download` 吞掉异常，旧代码又把失败计为完成，于是进度条谎报 100%、IndexedDB 全空。
+
+之前没发现的原因：所有无头探针都会 `addInitScript` 打补丁并 `.bind(window)` `fetch`，掩盖了绑定问题；用**不打补丁**的真实登录流程探针即稳定复现（4/4 失败、145 失败、0 请求）。
+
+修复：构造函数 `this.#fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis)`；新增回归单测。不打补丁探针验证：修复前 4/4 失败，修复后本地 236 全 200 / 236 条，隧道 130 全 200 且持续写入。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。
