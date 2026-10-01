@@ -13,6 +13,7 @@ import { DetailPanel } from './DetailPanel';
 import { t } from './i18n';
 import { PrefetchIndicator } from './PrefetchIndicator';
 import { Viewer } from './Viewer';
+import { thumbnailCache } from './prefetch-cache';
 import { prefetchQueue } from './prefetch-queue';
 
 const PAGE_SIZE = 100;
@@ -138,22 +139,56 @@ function SidebarTree({
  * thumbnail has not been generated yet, so a failed load is retried with a
  * backoff while the Worker produces the artifact. The original file is never
  * requested here; it is only fetched by the viewer.
+ *
+ * Loaded thumbnails are stored in the persistent `thumbnailCache` so a revisit
+ * (even after a restart) does not re-download the whole grid, and they load with
+ * a higher priority than the background viewer-image prefetch.
  */
 function Thumb({ url, alt }: { url: string; alt: string }) {
   const [attempt, setAttempt] = useState(0);
   const [exhausted, setExhausted] = useState(false);
+  const [src, setSrc] = useState<string | null>(null);
   const extension = alt.includes('.') ? alt.split('.').pop() : '';
 
-  if (exhausted) {
+  useEffect(() => {
+    let active = true;
+    let created: string | null = null;
+    void (async () => {
+      // Only start a network request when the persistent cache misses, so a
+      // revisit is served entirely from disk.
+      const blob = await thumbnailCache.get(url);
+      if (!active) return;
+      if (blob !== undefined) {
+        created = URL.createObjectURL(blob);
+        setSrc(created);
+      } else {
+        setSrc(attempt === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}retry=${attempt}`);
+      }
+    })();
+    return () => {
+      active = false;
+      if (created !== null) URL.revokeObjectURL(created);
+    };
+  }, [url, attempt]);
+
+  if (exhausted && src === null) {
     return <span className="placeholder">{(extension ?? '').toUpperCase() || '?'}</span>;
   }
+  if (src === null) {
+    return <span className="placeholder" aria-label={alt} />;
+  }
+  const fromCache = src.startsWith('blob:');
   return (
     <img
       alt={alt}
       decoding="async"
-      fetchPriority="low"
+      fetchPriority="high"
       loading="lazy"
-      src={attempt === 0 ? url : `${url}${url.includes('?') ? '&' : '?'}retry=${attempt}`}
+      src={src}
+      onLoad={() => {
+        // Persist for the next visit; the fetch is served from the HTTP cache.
+        if (!fromCache) void thumbnailCache.remember(url);
+      }}
       onError={() => {
         if (attempt >= THUMBNAIL_RETRY_LIMIT) {
           setExhausted(true);
@@ -897,7 +932,11 @@ export function App() {
                           <span className="placeholder">NEW</span>
                         ) : (
                           <Thumb
-                            url={thumbnailUrl(libraryId, asset.assetId)}
+                            url={thumbnailUrl(
+                              libraryId,
+                              asset.assetId,
+                              `${asset.currentRevisionId}-${state?.thumbnailVersion ?? ''}`,
+                            )}
                             alt={asset.displayName}
                           />
                         )}

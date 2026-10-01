@@ -97,6 +97,13 @@
 - 关闭重载根因：`Thumb` 在查看器打开时返回占位 `<span>`，关闭时 `<img>` 重新挂载。修复：保持缩略图挂载。
 - 验证：真实浏览器连续翻 10 张全部 `blob:` 命中、0 破图；关闭后 `/media/thumbnail` 0 次新请求。
 
+### 3.12 缩略图优先 + 缩略图持久缓存（用户要求）
+
+- 优先级：`Thumb` `<img fetchPriority="high">`（预取仍 `low`）。
+- 持久缓存：`prefetch-cache.ts` 泛化为共享 IndexedDB（DB 版本 2），新增 `thumbnails` store 与 `ThumbnailCache`（256MB LRU，`get/put/remember`）；`Thumb` 命中缓存用 `blob:` 直接显示（0 网络），未命中才 `<img>` 并在加载后落库。
+- 失效：缩略图 URL `?v=<revision>-<thumbnailVersion>`；服务端 `/api/state` 新增 `thumbnailVersion`（edge/sharpen/maxKb/format），缩略图响应 `public, max-age=31536000, immutable`。
+- 验证：`launchPersistentContext` 模拟重启——首次 55 条缓存，**重启后 0 次缩略图请求**；web-share 87 测试全绿。
+
 ## 四、验证证据
 
 - `npm run typecheck` 通过；改动文件 `npx eslint` 无输出。

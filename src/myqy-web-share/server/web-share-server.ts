@@ -822,7 +822,20 @@ export class WebShareServer {
       allowDownload: this.#store.preferences.allowDownload,
       requiresPassword: this.#store.password !== null,
       username: this.#visitors.usernameOf(visitorId),
+      // Changes when the operator changes the thumbnail settings, so the
+      // visitor's long-lived thumbnail cache is busted on a settings change.
+      thumbnailVersion: this.#thumbnailVersion(),
     };
+  }
+
+  #thumbnailVersion(): string {
+    const preferences = this.#store.preferences;
+    return [
+      preferences.thumbnailEdge,
+      preferences.thumbnailSharpen ? 1 : 0,
+      preferences.thumbnailMaxKb,
+      WEB_SHARE_THUMBNAIL_FORMAT,
+    ].join('-');
   }
 
   async #handleMedia(
@@ -875,7 +888,10 @@ export class WebShareServer {
         await this.#streamDerivative(request, response, derivative, {
           download: false,
           assetId: identifier,
-          cacheable: true,
+          // Thumbnails are a pure function of the asset revision + the
+          // thumbnail settings, and the visitor's URL carries a version token
+          // for both, so they can be cached for a year.
+          cacheControl: 'public, max-age=31536000, immutable',
         });
         return;
       }

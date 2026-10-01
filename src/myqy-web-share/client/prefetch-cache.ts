@@ -1,21 +1,24 @@
 /**
- * Persistent viewer-image cache for the web share.
+ * Persistent caches for the web share, kept in one IndexedDB database.
  *
- * The visitor's browser downloads every asset's two LOD tiers (WebP 82 and 100)
- * in the background so opening the viewer is instant. The bytes must survive a
- * browser or machine restart, so they are stored in IndexedDB — unlike the Cache
- * API it works over both http (local FRP-like tunnels) and https (Cloudflare).
+ * - `viewer-images`: every image asset's two LOD tiers (WebP 82/100) so opening
+ *   the viewer — and zooming in — is a cache hit.
+ * - `thumbnails`: the grid thumbnails, so revisiting (even after a machine or
+ *   browser restart) does not re-download the whole grid over the tunnel.
  *
- * The total size is capped (`PREFETCH_CACHE_MAX_BYTES`); when a new entry would
- * exceed it, the least-recently-used entries are evicted. An entry's identity is
- * `libraryId + assetId + revisionId + tier`; a new revision simply misses.
+ * The bytes must survive a browser or machine restart, so they are stored in
+ * IndexedDB — unlike the Cache API it works over both http (local tunnels) and
+ * https (Cloudflare), and it is not wiped when DevTools "Disable cache" is on.
+ * Each store is capped and evicts the least-recently-used entries over budget.
  */
 
-export const PREFETCH_CACHE_MAX_BYTES = 1024 * 1024 * 1024; // 1 GiB total
+export const PREFETCH_CACHE_MAX_BYTES = 1024 * 1024 * 1024; // 1 GiB
+export const THUMBNAIL_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 256 MiB
 
 const DB_NAME = 'serpent-web-share';
-const DB_VERSION = 1;
-const STORE = 'viewer-images';
+const DB_VERSION = 2;
+const PREFETCH_STORE = 'viewer-images';
+const THUMBNAIL_STORE = 'thumbnails';
 
 export interface PrefetchCacheKey {
   libraryId: string;
@@ -26,10 +29,6 @@ export interface PrefetchCacheKey {
 
 interface CacheRecord {
   key: string;
-  libraryId: string;
-  assetId: string;
-  revisionId: string;
-  tier: 'low' | 'high';
   bytes: number;
   savedAt: number;
   blob: Blob;
@@ -49,9 +48,10 @@ function openDatabase(): Promise<IDBDatabase | null> {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(STORE)) {
-          const store = db.createObjectStore(STORE, { keyPath: 'key' });
-          store.createIndex('savedAt', 'savedAt');
+        for (const name of [PREFETCH_STORE, THUMBNAIL_STORE]) {
+          if (!db.objectStoreNames.contains(name)) {
+            db.createObjectStore(name, { keyPath: 'key' }).createIndex('savedAt', 'savedAt');
+          }
         }
       };
       request.onsuccess = () => resolve(request.result);
@@ -77,11 +77,14 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T | undefined> {
   });
 }
 
-export class PrefetchCache {
+/** One IndexedDB object store of `{ blob }` records with an LRU byte budget. */
+class BlobStore {
+  readonly #store: string;
   readonly #maxBytes: number;
   #db: Promise<IDBDatabase | null> | undefined;
 
-  constructor(maxBytes: number = PREFETCH_CACHE_MAX_BYTES) {
+  constructor(store: string, maxBytes: number) {
+    this.#store = store;
     this.#maxBytes = maxBytes;
   }
 
@@ -90,14 +93,13 @@ export class PrefetchCache {
     return this.#db;
   }
 
-  /** Cached bytes for one tier, or `undefined` on a miss. */
-  async get(input: PrefetchCacheKey): Promise<Blob | undefined> {
+  async get(key: string): Promise<Blob | undefined> {
     const db = await this.#database();
     if (db === null) return undefined;
     try {
-      const tx = db.transaction(STORE, 'readonly');
+      const tx = db.transaction(this.#store, 'readonly');
       const record = await requestResult<CacheRecord>(
-        tx.objectStore(STORE).get(recordKey(input)) as IDBRequest<CacheRecord>,
+        tx.objectStore(this.#store).get(key) as IDBRequest<CacheRecord>,
       );
       return record?.blob;
     } catch {
@@ -105,51 +107,38 @@ export class PrefetchCache {
     }
   }
 
-  async has(input: PrefetchCacheKey): Promise<boolean> {
+  async count(key: string): Promise<number> {
     const db = await this.#database();
-    if (db === null) return false;
+    if (db === null) return 0;
     try {
-      const tx = db.transaction(STORE, 'readonly');
-      const count = await requestResult<number>(
-        tx.objectStore(STORE).count(recordKey(input)),
-      );
-      return (count ?? 0) > 0;
+      const tx = db.transaction(this.#store, 'readonly');
+      return (await requestResult<number>(tx.objectStore(this.#store).count(key))) ?? 0;
     } catch {
-      return false;
+      return 0;
     }
   }
 
   /** Store bytes, refreshing recency and evicting LRU entries over budget. */
-  async put(input: PrefetchCacheKey, blob: Blob): Promise<boolean> {
+  async put(key: string, blob: Blob): Promise<boolean> {
     const db = await this.#database();
     if (db === null) return false;
     try {
-      const record: CacheRecord = {
-        key: recordKey(input),
-        libraryId: input.libraryId,
-        assetId: input.assetId,
-        revisionId: input.revisionId,
-        tier: input.tier,
-        bytes: blob.size,
-        savedAt: Date.now(),
-        blob,
-      };
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(record);
+      const record: CacheRecord = { key, bytes: blob.size, savedAt: Date.now(), blob };
+      const tx = db.transaction(this.#store, 'readwrite');
+      tx.objectStore(this.#store).put(record);
       await txDone(tx);
       await this.#evict(db);
       return true;
     } catch {
-      // Best effort; a full/blocked IndexedDB must not break the viewer.
+      // Best effort; a full/blocked IndexedDB must not break the page.
       return false;
     }
   }
 
   async #evict(db: IDBDatabase): Promise<void> {
-    const readTx = db.transaction(STORE, 'readonly');
-    const store = readTx.objectStore(STORE);
+    const readTx = db.transaction(this.#store, 'readonly');
     const all = (await requestResult<CacheRecord[]>(
-      store.getAll() as IDBRequest<CacheRecord[]>,
+      readTx.objectStore(this.#store).getAll() as IDBRequest<CacheRecord[]>,
     )) ?? [];
     let total = all.reduce((sum, record) => sum + record.bytes, 0);
     if (total <= this.#maxBytes) return;
@@ -161,30 +150,32 @@ export class PrefetchCache {
       total -= record.bytes;
     }
     if (toDelete.length === 0) return;
-    const delTx = db.transaction(STORE, 'readwrite');
-    const delStore = delTx.objectStore(STORE);
+    const delTx = db.transaction(this.#store, 'readwrite');
+    const delStore = delTx.objectStore(this.#store);
     for (const key of toDelete) delStore.delete(key);
     await txDone(delTx);
   }
 
-  /** Current total stored bytes (for tests / diagnostics). */
   async totalBytes(): Promise<number> {
     const db = await this.#database();
     if (db === null) return 0;
-    const tx = db.transaction(STORE, 'readonly');
-    const all = (await requestResult<CacheRecord[]>(
-      tx.objectStore(STORE).getAll() as IDBRequest<CacheRecord[]>,
-    )) ?? [];
-    return all.reduce((sum, record) => sum + record.bytes, 0);
+    try {
+      const tx = db.transaction(this.#store, 'readonly');
+      const all = (await requestResult<CacheRecord[]>(
+        tx.objectStore(this.#store).getAll() as IDBRequest<CacheRecord[]>,
+      )) ?? [];
+      return all.reduce((sum, record) => sum + record.bytes, 0);
+    } catch {
+      return 0;
+    }
   }
 
-  /** Drop everything (revision change / logout). */
   async clear(): Promise<void> {
     const db = await this.#database();
     if (db === null) return;
     try {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).clear();
+      const tx = db.transaction(this.#store, 'readwrite');
+      tx.objectStore(this.#store).clear();
       await txDone(tx);
     } catch {
       // Ignore.
@@ -192,4 +183,74 @@ export class PrefetchCache {
   }
 }
 
+export class PrefetchCache {
+  readonly #store: BlobStore;
+
+  constructor(maxBytes: number = PREFETCH_CACHE_MAX_BYTES) {
+    this.#store = new BlobStore(PREFETCH_STORE, maxBytes);
+  }
+
+  /** Cached bytes for one tier, or `undefined` on a miss. */
+  get(input: PrefetchCacheKey): Promise<Blob | undefined> {
+    return this.#store.get(recordKey(input));
+  }
+
+  async has(input: PrefetchCacheKey): Promise<boolean> {
+    return (await this.#store.count(recordKey(input))) > 0;
+  }
+
+  put(input: PrefetchCacheKey, blob: Blob): Promise<boolean> {
+    return this.#store.put(recordKey(input), blob);
+  }
+
+  /** Current total stored bytes (for tests / diagnostics). */
+  totalBytes(): Promise<number> {
+    return this.#store.totalBytes();
+  }
+
+  /** Drop everything (revision change / logout). */
+  clear(): Promise<void> {
+    return this.#store.clear();
+  }
+}
+
+/** Long-lived grid-thumbnail cache, keyed by the (versioned) request URL. */
+export class ThumbnailCache {
+  readonly #store: BlobStore;
+
+  constructor(maxBytes: number = THUMBNAIL_CACHE_MAX_BYTES) {
+    this.#store = new BlobStore(THUMBNAIL_STORE, maxBytes);
+  }
+
+  get(url: string): Promise<Blob | undefined> {
+    return this.#store.get(url);
+  }
+
+  put(url: string, blob: Blob): Promise<boolean> {
+    return this.#store.put(url, blob);
+  }
+
+  /** Fetch a thumbnail once and remember its bytes for the next visit. */
+  async remember(url: string): Promise<void> {
+    try {
+      const request = globalThis.fetch.bind(globalThis);
+      const response = await request(url, { credentials: 'same-origin' });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      await this.#store.put(url, blob);
+    } catch {
+      // Best effort.
+    }
+  }
+
+  totalBytes(): Promise<number> {
+    return this.#store.totalBytes();
+  }
+
+  clear(): Promise<void> {
+    return this.#store.clear();
+  }
+}
+
 export const prefetchCache = new PrefetchCache();
+export const thumbnailCache = new ThumbnailCache();

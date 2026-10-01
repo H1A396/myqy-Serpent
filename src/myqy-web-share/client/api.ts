@@ -13,6 +13,8 @@ export interface WebShareState {
   allowDownload: boolean;
   requiresPassword: boolean;
   username: string | null;
+  /** Changes when the operator changes thumbnail settings (cache-busting). */
+  thumbnailVersion: string;
 }
 
 export interface WebShareConfig {
@@ -176,8 +178,14 @@ export const api = {
     ),
 };
 
-export function thumbnailUrl(libraryId: string, assetId: string): string {
-  return `/media/thumbnail/${encodeURIComponent(libraryId)}/${encodeURIComponent(assetId)}`;
+/**
+ * Grid thumbnail. `cacheKey` (asset revision + thumbnail settings) is appended
+ * so the bytes change whenever the image or the thumbnail settings change,
+ * making a long-lived client/HTTP cache safe.
+ */
+export function thumbnailUrl(libraryId: string, assetId: string, cacheKey?: string): string {
+  const base = `/media/thumbnail/${encodeURIComponent(libraryId)}/${encodeURIComponent(assetId)}`;
+  return cacheKey === undefined || cacheKey === '' ? base : `${base}?v=${encodeURIComponent(cacheKey)}`;
 }
 
 export function sourceUrl(libraryId: string, asset: AssetSummary): string {

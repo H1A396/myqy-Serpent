@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 
-import { PrefetchCache } from '../../src/myqy-web-share/client/prefetch-cache';
+import { PrefetchCache, ThumbnailCache } from '../../src/myqy-web-share/client/prefetch-cache';
 
 /**
  * IndexedDB is not guaranteed in the test DOM. When it is absent these tests
@@ -42,5 +42,15 @@ describe('prefetch cache', () => {
     // Budget is 1000: only the newest 800-byte entry should survive.
     expect(await cache.has({ ...base, assetId: 'first' })).toBe(false);
     expect(await cache.has({ ...base, assetId: 'second' })).toBe(true);
+  });
+
+  it('stores thumbnails by versioned URL and misses when the URL changes', async () => {
+    if (!hasIndexedDb) return;
+    const cache = new ThumbnailCache(1024 * 1024);
+    await cache.clear();
+    await cache.put('/media/thumbnail/l/a?v=rev-1', new Blob([new Uint8Array(16)]));
+    expect((await cache.get('/media/thumbnail/l/a?v=rev-1'))?.size).toBe(16);
+    // A new revision / settings version is a different URL → a cache miss.
+    expect(await cache.get('/media/thumbnail/l/a?v=rev-2')).toBeUndefined();
   });
 });

@@ -264,3 +264,16 @@
 
 **验证**：单测新增「导航后不得复用上一张缓存 blob」「查看器打开时缩略图仍挂载」两用例；typecheck/lint、viewer/app/队列/指标 30 测试全绿。真实浏览器（不打补丁）实测：连续翻 10 张全部命中缓存（`blob:`）且 `naturalWidth>0`，**0 破图**；关闭查看器后 `/media/thumbnail` **0 次新请求**。
 - **未执行**：用户浏览器观感（待用户验收）、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 4 追加六）：缩略图优先于预取 + 缩略图持久缓存
+
+**背景**：用户要求「缩略图加载高于自动下载」，且缩略图也要像大图一样在用户电脑上**长期缓存**（关机/重启/开关浏览器都不消失）。
+
+**实现**：
+- **优先级**：`Thumb` 的 `<img fetchPriority="high">`（预取仍是 `low`），网格缩略图优先于后台预取。
+- **持久缓存**：把 `prefetch-cache.ts` 泛化为共享 IndexedDB（`serpent-web-share`，DB 版本升到 2），新增 `thumbnails` store 与 `ThumbnailCache`（`get/put/remember`，256MB LRU）。`Thumb` 先查缓存：命中用 `blob:` 直接显示、**不发网络请求**；未命中才渲染 `<img>`，加载后 `remember(url)` 落库。
+- **缓存失效**：缩略图 URL 追加 `?v=<revision>-<thumbnailVersion>`；服务端 `/api/state` 新增 `thumbnailVersion`（由 edge/sharpen/maxKb/format 组成），缩略图响应改为 `Cache-Control: public, max-age=31536000, immutable`。资源版本或缩略图设置变化 → URL 变化 → 自动失效。
+
+**验证**：typecheck/lint、web-share 9 文件 87 测试全绿（新增缩略图缓存读写/URL 失效、缩略图 `fetchpriority=high`、`thumbnailVersion` 随设置变化等用例）。`launchPersistentContext` 模拟浏览器重启实测：首次 110 次 `/media/thumbnail`、缓存 55 条；**重启后 0 次缩略图请求**、55 条缓存持久存在。
+- 说明：无痕窗口关闭会清空 IndexedDB（与大图缓存一致），普通窗口跨重启保留。DevTools 勾选「停用缓存」不影响 IndexedDB（这正是选 IDB 而非纯 HTTP 缓存的原因）。
+- **未执行**：用户浏览器观感（待用户验收）、packaged、Windows。

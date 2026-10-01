@@ -470,9 +470,28 @@ describe('WebShareServer', () => {
     expect(cookie).toBeDefined();
     const state = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie! } });
     expect(state.status).toBe(200);
-    const body = (await state.json()) as { sharedLibraryId: string; library: { displayName: string } };
+    const body = (await state.json()) as {
+      sharedLibraryId: string;
+      library: { displayName: string };
+      thumbnailVersion: string;
+    };
     expect(body.sharedLibraryId).toBe('lib-a');
     expect(body.library.displayName).toBe('Library A');
+    // The visitor's thumbnail cache is keyed by this version.
+    expect(body.thumbnailVersion).toBeTruthy();
+  });
+
+  it('busts the thumbnail version when the thumbnail settings change', async () => {
+    server.setPassword('correct horse battery');
+    const { cookie } = await login('correct horse battery');
+    const readVersion = async (): Promise<string> => {
+      const response = await fetch(`${baseUrl}/api/state`, { headers: { Cookie: cookie! } });
+      return ((await response.json()) as { thumbnailVersion: string }).thumbnailVersion;
+    };
+    const before = await readVersion();
+    server.setThumbnailEdge(server.preferences.thumbnailEdge === 256 ? 128 : 256);
+    const after = await readVersion();
+    expect(after).not.toBe(before);
   });
 
   it('requires authentication for API routes', async () => {
@@ -567,8 +586,10 @@ describe('WebShareServer', () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/webp');
-    // Grid thumbnails are the bounded derivative, cached like the card artifact.
-    expect(response.headers.get('cache-control')).toBe('public, max-age=3600');
+    // Grid thumbnails are a pure function of the asset revision + the thumbnail
+    // settings; the visitor's URL is versioned for both, so they cache for a
+    // year (persisting across restarts).
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
     expect(await response.text()).toBe('thumb-128-bytes');
   });
 

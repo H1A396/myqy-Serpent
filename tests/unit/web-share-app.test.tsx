@@ -169,7 +169,7 @@ clickCard(0);
     expect(apiMock.asset).toHaveBeenCalledTimes(1);
   });
 
-  it('loads grid thumbnails at low priority', async () => {
+  it('loads grid thumbnails at high priority so they outrank the background prefetch', async () => {
     await act(async () => {
       root?.render(createElement(App));
     });
@@ -177,7 +177,7 @@ clickCard(0);
 
     const thumb = container?.querySelector('.card-thumb img');
     expect(thumb).not.toBeNull();
-    expect(thumb?.getAttribute('fetchpriority')).toBe('low');
+    expect(thumb?.getAttribute('fetchpriority')).toBe('high');
     expect(thumb?.getAttribute('loading')).toBe('lazy');
     expect(thumb?.getAttribute('decoding')).toBe('async');
   });
