@@ -1924,6 +1924,24 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({
     ok: z.literal(true),
+    type: z.literal('web-share.derivatives.stats'),
+    tiers: z.array(
+      z.strictObject({
+        quality: z.union([z.literal(82), z.literal(100)]),
+        fileCount: z.number().int().nonnegative(),
+        totalBytes: z.number().int().nonnegative(),
+      }),
+    ).max(2),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('web-share.derivatives.generated'),
+    generated: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
     type: z.literal('web-share.targets'),
     assetIds: z.array(nonBlankString).max(200_000),
   }),

@@ -15,6 +15,7 @@ import {
 import { stopOutgoingLibrariesForOpen } from './library-open-stop';
 import { createShareDerivative } from './web-share-derivative';
 import { evictShareDerivatives } from './web-share-derivative-cache';
+import { WEB_SHARE_DERIVATIVE_MAX_EDGE } from '../shared/web-share';
 import {
   encodeShareThumbnail,
   type ShareThumbnailSharpFactory,
@@ -2926,6 +2927,67 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
         ok: true,
         type: 'web-share.pruned',
         removed: libraryService.deleteShareThumbnails(request.command.libraryId),
+      };
+    }
+    case 'web-share.derivative-stats': {
+      return {
+        ok: true,
+        type: 'web-share.derivatives.stats',
+        tiers: libraryService.shareDerivativeStats(request.command.libraryId),
+      };
+    }
+    case 'web-share.generate-derivatives': {
+      // Pre-encode one viewer LOD tier for a batch so opening the viewer is
+      // always a cache hit. Mirrors the thumbnail sweep: skip what already
+      // exists, keep the bounded cache under budget.
+      const { libraryId, quality } = request.command;
+      let generated = 0;
+      let skipped = 0;
+      let failed = 0;
+      for (const assetId of request.command.assetIds) {
+        try {
+          const revisionId = libraryService.currentRevisionIdFor(libraryId, assetId);
+          const source = libraryService.getCurrentMediaSource(libraryId, assetId, revisionId);
+          const destination = libraryService.shareDerivativeCachePath(
+            libraryId,
+            assetId,
+            revisionId,
+            WEB_SHARE_DERIVATIVE_MAX_EDGE,
+            quality,
+          );
+          if (existsSync(destination)) {
+            skipped += 1;
+            continue;
+          }
+          const derivative = await createShareDerivative({
+            sourceAbsolutePath: source.absolutePath,
+            sharpFactory: requireSharp(),
+            request: {
+              format: 'webp',
+              maxEdge: WEB_SHARE_DERIVATIVE_MAX_EDGE,
+              quality,
+              fullSize: false,
+              progressive: false,
+            },
+            destinationAbsolutePath: destination,
+          });
+          evictShareDerivatives(path.dirname(destination), derivative.byteSize);
+          generated += 1;
+        } catch {
+          // A missing/undecodable asset is skipped; the sweep moves on.
+          failed += 1;
+        }
+      }
+      return { ok: true, type: 'web-share.derivatives.generated', generated, skipped, failed };
+    }
+    case 'web-share.delete-derivatives': {
+      return {
+        ok: true,
+        type: 'web-share.pruned',
+        removed: libraryService.deleteShareDerivatives(
+          request.command.libraryId,
+          request.command.quality,
+        ),
       };
     }
     case 'model.convert-fbx':

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import {
   WEB_SHARE_DEFAULT_PORT,
+  WEB_SHARE_DERIVATIVE_TIERS,
   WEB_SHARE_MIN_PASSWORD_LENGTH,
   type SerpentWebShareSettingsApi,
   type WebShareSettingsSnapshot,
@@ -11,6 +12,8 @@ import {
 import { useT } from "./i18n";
 import { SettingsCard } from "./ui/patterns";
 import { Switch } from "./ui/primitives";
+
+const DERIVATIVE_TIERS = WEB_SHARE_DERIVATIVE_TIERS;
 
 function webShareThumbnailProgressText(
   t: (key: string) => string,
@@ -414,6 +417,51 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             onCheckedChange={(next) => void request({ type: "set-download-progressive", enabled: next })}
           />
         </div>
+      </SettingsCard>
+
+      <SettingsCard>
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.webShareDerivativeTitle")}</strong>
+          <span>{t("settings.webShareDerivativeHint")}</span>
+        </div>
+        {DERIVATIVE_TIERS.map((quality) => {
+          const stats = snapshot?.derivativeStats.find((tier) => tier.quality === quality);
+          const progress = snapshot?.derivativeProgress;
+          const active = progress?.active === true && progress.quality === quality;
+          const progressText = active
+            ? `${t("settings.webShareDerivativeProgressRunning")} ${progress.generated}/${progress.total}`
+            : t("settings.webShareDerivativeSizeHint").replace(
+                "{mb}",
+                ((stats?.totalBytes ?? 0) / (1024 * 1024)).toFixed(1),
+              ).replace("{count}", String(stats?.fileCount ?? 0));
+          return (
+            <div key={quality}>
+              <div className="app-settings-card-divider" />
+              <div className="app-settings-action-row">
+                <div className="app-settings-row-copy">
+                  <strong>{t("settings.webShareDerivativeTier").replace("{quality}", String(quality))}</strong>
+                  <span>{progressText}</span>
+                </div>
+                <button
+                  className="secondary-button"
+                  disabled={busy || (snapshot?.derivativeProgress?.active ?? false)}
+                  onClick={() => void request({ type: "generate-derivatives", quality })}
+                  type="button"
+                >
+                  {t("settings.webShareDerivativeGenerate")}
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={busy || (snapshot?.derivativeProgress?.active ?? false)}
+                  onClick={() => void request({ type: "delete-derivatives", quality })}
+                  type="button"
+                >
+                  {t("settings.webShareDerivativeDelete")}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </SettingsCard>
 
       <SettingsCard>

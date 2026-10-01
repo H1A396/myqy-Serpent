@@ -5,9 +5,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  deleteShareDerivativesByQuality,
   evictShareDerivatives,
   listShareDerivativeFiles,
   shareDerivativeFileName,
+  shareDerivativeStats,
 } from '../../src/worker/web-share-derivative-cache';
 
 const directories: string[] = [];
@@ -61,5 +63,29 @@ describe('share derivative cache', () => {
     writeFileSync(file, Buffer.alloc(10));
     expect(evictShareDerivatives(directory, 10, 1024)).toBe(0);
     expect(existsSync(file)).toBe(true);
+  });
+
+  it('summarizes occupancy per LOD tier and ignores unparsable names', () => {
+    const directory = makeCacheDir();
+    writeFileSync(path.join(directory, shareDerivativeFileName('a', 'r', 2560, 82)), Buffer.alloc(100));
+    writeFileSync(path.join(directory, shareDerivativeFileName('b', 'r', 2560, 82)), Buffer.alloc(50));
+    writeFileSync(path.join(directory, shareDerivativeFileName('a', 'r', 2560, 100)), Buffer.alloc(300));
+    writeFileSync(path.join(directory, 'noquality.webp'), Buffer.alloc(999));
+    const stats = shareDerivativeStats(directory);
+    expect(stats).toEqual([
+      { quality: 82, fileCount: 2, totalBytes: 150 },
+      { quality: 100, fileCount: 1, totalBytes: 300 },
+    ]);
+  });
+
+  it('deletes only the requested tier', () => {
+    const directory = makeCacheDir();
+    const q82 = path.join(directory, shareDerivativeFileName('a', 'r', 2560, 82));
+    const q100 = path.join(directory, shareDerivativeFileName('a', 'r', 2560, 100));
+    writeFileSync(q82, Buffer.alloc(100));
+    writeFileSync(q100, Buffer.alloc(300));
+    expect(deleteShareDerivativesByQuality(directory, 82)).toBe(1);
+    expect(existsSync(q82)).toBe(false);
+    expect(existsSync(q100)).toBe(true);
   });
 });

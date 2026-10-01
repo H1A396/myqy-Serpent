@@ -131,3 +131,18 @@
 
 **验证**：typecheck/lint 通过；`web-share-viewer`（含低档初始、放大预加载高档、换档后 transform 不变）与 `web-share-server`（`quality=100` 分档）单测全绿；本机 HTTP 实测同一张图 默认档 **160,022 B**、`quality=100` 档 **511,396 B**。
 - **未执行**：真实浏览器放大观感、packaged、Windows。
+
+## 补充记录（2026-10-01 第三轮，批次 2）：设置页两档体积统计 + 生成/删除
+
+**新行为**：设置 → 网页分享 新增「大图缓存（WebP 两档）」卡片，显示 **WebP82 / WebP100 各自总大小(MB) 与文件数**，每档带「生成此档 / 删除此档」按钮（生成/删除对象 = 当前分享库；粒度 = 整档）。生成走 Main 分批 sweep，设置页显示进度、完成后按钮回填体积。
+
+**实现**：
+- `shared/web-share.ts`：新增 `WEB_SHARE_DERIVATIVE_TIERS=[82,100]`、tier/stats/progress schema；设置请求加 `generate-derivatives`/`delete-derivatives`（带品质）；快照加 `derivativeStats`/`derivativeProgress`。
+- `web-share-derivative-cache.ts`：`shareDerivativeStats`（按文件名品质分档求和）、`deleteShareDerivativesByQuality`。
+- `library-service.ts`：`shareDerivativeStats`、`deleteShareDerivatives`、`currentRevisionIdFor`。
+- `worker/index.ts`：`web-share.derivative-stats` / `generate-derivatives`（复用 `createShareDerivative` destination + LRU）/ `delete-derivatives`。
+- `main/index.ts`：`runWebShareDerivativeSweep` / `deleteWebShareDerivatives` / `refreshWebShareDerivativeStats`，settings 分发，`get` 时回填 stats。
+- `WebShareSettingsPage.tsx` + 中英文案。
+
+**验证**：typecheck/lint 通过；`web-share-derivative-cache`（分档统计、按档删除）、`web-share-contract`（tier schema 与两个设置动作）、`web-share-server` 单测全绿；`npm run test:library-availability` 9 文件 / 228 通过 / 1 跳过；本机磁盘实测 `.serpent/share-derivatives/` 分档计数正确（82 档 105 文件、100 档 1 文件）。
+- **未执行**：设置页 UI 观感、真实生成/删除按钮点击、packaged、Windows。

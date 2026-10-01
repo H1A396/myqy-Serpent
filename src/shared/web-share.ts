@@ -78,6 +78,33 @@ export const webShareThumbnailProgressSchema = z.strictObject({
 export type WebShareThumbnailProgress = z.infer<typeof webShareThumbnailProgressSchema>;
 
 /**
+ * The two viewer LOD tiers the settings page can pre-generate and size. The
+ * qualities match `WEB_SHARE_DERIVATIVE_QUALITY` / `_HIGH`.
+ */
+export const WEB_SHARE_DERIVATIVE_TIERS = [82, 100] as const;
+export type WebShareDerivativeTier = (typeof WEB_SHARE_DERIVATIVE_TIERS)[number];
+export const webShareDerivativeTierSchema = z.union([z.literal(82), z.literal(100)]);
+
+/** Occupancy of one cached LOD tier on disk. */
+export const webShareDerivativeTierStatsSchema = z.strictObject({
+  quality: webShareDerivativeTierSchema,
+  fileCount: z.number().int().nonnegative(),
+  totalBytes: z.number().int().nonnegative(),
+});
+export type WebShareDerivativeTierStats = z.infer<typeof webShareDerivativeTierStatsSchema>;
+
+/** Progress of a running derivative generate/delete sweep for one tier. */
+export const webShareDerivativeProgressSchema = z.strictObject({
+  active: z.boolean(),
+  quality: webShareDerivativeTierSchema,
+  total: z.number().int().nonnegative(),
+  generated: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+export type WebShareDerivativeProgress = z.infer<typeof webShareDerivativeProgressSchema>;
+
+/**
  * A visitor names themselves; the share has no accounts, so the name is only a
  * label the operator sees in the visitor records. It is not a credential.
  */
@@ -184,6 +211,10 @@ export const webShareSettingsSnapshotSchema = z.strictObject({
   visitorCount: z.number().int().nonnegative(),
   /** `null` when no regenerate sweep has run in this session. */
   thumbnailProgress: webShareThumbnailProgressSchema.nullable(),
+  /** Cached viewer LOD tiers on disk (quality 82 / 100), for the settings card. */
+  derivativeStats: z.array(webShareDerivativeTierStatsSchema).max(2),
+  /** `null` when no derivative generate/delete sweep is running. */
+  derivativeProgress: webShareDerivativeProgressSchema.nullable(),
   /** Libraries currently open on this device (same projection as the web API). */
   libraries: z.array(webShareLibrarySummarySchema).max(64),
 });
@@ -215,6 +246,9 @@ export const webShareSettingsRequestSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('set-download-progressive'), enabled: z.boolean() }),
   z.strictObject({ type: z.literal('regenerate-thumbnails') }),
   z.strictObject({ type: z.literal('delete-thumbnails') }),
+  // Pre-generate / delete one viewer LOD tier for the shared library.
+  z.strictObject({ type: z.literal('generate-derivatives'), quality: webShareDerivativeTierSchema }),
+  z.strictObject({ type: z.literal('delete-derivatives'), quality: webShareDerivativeTierSchema }),
   z.strictObject({
     type: z.literal('set-library'),
     libraryId: z.string().min(1).max(255).nullable(),

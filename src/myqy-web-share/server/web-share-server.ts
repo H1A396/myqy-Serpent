@@ -26,6 +26,8 @@ import {
   type WebShareSettingsSnapshot,
   type WebShareThumbnailEdge,
   type WebShareThumbnailProgress,
+  type WebShareDerivativeTierStats,
+  type WebShareDerivativeProgress,
   type WebShareVisitorSummary,
 } from '../../shared/web-share';
 import {
@@ -124,6 +126,8 @@ export class WebShareServer {
   readonly #sessions = new Map<string, number>();
   readonly #visitors: WebShareVisitorStore;
   #thumbnailProgress: WebShareThumbnailProgress | null = null;
+  #derivativeStats: WebShareDerivativeTierStats[] = [];
+  #derivativeProgress: WebShareDerivativeProgress | null = null;
   #signer: WebShareSessionSigner;
   #libraries: WebShareLibrarySummary[] = [];
   #runtime: WebShareRuntimeState = { status: 'stopped' };
@@ -161,6 +165,8 @@ export class WebShareServer {
       hasPassword: this.#store.password !== null,
       visitorCount: this.#visitors.count,
       thumbnailProgress: this.#thumbnailProgress,
+      derivativeStats: this.#derivativeStats,
+      derivativeProgress: this.#derivativeProgress,
       libraries: this.#libraries,
     });
   }
@@ -203,6 +209,18 @@ export class WebShareServer {
   /** Main relays worker sweep progress here so the panel can show it. */
   setThumbnailProgress(progress: WebShareThumbnailProgress | null): WebShareSettingsSnapshot {
     this.#thumbnailProgress = progress;
+    return this.#publish();
+  }
+
+  /** Cached viewer LOD-tier occupancy, refreshed by Main from the Worker. */
+  setDerivativeStats(stats: WebShareDerivativeTierStats[]): WebShareSettingsSnapshot {
+    this.#derivativeStats = stats;
+    return this.#publish();
+  }
+
+  /** Main relays the derivative generate/delete sweep progress here. */
+  setDerivativeProgress(progress: WebShareDerivativeProgress | null): WebShareSettingsSnapshot {
+    this.#derivativeProgress = progress;
     return this.#publish();
   }
 

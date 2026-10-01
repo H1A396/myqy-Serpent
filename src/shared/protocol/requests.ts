@@ -2453,6 +2453,25 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('web-share.prune-derivatives'),
     libraryId: identifierSchema,
   }),
+  // Occupancy of the persisted viewer LOD tiers on disk.
+  z.strictObject({
+    type: z.literal('web-share.derivative-stats'),
+    libraryId: identifierSchema,
+  }),
+  // Pre-generate one viewer LOD tier for a batch of assets (skipping any that
+  // already exist on disk), so opening the viewer never waits on a cold encode.
+  z.strictObject({
+    type: z.literal('web-share.generate-derivatives'),
+    libraryId: identifierSchema,
+    assetIds: z.array(identifierSchema).min(1).max(500),
+    quality: z.union([z.literal(82), z.literal(100)]),
+  }),
+  // Delete every cached derivative of one viewer LOD tier.
+  z.strictObject({
+    type: z.literal('web-share.delete-derivatives'),
+    libraryId: identifierSchema,
+    quality: z.union([z.literal(82), z.literal(100)]),
+  }),
   z.strictObject({
     type: z.literal('media.enqueue-thumbnail-jobs'),
     libraryId: identifierSchema,

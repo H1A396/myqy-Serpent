@@ -244,6 +244,7 @@ import {
   webShareSettingsRequestSchema,
   webShareSettingsResponseSchema,
   webShareSettingsSnapshotSchema,
+  type WebShareDerivativeTier,
   type WebShareSettingsRequest,
   type WebShareVisitorSummary,
 } from '../shared/web-share';
@@ -786,6 +787,98 @@ async function deleteWebShareThumbnails(server: WebShareServer): Promise<void> {
     server.setThumbnailProgress(null);
   } catch (error) {
     logger?.error('web-share.thumbnail-delete', error);
+  }
+}
+
+let webShareDerivativeSweepActive = false;
+
+/** Refresh the settings snapshot's viewer LOD-tier occupancy from disk. */
+async function refreshWebShareDerivativeStats(
+  server: WebShareServer,
+  libraryId: string,
+): Promise<void> {
+  const client = workerClient;
+  if (client === undefined) return;
+  try {
+    const result = await client.request({ type: 'web-share.derivative-stats', libraryId });
+    if (result.ok && result.type === 'web-share.derivatives.stats') {
+      server.setDerivativeStats(result.tiers);
+    }
+  } catch (error) {
+    logger?.error('web-share.derivative-stats', error);
+  }
+}
+
+/**
+ * Pre-generate one viewer LOD tier for the whole shared library, so opening the
+ * viewer is always a cache hit. `quality` is the tier (82 / 100). Mirrors the
+ * thumbnail sweep: Main drives it in batches so the settings panel can show
+ * progress.
+ */
+async function runWebShareDerivativeSweep(
+  server: WebShareServer,
+  quality: WebShareDerivativeTier,
+): Promise<void> {
+  const client = workerClient;
+  const libraryId = server.resolvedSharedLibraryId();
+  if (webShareDerivativeSweepActive || client === undefined || libraryId === null) return;
+  webShareDerivativeSweepActive = true;
+  try {
+    const listed = await client.request({ type: 'web-share.list-targets', libraryId });
+    if (!listed.ok || listed.type !== 'web-share.targets') {
+      server.setDerivativeProgress(null);
+      return;
+    }
+    const assetIds = listed.assetIds;
+    let generated = 0;
+    let skipped = 0;
+    let failed = 0;
+    server.setDerivativeProgress({
+      active: true, quality, total: assetIds.length, generated, skipped, failed,
+    });
+    for (let offset = 0; offset < assetIds.length; offset += WEB_SHARE_SWEEP_BATCH) {
+      const chunk = assetIds.slice(offset, offset + WEB_SHARE_SWEEP_BATCH);
+      const result = await client.request({
+        type: 'web-share.generate-derivatives',
+        libraryId,
+        assetIds: chunk,
+        quality,
+      });
+      if (result.ok && result.type === 'web-share.derivatives.generated') {
+        generated += result.generated;
+        skipped += result.skipped;
+        failed += result.failed;
+      }
+      server.setDerivativeProgress({
+        active: true, quality, total: assetIds.length, generated, skipped, failed,
+      });
+    }
+    await refreshWebShareDerivativeStats(server, libraryId);
+    server.setDerivativeProgress({
+      active: false, quality, total: assetIds.length, generated, skipped, failed,
+    });
+  } catch (error) {
+    logger?.error('web-share.derivative-sweep', error);
+    server.setDerivativeProgress(null);
+  } finally {
+    webShareDerivativeSweepActive = false;
+  }
+}
+
+/** The "delete one tier" button: drop every cached derivative of one quality. */
+async function deleteWebShareDerivatives(
+  server: WebShareServer,
+  quality: WebShareDerivativeTier,
+): Promise<void> {
+  const client = workerClient;
+  const libraryId = server.resolvedSharedLibraryId();
+  if (client === undefined || libraryId === null) return;
+  try {
+    await client.request({ type: 'web-share.delete-derivatives', libraryId, quality });
+    await refreshWebShareDerivativeStats(server, libraryId);
+    server.setDerivativeProgress(null);
+  } catch (error) {
+    logger?.error('web-share.derivative-delete', error);
   }
 }
 
@@ -5116,6 +5209,8 @@ async function startApplication(): Promise<void> {
       try {
         if (request.type === 'get') {
           await server.refreshLibraries();
+          const libraryId = server.resolvedSharedLibraryId();
+          if (libraryId !== null) await refreshWebShareDerivativeStats(server, libraryId);
           return response({ ok: true, snapshot: server.snapshot() });
         }
         if (request.type === 'enable') return response({ ok: true, snapshot: await server.setEnabled(request.enabled) });
@@ -5133,6 +5228,14 @@ async function startApplication(): Promise<void> {
         }
         if (request.type === 'regenerate-thumbnails') {
           void runWebShareThumbnailSweep(server);
+          return response({ ok: true, snapshot: server.snapshot() });
+        }
+        if (request.type === 'generate-derivatives') {
+          void runWebShareDerivativeSweep(server, request.quality);
+          return response({ ok: true, snapshot: server.snapshot() });
+        }
+        if (request.type === 'delete-derivatives') {
+          void deleteWebShareDerivatives(server, request.quality);
           return response({ ok: true, snapshot: server.snapshot() });
         }
         if (request.type === 'set-password') return response({ ok: true, snapshot: server.setPassword(request.password) });

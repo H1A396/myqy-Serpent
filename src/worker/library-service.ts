@@ -37,8 +37,11 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { removeLibraryRootWithRetry, removePathWithSyncRetry, renamePathWithRetry } from './windows-fs-retry';
-import { shareDerivativeFileName } from './web-share-derivative-cache';
-import { shareThumbnailFileName } from './web-share-thumbnail-cache';
+import {
+  deleteShareDerivativesByQuality,
+  shareDerivativeFileName,
+  shareDerivativeStats,
+} from './web-share-derivative-cache';import { shareThumbnailFileName } from './web-share-thumbnail-cache';
 import {
   execFileSync,
   spawn,
@@ -28604,6 +28607,35 @@ export class LibraryService {
       }
     }
     return removed;
+  }
+
+  /** Occupancy of the cached viewer LOD tiers on disk (for the settings page). */
+  shareDerivativeStats(
+    libraryId: string,
+  ): ReturnType<typeof shareDerivativeStats> {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const root = path.join(openLibrary.summary.libraryPath, '.serpent', 'share-derivatives');
+    return shareDerivativeStats(root);
+  }
+
+  /** Current revision of a live asset, for building its cache path. */
+  currentRevisionIdFor(libraryId: string, assetId: string): string {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const row = openLibrary.connection
+      .prepare(
+        `SELECT current_revision_id AS revisionId FROM assets
+          WHERE asset_id = ? AND deleted_at IS NULL`,
+      )
+      .get(assetId) as { revisionId: string | null } | undefined;
+    if (!row?.revisionId) throw new LibraryServiceError('ASSET_NOT_FOUND');
+    return row.revisionId;
+  }
+
+  /** Delete every cached derivative of one LOD tier. Returns the file count. */
+  deleteShareDerivatives(libraryId: string, quality: number): number {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const root = path.join(openLibrary.summary.libraryPath, '.serpent', 'share-derivatives');
+    return deleteShareDerivativesByQuality(root, quality);
   }
 
   /** Persist bounded Main-brokered plugin media as the normal thumbnail artifact. */
