@@ -259,6 +259,8 @@ JSONL 流程操作，禁止重新启用旧数据库同步。
   凡涉及 git、分支、提交、推送、拉取或合并上游的问题，必须先读 `docs/myqy/git-rules.md`；
   凡改动网页分享界面（`src/myqy-web-share/client/`）的问题，必须先读
   `docs/myqy/web-share-preview.md`。
+- **多步计划必须落库**：凡是需要多批次/多步骤推进的计划，写入 `docs/myqy/plan/`（一份计划一个
+  文件），并在开题时登记；执行进度与结论在该文件内更新，不要只留在聊天里。
 - 新增或修改本 fork 的项目规则时：写入 `docs/myqy/`，并在本节下方的清单中登记。
 - **提交与推送（强制）**：每次对话收尾时，若本轮有改动，必须提交到本地仓库；`git push` 只在
   满足阈值时执行（未推送提交 ≥5 个 / 距上次成功推送 >12 小时 / 完成里程碑 / 用户明确要求），
@@ -274,4 +276,5 @@ JSONL 流程操作，禁止重新启用旧数据库同步。
 | `docs/myqy/README.md` | 规则索引与约定 |
 | `docs/myqy/git-rules.md` | Git 状况与规则（远程、分支、提交身份、同步、冲突点、忽略项、PR） |
 | `docs/myqy/web-share-preview.md` | 网页分享主线页面 `/` 与开发测试页面 `/web-preview/` 的改动流程 |
+| `docs/myqy/plan/` | 多步计划（一份计划一个文件），执行进度与结论就地更新 |
 <!-- END myqy-fork-rules -->
