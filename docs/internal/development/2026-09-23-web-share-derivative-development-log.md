@@ -277,3 +277,16 @@
 **验证**：typecheck/lint、web-share 9 文件 87 测试全绿（新增缩略图缓存读写/URL 失效、缩略图 `fetchpriority=high`、`thumbnailVersion` 随设置变化等用例）。`launchPersistentContext` 模拟浏览器重启实测：首次 110 次 `/media/thumbnail`、缓存 55 条；**重启后 0 次缩略图请求**、55 条缓存持久存在。
 - 说明：无痕窗口关闭会清空 IndexedDB（与大图缓存一致），普通窗口跨重启保留。DevTools 勾选「停用缓存」不影响 IndexedDB（这正是选 IDB 而非纯 HTTP 缓存的原因）。
 - **未执行**：用户浏览器观感（待用户验收）、packaged、Windows。
+
+## 补充记录（2026-10-08）：自动云转发（Cloudflare 命名隧道）
+
+**背景**：用户要求开启「启用网页分享」时**自动启用云转发**（本机已配置好的 Cloudflare 命名隧道），设置页能**设置 Cloudflare 里绑定的域名**，并在未安装 `cloudflared` 时提供**一键安装**。
+
+**实现**：
+- 新增 `src/myqy-web-share/server/cloudflare-tunnel.ts`：`CloudflareTunnelManager` 定位 `cloudflared`（PATH + 常见安装目录）、轻量解析 `~/.cloudflared/config.yml`（`tunnel`/`credentials-file`/首个 `hostname`，不引入 YAML 依赖）、在用户数据目录生成 **Serpent 托管 ingress 配置**（端口始终指向当前分享端口）、`cloudflared tunnel --config <托管> --no-autoupdate run <名称/ID>` 启动；状态机 `off/starting/running/error`，就绪判定为日志 `Registered tunnel connection`，停止用 `taskkill /T /F`（只杀自己启动的进程）。另有 `--version` 检测与 `install()`（Windows `winget`、macOS `brew`）。
+- 共享契约（`src/shared/web-share.ts`）：新增隧道状态/信息 schema、偏好 `autoTunnel`（默认开）+ `cloudflaredPath`/`tunnelName`/`tunnelHostname`、请求 `set-auto-tunnel`/`set-tunnel-config`/`restart-tunnel`/`detect-cloudflared`/`install-cloudflared`。
+- `WebShareServer` 在分享启动/停止时同步隧道；**隧道失败只记为自身 error，不影响本地分享**（`#syncTunnel` 吞异常并发布快照）。
+- 主进程构造管理器注入服务并接线 IPC；设置页新增「云转发（Cloudflare 隧道）」卡片：开关、状态点、公网地址（复制/打开）、**分享域名**与隧道名、cloudflared 路径、**未安装时的安装按钮**、重新检测/重新连接。
+
+**验证**：typecheck/lint 通过；隧道管理器 15 例、服务集成 5 例、存储持久化/兼容 3 例全绿。真实 CLI 契约探针（用真实 config 生成托管配置）确认 `--config … run` 可注册连接（`Registered tunnel connection`）。真实运行实测：开启分享后 Serpent 自动拉起 `cloudflared`，经公网域名 `GET /api/health` 返回 200。
+- **未执行**：设置页 GUI 点击（本环境无 Computer Use）、安装按钮实际安装、packaged、Windows/macOS 观感。

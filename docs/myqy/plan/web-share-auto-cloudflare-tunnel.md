@@ -1,6 +1,6 @@
 # 计划（交接）：网页分享自动云转发（Cloudflare 隧道）
 
-> 状态：**进行中**（批次 1 起）
+> 状态：**已完成（批次 1–3 已本地提交；批次 4 验证与文档进行中）**
 > 创建：2026-10-08
 > 前置计划：[`web-share-prefetch-progress-and-csp.md`](./web-share-prefetch-progress-and-csp.md)（已完成）
 > 规则：[`../web-share-preview.md`](../web-share-preview.md)、[`../git-rules.md`](../git-rules.md)
