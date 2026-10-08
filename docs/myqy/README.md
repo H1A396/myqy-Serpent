@@ -19,6 +19,14 @@
   `myqy-fork-rules` 声明块中登记（新增文件时同步更新上面的表格）。
 - **多步计划必须落库**：凡是需要多批次/多步骤推进的计划，写入 [`plan/`](./plan/)（一份计划
   一个文件），开题时登记，执行进度与结论在该文件内更新，不要只留在聊天里。
+
+### 计划登记
+
+| 计划 | 状态 |
+| --- | --- |
+| [`plan/web-share-big-image-lod-and-prefetch.md`](./plan/web-share-big-image-lod-and-prefetch.md) | 已完成 |
+| [`plan/web-share-prefetch-progress-and-csp.md`](./plan/web-share-prefetch-progress-and-csp.md) | 已完成 |
+| [`plan/web-share-auto-cloudflare-tunnel.md`](./plan/web-share-auto-cloudflare-tunnel.md) | 进行中（2026-10-08 起） |
 - 本目录内容属于本 fork 自有，合并上游更新时不要被上游版本覆盖。
 - 本目录下的文件同样受 `AGENTS.md`「隐私与本地环境信息」条款约束：不得写入本机路径、
   用户名、机器名、域名或凭据。

@@ -29,6 +29,8 @@ import {
   type WebShareDerivativeTierStats,
   type WebShareDerivativeProgress,
   type WebShareVisitorSummary,
+  type WebShareTunnelInfo,
+  type WebShareTunnelState,
 } from '../../shared/web-share';
 import {
   createWebSharePasswordRecord,
@@ -36,6 +38,7 @@ import {
   WebShareLoginThrottle,
   WebShareSessionSigner,
 } from './web-share-auth';
+import { normalizeTunnelHostname, type WebShareTunnel } from './cloudflare-tunnel';
 import { WebShareVisitorStore } from './web-share-visitor-store';
 import { WebShareDataError, type WebShareDataProvider } from './web-share-data';
 import type { ResolvedDerivative, ResolvedMedia, WebShareMediaResolver } from './web-share-media';
@@ -59,6 +62,25 @@ export interface WebShareServerOptions {
   staticRootDir?: string | null;
   now?: () => number;
   onSnapshotChanged?: (snapshot: WebShareSettingsSnapshot) => void;
+  /** Owns the operator's Cloudflare tunnel; absent disables auto forwarding. */
+  tunnel?: WebShareTunnel;
+}
+
+const DISABLED_TUNNEL_STATE: WebShareTunnelState = { status: 'off' };
+const DISABLED_TUNNEL_INFO: WebShareTunnelInfo = {
+  installed: false,
+  cloudflaredPath: null,
+  version: null,
+  hostname: null,
+  configFound: false,
+  managedConfigPath: null,
+};
+
+/** Trim an optional override; an all-whitespace value clears it. */
+function normalizeOptionalString(value: string | null, maxLength: number): string | null {
+  if (value === null) return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed.slice(0, maxLength);
 }
 
 export class WebShareServerError extends Error {
@@ -122,6 +144,7 @@ export class WebShareServer {
   readonly #now: () => number;
   readonly #staticRootDir: string | null;
   readonly #onSnapshotChanged: WebShareServerOptions['onSnapshotChanged'];
+  readonly #tunnel: WebShareTunnel | undefined;
   readonly #snapshotListeners = new Set<(snapshot: WebShareSettingsSnapshot) => void>();
   readonly #sessions = new Map<string, number>();
   readonly #visitors: WebShareVisitorStore;
@@ -144,6 +167,10 @@ export class WebShareServer {
     this.#now = options.now ?? Date.now;
     this.#staticRootDir = options.staticRootDir ?? null;
     this.#onSnapshotChanged = options.onSnapshotChanged;
+    this.#tunnel = options.tunnel;
+    this.#tunnel?.onChange(() => {
+      this.#publish();
+    });
     this.#signer = new WebShareSessionSigner(
       this.#store.sessionSecret,
       WEB_SHARE_SESSION_TTL_MS,
@@ -168,6 +195,9 @@ export class WebShareServer {
       derivativeStats: this.#derivativeStats,
       derivativeProgress: this.#derivativeProgress,
       libraries: this.#libraries,
+      tunnel: this.#tunnel?.state() ?? DISABLED_TUNNEL_STATE,
+      tunnelInfo: this.#tunnel?.info() ?? DISABLED_TUNNEL_INFO,
+      tunnelInstalling: this.#tunnel?.isInstalling() ?? false,
     });
   }
 
@@ -230,6 +260,12 @@ export class WebShareServer {
   }
 
   async initialize(): Promise<void> {
+    this.#applyTunnelConfig();
+    if (this.#tunnel !== undefined) {
+      await this.#tunnel.refreshInfo().catch((error: unknown) => {
+        this.#logger.error('web-share.tunnel', error);
+      });
+    }
     await this.refreshLibraries().catch(() => undefined);
     if (this.#store.preferences.enabled) {
       try {
@@ -264,6 +300,85 @@ export class WebShareServer {
     this.#store.setPreferences({ port });
     if (wasRunning) await this.start();
     return this.#publish();
+  }
+
+  /** Toggle automatic Cloudflare forwarding without touching the local share. */
+  async setAutoTunnel(enabled: boolean): Promise<WebShareSettingsSnapshot> {
+    this.#store.setPreferences({ autoTunnel: enabled });
+    await this.#syncTunnel();
+    return this.#publish();
+  }
+
+  /** Persist the tunnel/hostname/executable overrides and re-apply them. */
+  async setTunnelConfig(patch: {
+    cloudflaredPath?: string | null;
+    tunnelName?: string | null;
+    tunnelHostname?: string | null;
+  }): Promise<WebShareSettingsSnapshot> {
+    const next: Partial<WebShareServerPreferences> = {};
+    if (patch.cloudflaredPath !== undefined) {
+      next.cloudflaredPath = normalizeOptionalString(patch.cloudflaredPath, 1024);
+    }
+    if (patch.tunnelName !== undefined) {
+      next.tunnelName = normalizeOptionalString(patch.tunnelName, 255);
+    }
+    if (patch.tunnelHostname !== undefined) {
+      next.tunnelHostname = normalizeTunnelHostname(patch.tunnelHostname);
+    }
+    this.#store.setPreferences(next);
+    this.#applyTunnelConfig();
+    if (this.#tunnel !== undefined) {
+      await this.#tunnel.refreshInfo().catch(() => undefined);
+    }
+    await this.#syncTunnel();
+    return this.#publish();
+  }
+
+  async restartTunnel(): Promise<WebShareSettingsSnapshot> {
+    await this.#syncTunnel(true);
+    return this.#publish();
+  }
+
+  async refreshTunnelInfo(): Promise<WebShareSettingsSnapshot> {
+    if (this.#tunnel !== undefined) {
+      await this.#tunnel.refreshInfo().catch(() => undefined);
+    }
+    return this.#publish();
+  }
+
+  async installTunnel(): Promise<WebShareSettingsSnapshot> {
+    if (this.#tunnel !== undefined) await this.#tunnel.install();
+    return this.#publish();
+  }
+
+  #applyTunnelConfig(): void {
+    if (this.#tunnel === undefined) return;
+    const prefs = this.#store.preferences;
+    this.#tunnel.setConfig({
+      cloudflaredPath: prefs.cloudflaredPath,
+      tunnelName: prefs.tunnelName,
+      tunnelHostname: prefs.tunnelHostname,
+    });
+  }
+
+  async #syncTunnel(forceRestart = false): Promise<void> {
+    const tunnel = this.#tunnel;
+    if (tunnel === undefined) return;
+    this.#applyTunnelConfig();
+    const prefs = this.#store.preferences;
+    const shouldRun = this.#runtime.status === 'running' && prefs.enabled && prefs.autoTunnel;
+    try {
+      if (!shouldRun) {
+        await tunnel.stop();
+      } else if (forceRestart) {
+        await tunnel.stop();
+        await tunnel.start(prefs.port);
+      } else {
+        await tunnel.start(prefs.port);
+      }
+    } catch (error) {
+      this.#logger.error('web-share.tunnel', error);
+    }
   }
 
   setAllowDownload(enabled: boolean): WebShareSettingsSnapshot {
@@ -329,6 +444,7 @@ export class WebShareServer {
     try {
       if (server !== undefined) await closeHttpServer(server);
       this.#runtime = { status: 'stopped' };
+      await this.#syncTunnel();
       return this.#publish();
     } catch (error) {
       this.#runtime = {
@@ -422,6 +538,7 @@ export class WebShareServer {
       port,
       address: LOOPBACK_ADDRESS,
     });
+    await this.#syncTunnel();
     return this.#publish();
   }
 
