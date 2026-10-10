@@ -71,6 +71,7 @@ const GOLDEN_CHECKSUMS: Record<number, string> = {
   54: 'fe71a803bdedbe80d3414be4d4287538c788a8d5fe3f108a1c8654d05e2849a5',
   55: '58970788995b80ef7fab34dc4b3dba0f9e6e710a1d76d068bc1b7bb1f6bb431b',
   56: '21bd759f647d3bdcd957f8679dc25e95764697d13f6f16039df26d8bb9b3c88b',
+  57: '2cc0c2914f0f54b6d811274d1a72fcc6f94f63c91dba091b24c8cf78c23a138f',
 };
 
 describe('golden migration checksum snapshot (Serpent-033e)', () => {
