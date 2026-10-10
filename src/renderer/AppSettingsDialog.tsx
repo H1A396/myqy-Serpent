@@ -60,6 +60,12 @@ export interface AppSettingsDialogProps {
   syncServerCallbacks: SyncServerSettingsCallbacks;
   showCardSyncStatus: boolean;
   onShowCardSyncStatusChange: (checked: boolean) => void;
+  showMissingLinkedFiles: boolean;
+  onToggleShowMissingLinkedFiles: () => void;
+  navArrowsOnApproach: boolean;
+  onToggleNavArrowsOnApproach: () => void;
+  videoTransportOnApproach: boolean;
+  onToggleVideoTransportOnApproach: () => void;
 }
 
 /**
@@ -98,6 +104,12 @@ export function AppSettingsDialog({
   syncServerCallbacks,
   showCardSyncStatus,
   onShowCardSyncStatusChange,
+  showMissingLinkedFiles,
+  onToggleShowMissingLinkedFiles,
+  navArrowsOnApproach,
+  onToggleNavArrowsOnApproach,
+  videoTransportOnApproach,
+  onToggleVideoTransportOnApproach,
 }: AppSettingsDialogProps): ReactNode {
   const t = useT();
   const [pluginSettingsPluginId, setPluginSettingsPluginId] = useState<string | null>(null);
@@ -262,7 +274,13 @@ export function AppSettingsDialog({
                 onToggleHoverAudioPlay={onToggleHoverAudioPlay}
                 onToggleHoverVideoSound={onToggleHoverVideoSound}
                 audioPreviewPrefersCover={audioPreviewPrefersCover}
+                navArrowsOnApproach={navArrowsOnApproach}
                 onAudioPreviewPrefersCoverChange={onAudioPreviewPrefersCoverChange}
+                onToggleNavArrowsOnApproach={onToggleNavArrowsOnApproach}
+                onToggleShowMissingLinkedFiles={onToggleShowMissingLinkedFiles}
+                onToggleVideoTransportOnApproach={onToggleVideoTransportOnApproach}
+                showMissingLinkedFiles={showMissingLinkedFiles}
+                videoTransportOnApproach={videoTransportOnApproach}
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "ai" ? (

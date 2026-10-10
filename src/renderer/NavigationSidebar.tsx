@@ -61,6 +61,7 @@ import type { InlineSmartCollectionEditState } from "./inline-smart-collection-e
 import { isLibraryRootFolderId } from "../shared/library-root-folder";
 import {
   buildUnifiedDirectoryNavEntries,
+  hideOfflineLinkedDirectoryEntries,
   filterCollapsedDirectoryEntries,
   filterCollectionTreeByName,
   filterDirectoryEntriesByName,
@@ -849,6 +850,7 @@ export interface NavigationSidebarProps {
   activeCollectionId: string | null;
   activeSmartCollectionId: string | null;
   showIgnoredItems: boolean;
+  showMissingLinkedFiles?: boolean;
   onToggleShowIgnoredItems: () => void;
   revealTarget?: {
     kind: "folder" | "collection";
@@ -1035,6 +1037,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     activeCollectionId,
     activeSmartCollectionId,
     showIgnoredItems,
+    showMissingLinkedFiles = true,
     onToggleShowIgnoredItems,
     revealTarget = null,
     allAssetCount,
@@ -1228,7 +1231,12 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     saveNavTreePreferences(next);
   }
 
-  const unifiedDirectoryEntries = buildUnifiedDirectoryNavEntries(folders, linkedFolders);
+  const unifiedDirectoryEntries = (() => {
+    const entries = buildUnifiedDirectoryNavEntries(folders, linkedFolders);
+    return showMissingLinkedFiles
+      ? entries
+      : hideOfflineLinkedDirectoryEntries(entries);
+  })();
 
   function applyFolderSubtree(folderId: string, collapse: boolean) {
     const rootId = isLibraryRootFolderId(folderId) || folderId === "root"

@@ -773,6 +773,12 @@ const assetOperationSuccessSchemas = [
   }),
   z.strictObject({
     ok: z.literal(true),
+    type: z.literal('folder.cover.updated'),
+    folderIds: z.array(nonBlankString).min(1).max(100),
+    hasCustomCover: z.boolean(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
     type: z.literal('linked-folder.directory-created'),
     folder: linkedFolderDirectoryMutationSchema,
   }),
@@ -1910,6 +1916,12 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     type: z.literal('media.source-path'),
     assetId: nonBlankString,
     revisionId: nonBlankString,
+    absolutePath: nonBlankString,
+    mimeType: nonBlankString,
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('folder.cover.resolved'),
     absolutePath: nonBlankString,
     mimeType: nonBlankString,
   }),

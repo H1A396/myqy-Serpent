@@ -1,11 +1,26 @@
 import type { FolderBrowseEntry } from "../shared/asset-types";
 import { coverSrc, sourceSrc } from "./asset-card-hover-preview";
 
-/** First paintable folder cover: a thumbnail artifact, or a sequence frame file. */
+/** Cover image stored with the library, addressed without a filesystem path. */
+export function folderCustomCoverSrc(
+  libraryId: string,
+  folderId: string,
+  token: string,
+): string {
+  const url = new URL(`serpent://folder-cover/${encodeURIComponent(libraryId)}`);
+  url.searchParams.set("folder", folderId);
+  url.searchParams.set("v", token);
+  return url.toString();
+}
+
+/** Custom cover when one is stored; otherwise the first automatic cover. */
 export function folderCoverImageSrc(
   libraryId: string,
-  entry: Pick<FolderBrowseEntry, "coverArtifactIds" | "coverSourcePreviews">,
+  entry: Pick<FolderBrowseEntry, "folderId" | "coverArtifactIds" | "coverSourcePreviews" | "hasCustomCover" | "customCoverToken">,
 ): string | null {
+  if (entry.hasCustomCover && entry.customCoverToken) {
+    return folderCustomCoverSrc(libraryId, entry.folderId, entry.customCoverToken);
+  }
   const artifactId = entry.coverArtifactIds[0];
   if (artifactId) return coverSrc(libraryId, artifactId);
   const source = entry.coverSourcePreviews?.[0];

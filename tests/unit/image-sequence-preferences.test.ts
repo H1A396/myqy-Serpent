@@ -30,31 +30,57 @@ describe("image sequence preferences", () => {
       DEFAULT_IMAGE_SEQUENCE_PREFERENCES,
     );
     expect(DEFAULT_IMAGE_SEQUENCE_PREFERENCES).toEqual({
-      version: 2,
+      version: 3,
       detectionEnabled: true,
       autoDetectOnImport: false,
     });
   });
 
-  it("migrates v1 storage with detection left on", () => {
+  it("migrates v1 storage with detection left on and auto-create off", () => {
     const store = storage(
-      JSON.stringify({ version: 1, autoDetectOnImport: false }),
+      JSON.stringify({ version: 1, autoDetectOnImport: true }),
     );
     expect(loadImageSequencePreferences(store)).toEqual({
-      version: 2,
+      version: 3,
       detectionEnabled: true,
       autoDetectOnImport: false,
     });
+  });
+
+  it("clears a saved auto-create from the previous factory default", () => {
+    const store = storage(
+      JSON.stringify({
+        version: 2,
+        detectionEnabled: true,
+        autoDetectOnImport: true,
+      }),
+    );
+    expect(loadImageSequencePreferences(store)).toEqual({
+      version: 3,
+      detectionEnabled: true,
+      autoDetectOnImport: false,
+    });
+  });
+
+  it("keeps an explicit auto-create choice saved at version 3", () => {
+    const store = storage(
+      JSON.stringify({
+        version: 3,
+        detectionEnabled: true,
+        autoDetectOnImport: true,
+      }),
+    );
+    expect(loadImageSequencePreferences(store).autoDetectOnImport).toBe(true);
   });
 
   it("persists both detection toggles", () => {
     const store = storage();
     saveImageSequencePreferences(
-      { version: 2, detectionEnabled: true, autoDetectOnImport: false },
+      { version: 3, detectionEnabled: true, autoDetectOnImport: false },
       store,
     );
     expect(loadImageSequencePreferences(store)).toEqual({
-      version: 2,
+      version: 3,
       detectionEnabled: true,
       autoDetectOnImport: false,
     });
@@ -63,7 +89,7 @@ describe("image sequence preferences", () => {
   it("turns auto-create off when detection is off", () => {
     expect(
       imageSequenceImportFlags({
-        version: 2,
+        version: 3,
         detectionEnabled: false,
         autoDetectOnImport: true,
       }),

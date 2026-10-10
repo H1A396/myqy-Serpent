@@ -145,23 +145,24 @@ export function isSameInlineFolderEditSession(
 
 /**
  * Indent depth of the edit row. A pending create row nests one level under
- * its parent (the library root's children render at depth 1); a rename row
- * keeps the folder's own depth. Missing entries fall back to depth 1 so a
- * stale session can never render at a misleading indentation.
+ * its parent. Library-root children render at depth 0 (same as
+ * `relativePathDepth`), so a root create stays at 0 and lines up with those
+ * names. A rename row keeps the folder's own depth. Missing entries fall
+ * back to depth 0 so a stale session stays on the root indent.
  */
 export function inlineFolderEditDepth(
   state: InlineFolderEditState,
   entries: UnifiedDirectoryNavEntry[],
 ): number {
   if (state.kind === "create") {
-    if (state.parentFolderId === null) return 1;
+    if (state.parentFolderId === null) return 0;
     const parent = entries.find(
       (entry) => entry.folderId === state.parentFolderId,
     );
-    return parent ? parent.depth + 1 : 1;
+    return parent ? parent.depth + 1 : 0;
   }
   const target = entries.find((entry) => entry.folderId === state.folderId);
-  return target ? target.depth : 1;
+  return target ? target.depth : 0;
 }
 
 /**

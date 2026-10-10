@@ -135,7 +135,7 @@ export function ModelViewerToolbar(props: ModelViewerToolbarProps) {
       : null;
 
   return (
-    <div className="model-viewer-toolbar preview-chrome-fade">
+    <div className="model-viewer-toolbar preview-chrome-fade is-approach-toolbar">
       <div className="model-viewer-toolbar-item is-hdri" ref={hdriPickerRef}>
         <span className="model-viewer-toolbar-label">{t('viewer3d.hdri')}</span>
         <button

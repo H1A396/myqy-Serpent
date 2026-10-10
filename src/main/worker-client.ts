@@ -428,6 +428,13 @@ export class LibraryWorkerClient {
     });
   }
 
+  publishShowMissingLinkedFiles(show: boolean): void {
+    this.#child?.postMessage({
+      type: 'linked-missing-visibility.set',
+      show,
+    });
+  }
+
   onPluginMediaProviderRequest(
     listener: (request: PluginMediaProviderRequest) => Promise<PluginMediaProviderResult>,
   ): () => void {

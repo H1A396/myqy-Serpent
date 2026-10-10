@@ -58,6 +58,7 @@ import {
   boundedWriteLibraryId,
   executeBoundedWriteWorkerCommand,
 } from './bounded-write-command';
+import { parseLinkedMissingVisibilityMessage } from '../shared/linked-missing-visibility';
 import {
   parsePluginMediaProviderResponse,
   parsePluginThumbnailExtensionsMessage,
@@ -2387,6 +2388,20 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
       throw new Error('Bounded folder.create write was not dispatched through its transaction fence.');
     case 'appearance.set':
       throw new Error('Bounded appearance.set write was not dispatched through its transaction fence.');
+    case 'folder.cover.set':
+      throw new Error('Bounded folder.cover.set write was not dispatched through its transaction fence.');
+    case 'folder.cover.clear':
+      throw new Error('Bounded folder.cover.clear write was not dispatched through its transaction fence.');
+    case 'folder.cover.resolve': {
+      const resolved = libraryService.resolveFolderCustomCover(request.command);
+      if (!resolved) throw new LibraryServiceError('FOLDER_NOT_FOUND');
+      return {
+        ok: true,
+        type: 'folder.cover.resolved',
+        absolutePath: resolved.absolutePath,
+        mimeType: resolved.mimeType,
+      };
+    }
     case 'folder.rename':
     case 'folder.clone':
     case 'folder.move':
@@ -2853,6 +2868,12 @@ function logWorkerRequestSpan(input: {
 const handleLibraryWorkerMessage = async (event: { data: unknown }): Promise<void> => {
   const input: unknown = event.data;
   const callbackAt = WORKER_CMD_LOG ? Date.now() : 0;
+
+  const linkedMissingVisibility = parseLinkedMissingVisibilityMessage(input);
+  if (linkedMissingVisibility) {
+    libraryService.setShowMissingLinkedFiles(linkedMissingVisibility.show);
+    return;
+  }
 
   const thumbnailExtensions = parsePluginThumbnailExtensionsMessage(input);
   if (thumbnailExtensions) {

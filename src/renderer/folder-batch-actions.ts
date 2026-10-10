@@ -8,11 +8,13 @@
  */
 
 import type { MenuSkipReasonCode } from "./menu-skip-report";
+import { parseLinkedVirtualFolderId } from "../shared/linked-folder-tree";
 
 export type FolderBatchAction =
   | "trash"
   | "delete-from-disk"
   | "appearance"
+  | "cover"
   | "ignore";
 
 export interface FolderBatchManagedFolder {
@@ -103,7 +105,7 @@ export function planFolderBatch(input: {
     if (linked) {
       const relativePath = linked.relativePath ?? "";
       if (relativePath !== "") {
-        if (input.action === "ignore") {
+        if (input.action === "ignore" || input.action === "cover") {
           targets.push({
             folderId,
             kind: "linked-folder",
@@ -129,6 +131,21 @@ export function planFolderBatch(input: {
         linkedRelativePath: null,
       });
       continue;
+    }
+    if (input.action === "cover") {
+      const virtual = parseLinkedVirtualFolderId(folderId);
+      const root = virtual ? linkedById.get(virtual.linkedFolderId) : undefined;
+      if (virtual && root) {
+        const name = virtual.relativePath.split("/").at(-1) ?? virtual.relativePath;
+        targets.push({
+          folderId,
+          kind: "linked-folder",
+          name,
+          relativePath: virtual.relativePath,
+          linkedRelativePath: virtual.relativePath,
+        });
+        continue;
+      }
     }
     skips.set("unresolved", (skips.get("unresolved") ?? 0) + 1);
   }

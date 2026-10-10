@@ -1,7 +1,10 @@
 import type { RendererRequest, WorkerCommand } from "../../shared/protocol/requests";
+import { resolveNativeDialogCopy } from "../../shared/native-dialog-i18n";
+import { selectOpenFile, type NativeDialogHost } from "../native-dialogs";
 
 export async function executeFolderMainCommand(
   request: RendererRequest,
+  runtime?: { createNativeDialogHost: () => NativeDialogHost },
 ): Promise<WorkerCommand | undefined> {
   switch (request.type) {
     case "folder.create.request":
@@ -24,6 +27,33 @@ export async function executeFolderMainCommand(
         libraryId: request.libraryId,
         target: request.target,
         appearance: request.appearance,
+      };
+    case "folder.cover.set.request": {
+      if (!runtime) return undefined;
+      const host = runtime.createNativeDialogHost();
+      const copy = resolveNativeDialogCopy(host.getLocale(), "chooseFolderCover");
+      const sourcePath = await selectOpenFile(
+        host,
+        "chooseFolderCover",
+        process.env.SERPENT_E2E_FOLDER_COVER_FILE,
+        [{
+          name: copy.filterName ?? copy.title,
+          extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"],
+        }],
+      );
+      if (!sourcePath) return undefined;
+      return {
+        type: "folder.cover.set",
+        libraryId: request.libraryId,
+        folderIds: request.folderIds,
+        sourcePath,
+      };
+    }
+    case "folder.cover.clear.request":
+      return {
+        type: "folder.cover.clear",
+        libraryId: request.libraryId,
+        folderIds: request.folderIds,
       };
     case "folder.list.request":
       return { type: "folder.list", libraryId: request.libraryId, showIgnored: request.showIgnored };

@@ -34,6 +34,7 @@ function createActions(): MainMenuActions {
     openGitHub: vi.fn(),
     openOpenSourceLicenses: vi.fn(),
     revealAppLog: vi.fn(),
+    toggleShowMissingLinkedFiles: vi.fn(),
   };
 }
 
@@ -50,6 +51,7 @@ function build(overrides?: Partial<Parameters<typeof buildMainMenuSections>[0]>)
       hasSelectedAssets: true,
       hasPasteTarget: true,
       hasBrowseAssets: true,
+      showMissingLinkedFiles: true,
     },
     actions,
     ...overrides,
@@ -104,6 +106,7 @@ describe("main-menu-items (Serpent-bnah)", () => {
         hasSelectedAssets: false,
         hasPasteTarget: false,
         hasBrowseAssets: false,
+        showMissingLinkedFiles: true,
       },
     });
     const file = sections.find((section) => section.id === "file");
@@ -172,6 +175,7 @@ describe("main-menu-items (Serpent-bnah)", () => {
       "library.remove",
       "library.delete-from-disk",
       "library.settings",
+      "library.show-missing-linked",
     ]);
     expect(library?.items?.find((item) => item.id === "library.rename")).toBeUndefined();
     expect(library?.items?.find((item) => item.id === "library.open-external")).toBeUndefined();
@@ -191,6 +195,7 @@ describe("main-menu-items (Serpent-bnah)", () => {
         hasSelectedAssets: false,
         hasPasteTarget: false,
         hasBrowseAssets: false,
+        showMissingLinkedFiles: true,
       },
     });
     const states = new Map(
@@ -229,6 +234,7 @@ describe("main-menu-items (Serpent-bnah)", () => {
         hasSelectedAssets: false,
         hasPasteTarget: false,
         hasBrowseAssets: false,
+        showMissingLinkedFiles: true,
       },
     });
     const file = sections.find((section) => section.id === "file");

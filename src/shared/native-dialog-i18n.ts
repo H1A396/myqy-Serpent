@@ -55,6 +55,7 @@ export type NativeDialogId =
   | "linkFolder"
   | "relinkFolder"
   | "locateMissingAsset"
+  | "chooseFolderCover"
   | "selectRelinkRoot"
   | "exportZip"
   | "exportFolder"
@@ -120,6 +121,11 @@ const EN: DialogCatalog = {
   locateMissingAsset: {
     title: "Locate Missing Asset",
     buttonLabel: "Select File",
+  },
+  chooseFolderCover: {
+    title: "Choose Cover",
+    buttonLabel: "Choose Image",
+    filterName: "Images",
   },
   selectRelinkRoot: {
     title: "Select New Root for Relinking",
@@ -226,6 +232,11 @@ const ZH_CN: DialogCatalog = {
   locateMissingAsset: {
     title: "\u5b9a\u4f4d\u4e22\u5931\u8d44\u4ea7",
     buttonLabel: "\u9009\u62e9\u6587\u4ef6",
+  },
+  chooseFolderCover: {
+    title: "选择封面",
+    buttonLabel: "选择图片",
+    filterName: "图片",
   },
   selectRelinkRoot: {
     title: "\u9009\u62e9\u91cd\u65b0\u5b9a\u4f4d\u7684\u65b0\u6839\u76ee\u5f55",

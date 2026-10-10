@@ -201,9 +201,9 @@ describe("inlineFolderEditDepth", () => {
     ).toBe(3);
   });
 
-  it("places a root-level create at depth 1", () => {
+  it("places a root-level create at depth 0", () => {
     expect(inlineFolderEditDepth(startInlineFolderCreate(null), entries)).toBe(
-      1,
+      0,
     );
   });
 
@@ -213,13 +213,13 @@ describe("inlineFolderEditDepth", () => {
     ).toBe(2);
   });
 
-  it("falls back to depth 1 when the entries no longer contain the target", () => {
+  it("falls back to depth 0 when the entries no longer contain the target", () => {
     expect(
       inlineFolderEditDepth(startInlineFolderCreate("gone"), entries),
-    ).toBe(1);
+    ).toBe(0);
     expect(
       inlineFolderEditDepth(startInlineFolderRename("gone", "旧名"), entries),
-    ).toBe(1);
+    ).toBe(0);
   });
 });
 

@@ -257,6 +257,7 @@ function InspectorHeroSinglePreview({
         assetId={asset.assetId}
         cardFeelTilt={cardFeelEnabled}
         className="inspector-hero-preview inspector-hero-text-preview text-asset-preview"
+        fileName={asset.relativeFilePath || asset.displayName}
         libraryId={library.libraryId}
         revisionId={asset.currentRevisionId}
         snippetClassName="inspector-hero-text-snippet text-asset-preview-snippet"

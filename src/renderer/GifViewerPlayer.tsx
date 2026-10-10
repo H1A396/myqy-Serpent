@@ -514,7 +514,7 @@ function GifAnimatedStage({
         />
       </div>
       {session ? (
-        <div className="preview-video-controls preview-chrome-fade">
+        <div className="preview-video-controls preview-chrome-fade is-drawer">
           <button
             className="preview-video-playpause"
             onClick={togglePlayback}

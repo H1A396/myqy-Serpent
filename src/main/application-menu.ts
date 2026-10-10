@@ -74,6 +74,21 @@ export function setApplicationMenuCommandLabel(
   if (item) item.label = label;
 }
 
+/** Remembered across menu rebuilds (locale changes reconstruct the template). */
+let showMissingLinkedMenuChecked = true;
+
+export function setApplicationMenuCommandChecked(
+  command: string,
+  checked: boolean,
+): void {
+  if (command === "library.show-missing-linked") {
+    showMissingLinkedMenuChecked = checked;
+  }
+  const menu = Menu.getApplicationMenu();
+  const item = menu?.getMenuItemById(command);
+  if (item) item.checked = checked;
+}
+
 /**
  * Every template item with a `command` is wired here: the focused window's
  * renderer receives the command over APPLICATION_MENU_COMMAND_CHANNEL and
@@ -106,9 +121,11 @@ function enrichMenuTemplate(
     }
     if (item.command !== undefined) {
       const command = item.command;
+      const checkbox = item.type === "checkbox";
       return {
         id: item.payload ? `${command}:${item.payload}` : command,
         label: resolvedLabel ?? item.labelValue,
+        ...(checkbox ? { type: "checkbox" as const, checked: command === "library.show-missing-linked" ? showMissingLinkedMenuChecked : item.checked === true } : {}),
         ...(item.accelerator ? { accelerator: item.accelerator } : {}),
         click: (_menuItem, window) => {
           const target = window as BrowserWindow | undefined;

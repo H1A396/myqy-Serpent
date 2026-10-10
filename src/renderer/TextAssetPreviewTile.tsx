@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { parseAssetMarkdown } from "../plugins/plugin-community-readme";
 import type { SerpentLibraryApi } from "../shared/library-api";
-import { textCardPreviewSnippet } from "../shared/text-media";
+import { isMarkdownTextName, textCardPreviewSnippet } from "../shared/text-media";
 import { useT } from "./i18n";
+import { PluginReadmeView } from "./PluginReadmeView";
 
 const previewCache = new Map<string, string>();
 const previewInFlight = new Map<string, Promise<string | null>>();
 const previewGenerations = new Map<string, number>();
 
 function cacheKey(libraryId: string, assetId: string, revisionId: string): string {
-  return `${libraryId}:${assetId}:${revisionId}`;
+  return `${libraryId}:${assetId}:${revisionId}:source`;
 }
 
 export type TextAssetPreviewTileProps = {
@@ -20,6 +22,8 @@ export type TextAssetPreviewTileProps = {
   revisionId: string;
   className?: string;
   snippetClassName?: string;
+  /** Relative path or display name. `.md` / `.markdown` render formatted. */
+  fileName?: string;
   /** Inspector card-feel tilt host (experiment/card-feel-preview subset). */
   cardFeelTilt?: boolean;
 };
@@ -35,23 +39,29 @@ export function TextAssetPreviewTile({
   revisionId,
   className = "text-asset-preview",
   snippetClassName = "text-asset-preview-snippet",
+  fileName = "",
   cardFeelTilt = false,
 }: TextAssetPreviewTileProps) {
   const t = useT();
   const tileRef = useRef<HTMLDivElement>(null);
+  const markdown = isMarkdownTextName(fileName);
   const key = cacheKey(libraryId, assetId, revisionId);
-  const [snippet, setSnippet] = useState<string | null>(
+  const [source, setSource] = useState<string | null>(
     () => previewCache.get(key) ?? null,
+  );
+  const markdownBlocks = useMemo(
+    () => (markdown && source != null ? parseAssetMarkdown(source) : []),
+    [markdown, source],
   );
 
   useEffect(() => {
     const cached = previewCache.get(key);
     if (cached != null) {
-      queueMicrotask(() => setSnippet(cached));
+      queueMicrotask(() => setSource(cached));
       return;
     }
     let cancelled = false;
-    queueMicrotask(() => setSnippet(null));
+    queueMicrotask(() => setSource(null));
 
     const load = (): void => {
       if (cancelled) return;
@@ -62,7 +72,7 @@ export function TextAssetPreviewTile({
         .readTextAsset({ libraryId, assetId, maxBytes: 2048 })
         .then((result) => {
           if (!result.ok) return null;
-          const next = textCardPreviewSnippet(result.value.content);
+          const next = result.value.content;
           if ((previewGenerations.get(key) ?? 0) !== generation) return null;
           previewCache.set(key, next);
           return next;
@@ -76,7 +86,7 @@ export function TextAssetPreviewTile({
         });
       }
       void request.then((next) => {
-        if (!cancelled && next != null) setSnippet(next);
+        if (!cancelled && next != null) setSource(next);
       });
     };
 
@@ -113,9 +123,21 @@ export function TextAssetPreviewTile({
       ref={tileRef}
       {...(cardFeelTilt ? { "data-card-feel-tilt": "" } : {})}
     >
-      <pre className={snippetClassName}>
-        {snippet ?? t("preview.textLoading")}
-      </pre>
+      {markdown && markdownBlocks.length > 0 ? (
+        <div className="text-asset-preview-markdown">
+          <PluginReadmeView
+            blocks={markdownBlocks}
+            empty=""
+            imageLabel=""
+            interactive={false}
+            onOpenUrl={() => undefined}
+          />
+        </div>
+      ) : (
+        <pre className={snippetClassName}>
+          {source == null ? t("preview.textLoading") : textCardPreviewSnippet(source)}
+        </pre>
+      )}
     </div>
   );
 }

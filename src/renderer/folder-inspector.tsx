@@ -110,7 +110,8 @@ export function FolderInspectorBody({
   const path = folderInspectorPathLabel(entries, t("menu.libraryRoot"));
   const assetCount = entries.reduce((sum, entry) => sum + entry.recursiveAssetCount, 0);
   const childFolderCount = entries.reduce((sum, entry) => sum + entry.childFolderCount, 0);
-  const covers = entries.flatMap((entry) => entry.coverArtifactIds).slice(0, 4);
+  const customCover = single?.hasCustomCover ? folderCoverImageSrc(libraryId, single) : null;
+  const covers = customCover ? [] : entries.flatMap((entry) => entry.coverArtifactIds).slice(0, 4);
   const sequenceCover = covers.length === 0 && single
     ? folderCoverImageSrc(libraryId, single)
     : null;
@@ -130,7 +131,9 @@ export function FolderInspectorBody({
     <div className="inspector-content">
       <div className={`inspector-hero-compact${single ? "" : " is-multi"}`}>
         <div className="inspector-hero-preview inspector-folder-hero">
-          {covers.length === 0 ? (
+          {customCover ? (
+            <img alt="" className="inspector-hero-image" src={customCover} />
+          ) : covers.length === 0 ? (
             sequenceCover ? (
               <img alt="" className="inspector-hero-image" src={sequenceCover} />
             ) : (

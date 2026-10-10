@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  pointerEventIsUserMove,
+  shouldIgnoreViewerPointerMove,
+  type PointerSample,
+} from "./video-transport-visibility";
+import {
   createViewerChromeIdleScheduler,
   shouldWakeViewerChrome,
   type ViewerChromeActivitySource,
@@ -62,7 +67,16 @@ export function useViewerChromeIdle(
     if (!active) return;
 
     const onKey = () => onActivity("keyboard");
-    const onPointerMove = () => onActivity("pointermove");
+    // A playing video can report pointermove at nearly the same point. Those
+    // events are not the user moving the pointer, and they were keeping the
+    // transport visible after an asset change.
+    let lastPointer: PointerSample | null = null;
+    const onPointerMove = (event: PointerEvent) => {
+      if (!pointerEventIsUserMove(event)) return;
+      if (shouldIgnoreViewerPointerMove(event, lastPointer)) return;
+      lastPointer = { x: event.clientX, y: event.clientY };
+      onActivity("pointermove");
+    };
     const onPointerDown = () => onActivity("pointerdownOrClick");
     const onWheel = () => onActivity("wheel");
 

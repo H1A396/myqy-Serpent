@@ -50,6 +50,9 @@ export const APPLICATION_MENU_COMMAND_CHANNEL =
 /** Renderer → Main: sync a native menu item's enabled state (Serpent-q0b1). */
 export const APPLICATION_MENU_ITEM_STATE_CHANNEL =
   'serpent:shell:application-menu-item-state' as const;
+/** Renderer → Main: whether linked-folder browse includes missing source files. */
+export const LINKED_MISSING_VISIBILITY_CHANNEL =
+  'serpent:shell:linked-missing-visibility' as const;
 /** Renderer → Main: fall back to Chromium text copy when no asset file copy. */
 export const NATIVE_EDIT_COPY_CHANNEL = 'serpent:shell:native-edit-copy' as const;
 export const WINDOW_MAXIMIZED_CHANNEL =

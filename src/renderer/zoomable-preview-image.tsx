@@ -413,7 +413,7 @@ export const ZoomableImage = forwardRef<
         )}
       </div>
       <div
-        className="preview-zoom-controls preview-chrome-fade"
+        className="preview-zoom-controls preview-chrome-fade is-approach-toolbar"
         aria-label={t("preview.imageZoom")}
       >
         {colorSpaceOptions && colorSpaceOptions.length > 1 && onColorSpaceChange ? (

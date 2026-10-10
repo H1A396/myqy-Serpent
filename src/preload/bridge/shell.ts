@@ -34,6 +34,7 @@ import {
 import {
   APPLICATION_MENU_COMMAND_CHANNEL,
   APPLICATION_MENU_ITEM_STATE_CHANNEL,
+  LINKED_MISSING_VISIBILITY_CHANNEL,
   APP_LOCALE_CHANNEL,
   BROWSE_SHORTCUT_CHANNEL,
   BROWSE_SHORTCUT_MENU_ENABLED_CHANNEL,
@@ -281,6 +282,9 @@ export const shell: SerpentShellApi = Object.freeze({
     if (label.length === 0 || label.length > 200) return;
     void ipcRenderer.invoke(APPLICATION_MENU_ITEM_STATE_CHANNEL, { command, label })
       .catch(() => undefined);
+  },
+  setShowMissingLinkedFiles(show: boolean): Promise<void> {
+    return ipcRenderer.invoke(LINKED_MISSING_VISIBILITY_CHANNEL, show).then(() => undefined, () => undefined);
   },
   async nativeEditCopy(): Promise<void> {
     await ipcRenderer.invoke(NATIVE_EDIT_COPY_CHANNEL);

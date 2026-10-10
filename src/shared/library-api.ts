@@ -263,6 +263,14 @@ export interface SerpentLibraryApi {
     target: EntityAppearanceTarget;
     appearance: EntityAppearance | null;
   }): Promise<LibraryApiResult<{ target: EntityAppearanceTarget; appearance: EntityAppearance | null }>>;
+  setFolderCover(input: {
+    libraryId: string;
+    folderIds: string[];
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
+  clearFolderCover(input: {
+    libraryId: string;
+    folderIds: string[];
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
   /** Create a physical directory inside a linked-folder root or virtual child. */
   createLinkedFolderDirectory(input: {
     libraryId: string;

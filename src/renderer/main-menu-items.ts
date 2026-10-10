@@ -26,6 +26,8 @@ export type MainMenuItem = {
   readonly submenu?: readonly MainMenuItem[];
   readonly disabled?: boolean;
   readonly danger?: boolean;
+  /** Present on checkable items. Undefined items stay ordinary actions. */
+  readonly checked?: boolean;
   readonly onSelect: () => void;
 };
 
@@ -60,6 +62,7 @@ const APPLICATION_MENU_ITEM_COMMANDS: Readonly<Record<string, ApplicationMenuCom
   "library.import": "library.import",
   "library.export": "library.export",
   "library.settings": "library.settings",
+  "library.show-missing-linked": "library.show-missing-linked",
   "window.background-jobs": "window.background-jobs",
   "window.diagnostics": "window.diagnostics",
   "about.serpent": "about.serpent",
@@ -107,6 +110,7 @@ export type MainMenuActions = {
   readonly importLibrary: () => void;
   readonly exportLibrary: () => void;
   readonly openLibrarySettings?: () => void;
+  readonly toggleShowMissingLinkedFiles: () => void;
   readonly undo: () => void;
   readonly redo: () => void;
   readonly copySelection: () => void;
@@ -135,6 +139,8 @@ export type MainMenuState = {
   readonly hasSelectedAssets: boolean;
   readonly hasPasteTarget: boolean;
   readonly hasBrowseAssets: boolean;
+  /** Linked-folder rows whose source file is missing. Default on. */
+  readonly showMissingLinkedFiles: boolean;
 };
 
 export type MainMenuBuilderInput = {
@@ -313,6 +319,12 @@ export function buildMainMenuSections({
           label: label(locale, "settings.librarySettings"),
           disabled: libraryDisabled,
           onSelect: actions.openLibrarySettings ?? (() => undefined),
+        },
+        {
+          id: "library.show-missing-linked",
+          label: label(locale, "shell.showMissingLinkedFiles"),
+          checked: state.showMissingLinkedFiles,
+          onSelect: actions.toggleShowMissingLinkedFiles,
         },
       ],
     },

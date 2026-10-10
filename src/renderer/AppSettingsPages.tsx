@@ -544,6 +544,12 @@ export type BrowseSettingsPageProps = {
   onToggleHoverVideoSound: () => void;
   audioPreviewPrefersCover: boolean;
   onAudioPreviewPrefersCoverChange: (preferCover: boolean) => void;
+  showMissingLinkedFiles: boolean;
+  onToggleShowMissingLinkedFiles: () => void;
+  navArrowsOnApproach: boolean;
+  onToggleNavArrowsOnApproach: () => void;
+  videoTransportOnApproach: boolean;
+  onToggleVideoTransportOnApproach: () => void;
 };
 
 export function BrowseSettingsPage({
@@ -555,6 +561,12 @@ export function BrowseSettingsPage({
   onToggleHoverVideoSound,
   audioPreviewPrefersCover,
   onAudioPreviewPrefersCoverChange,
+  showMissingLinkedFiles,
+  onToggleShowMissingLinkedFiles,
+  navArrowsOnApproach,
+  onToggleNavArrowsOnApproach,
+  videoTransportOnApproach,
+  onToggleVideoTransportOnApproach,
 }: BrowseSettingsPageProps): ReactNode {
   const t = useT();
   const [showFolderCardsWhenRecursive, setShowFolderCardsWhenRecursive] =
@@ -682,6 +694,25 @@ export function BrowseSettingsPage({
         hint={t("settings.folderCardsWhenRecursiveHint")}
         label={t("settings.folderCardsWhenRecursive")}
         onChange={toggleFolderCardsWhenRecursive}
+      />
+      <div className="app-settings-card-divider" />
+      <SettingsToggleRow
+        checked={showMissingLinkedFiles}
+        hint={t("settings.showMissingLinkedHint")}
+        label={t("shell.showMissingLinkedFiles")}
+        onChange={onToggleShowMissingLinkedFiles}
+      />
+      <SettingsToggleRow
+        checked={navArrowsOnApproach}
+        hint={t("settings.viewerNavOnApproachHint")}
+        label={t("settings.viewerNavOnApproach")}
+        onChange={onToggleNavArrowsOnApproach}
+      />
+      <SettingsToggleRow
+        checked={videoTransportOnApproach}
+        hint={t("settings.videoTransportOnApproachHint")}
+        label={t("settings.videoTransportOnApproach")}
+        onChange={onToggleVideoTransportOnApproach}
       />
     </SettingsCard>
   );

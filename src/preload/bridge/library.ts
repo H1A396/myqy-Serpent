@@ -402,6 +402,20 @@ export const library: SerpentLibraryApi = Object.freeze({
     return { ok: true as const, value: { target: result.target, appearance: result.appearance } };
   },
 
+  async setFolderCover(input: { libraryId: string; folderIds: string[] }) {
+    const result = await request({ type: 'folder.cover.set.request', ...input });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'folder.cover.updated') throw new Error('Unexpected set-folder-cover response.');
+    return { ok: true as const, value: { folderIds: result.folderIds, hasCustomCover: result.hasCustomCover } };
+  },
+
+  async clearFolderCover(input: { libraryId: string; folderIds: string[] }) {
+    const result = await request({ type: 'folder.cover.clear.request', ...input });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'folder.cover.updated') throw new Error('Unexpected clear-folder-cover response.');
+    return { ok: true as const, value: { folderIds: result.folderIds, hasCustomCover: result.hasCustomCover } };
+  },
+
   async createLinkedFolderDirectory(input: {
     libraryId: string;
     linkedFolderId: string;

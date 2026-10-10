@@ -226,7 +226,7 @@ export function FontViewerSurface({
       </div>
       <div
         aria-label={t("viewer.fontPreview")}
-        className="preview-zoom-controls preview-chrome-fade font-viewer-controls"
+        className="preview-zoom-controls preview-chrome-fade is-approach-toolbar font-viewer-controls"
       >
         <label
           className="font-viewer-control font-viewer-control-text"

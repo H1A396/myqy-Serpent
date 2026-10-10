@@ -282,6 +282,16 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     target: entityAppearanceTargetSchema,
     appearance: entityAppearanceSchema,
   }),
+  z.strictObject({
+    type: z.literal('folder.cover.set.request'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+  }),
+  z.strictObject({
+    type: z.literal('folder.cover.clear.request'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+  }),
   // Folder shell actions (REQ-MENU-006) are identified by folder id only; no
   // filesystem path may cross this boundary (REQ-COMMAND-003). The Worker
   // resolves the absolute path and Main performs the shell/clipboard action.
@@ -1537,6 +1547,22 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     libraryId: identifierSchema,
     target: entityAppearanceTargetSchema,
     appearance: entityAppearanceSchema,
+  }),
+  z.strictObject({
+    type: z.literal('folder.cover.set'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+    sourcePath: selectedPathSchema,
+  }),
+  z.strictObject({
+    type: z.literal('folder.cover.clear'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+  }),
+  z.strictObject({
+    type: z.literal('folder.cover.resolve'),
+    libraryId: identifierSchema,
+    folderId: folderScopeIdSchema,
   }),
   z.strictObject({
     type: z.literal('folder.clone'),

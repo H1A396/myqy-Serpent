@@ -7,10 +7,12 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type RefObject,
   type SyntheticEvent,
 } from "react";
 
 import type { AssetSummary } from "../shared/asset-types";
+import { isMarkdownTextName } from "../shared/text-media";
 import { thumbnailEventConcernsAsset } from "./thumbnail-completion-projection";
 import type {
   PreviewResolution,
@@ -28,6 +30,16 @@ import {
 import { waitForMediaArtifactRetry } from "./media-retry";
 import { Icon } from "./Icons";
 import type { ViewerChromeActivitySource } from "./viewer-chrome-idle";
+import {
+  INITIAL_VIEWER_DRAWER_STATE,
+  pointerEventIsUserMove,
+  pointerInVideoTransportZone,
+  pointerInViewerTopZone,
+  reduceViewerDrawer,
+  shouldIgnoreViewerPointerMove,
+  type PointerSample,
+  type ViewerDrawerEvent,
+} from "./video-transport-visibility";
 import { resolveViewerPrimarySurface } from "./viewer-preview-policy";
 import {
   resolveViewerPlaceholderUrl,
@@ -96,7 +108,24 @@ interface AssetPreviewModalProps {
   preloadOnly?: boolean;
   /** Called once when the current asset has a presentable surface. */
   onPresentationReady?: () => void;
+  /** Stable element that stays fullscreen while the asset surface remounts. */
+  fullscreenRootRef?: RefObject<HTMLDivElement | null>;
+  /** Side arrows appear only when the pointer is near them. Default on. */
+  navArrowsOnApproach?: boolean;
+  /** Video transport appears only when the pointer is near the bottom. Default off. */
+  videoTransportOnApproach?: boolean;
+  canTrashAsset?: boolean;
+  canDiskDeleteAsset?: boolean;
+  canRemoveFromCollection?: boolean;
+  canPermanentDelete?: boolean;
+  onTrashAsset?: () => void;
+  onDiskDeleteAsset?: () => void;
+  onRemoveFromCollection?: () => void;
+  onPermanentDelete?: () => void;
 }
+
+const NAV_APPROACH_EDGE_PX = 96;
+const NAV_APPROACH_CENTER_PX = 160;
 
 export type AssetPreviewModalHandle = {
   /** Flush text edits (and create a revision if the session changed) then close. */
@@ -186,11 +215,24 @@ const AssetPreviewModalContent = forwardRef<
     pluginContributionRefreshKey = null,
     preloadOnly = false,
     onPresentationReady,
+    fullscreenRootRef,
+    navArrowsOnApproach = true,
+    canTrashAsset = false,
+    canDiskDeleteAsset = false,
+    canRemoveFromCollection = false,
+    canPermanentDelete = false,
+    onTrashAsset,
+    onDiskDeleteAsset,
+    onRemoveFromCollection,
+    onPermanentDelete,
   },
   ref,
 ) {
   const t = useT();
   const modalRef = useRef<HTMLElement>(null);
+  const [navNear, setNavNear] = useState<"prev" | "next" | null>(null);
+  const fullscreenElement = (): Element | null =>
+    fullscreenRootRef?.current ?? modalRef.current;
   const viewerSessionControllerRef = useRef<ViewerSessionController | null>(null);
   if (viewerSessionControllerRef.current === null) {
     viewerSessionControllerRef.current = new ViewerSessionController();
@@ -558,7 +600,8 @@ const AssetPreviewModalContent = forwardRef<
         revisionId: asset.currentRevisionId,
       });
       if (!session || !viewerSessionController.claimInitialRequest(session)) return;
-      void resolvePreview();
+      const fullscreen = document.fullscreenElement === fullscreenElement();
+      void resolvePreview(false, fullscreen ? "fullscreen" : "client");
     }, 0);
     return () => window.clearTimeout(timer);
   }, [
@@ -714,6 +757,7 @@ const AssetPreviewModalContent = forwardRef<
   }
 
   async function toggleFullscreen() {
+    const root = fullscreenElement();
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
@@ -723,9 +767,9 @@ const AssetPreviewModalContent = forwardRef<
       return;
     }
     const refreshed = await resolvePreview(true, "fullscreen");
-    if (!refreshed?.ok || !modalRef.current) return;
+    if (!refreshed?.ok || !root) return;
     try {
-      await modalRef.current.requestFullscreen();
+      await root.requestFullscreen();
     } catch (caught) {
       const errorCode =
         caught instanceof Error && caught.name
@@ -748,7 +792,7 @@ const AssetPreviewModalContent = forwardRef<
 
   useEffect(() => {
     const onFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement === modalRef.current);
+      setIsFullscreen(document.fullscreenElement === fullscreenElement());
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
     onFullscreenChange();
@@ -1095,7 +1139,7 @@ const AssetPreviewModalContent = forwardRef<
       aria-label={t("preview.viewPage", { name: asset.displayName })}
       aria-hidden={preloadOnly || undefined}
       inert={preloadOnly || undefined}
-      className={`workspace-viewer${chromeIdle ? " is-chrome-idle" : ""}${isTextViewer ? " is-text-viewer" : ""}${isDocumentViewer ? " is-document-viewer" : ""}${preloadOnly ? " is-preview-preloading" : ""}`}
+      className={`workspace-viewer${chromeIdle ? " is-chrome-idle" : ""}${isTextViewer ? " is-text-viewer" : ""}${isDocumentViewer ? " is-document-viewer" : ""}${preloadOnly ? " is-preview-preloading" : ""}${navArrowsOnApproach ? " is-nav-proximity" : ""}${navNear === "prev" ? " is-nav-near-prev" : ""}${navNear === "next" ? " is-nav-near-next" : ""}`}
       onContextMenu={(event) => {
         if (preloadOnly || !viewerContextMenuAvailable) return;
         event.preventDefault();
@@ -1104,10 +1148,24 @@ const AssetPreviewModalContent = forwardRef<
         setViewerContextMenu({ x: event.clientX, y: event.clientY });
       }}
       onPointerDown={() => {
-        if (!preloadOnly) onChromeActivity("pointerdownOrClick");
+        if (preloadOnly) return;
+        onChromeActivity("pointerdownOrClick");
       }}
-      onPointerMove={() => {
-        if (!preloadOnly) onChromeActivity("pointermove");
+      onPointerLeave={() => {
+        setNavNear(null);
+      }}
+      onPointerMove={(event) => {
+        if (preloadOnly) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const x = event.clientX - bounds.left;
+        const y = event.clientY - bounds.top;
+        const nearCenter = Math.abs(y - bounds.height / 2) <= NAV_APPROACH_CENTER_PX;
+        const nearPrev = nearCenter && x <= NAV_APPROACH_EDGE_PX;
+        const nearNext = nearCenter && bounds.width - x <= NAV_APPROACH_EDGE_PX;
+        const nextNav = navArrowsOnApproach
+          ? (nearPrev ? "prev" : nearNext ? "next" : null)
+          : null;
+        setNavNear((current) => (current === nextNav ? current : nextNav));
       }}
       ref={modalRef}
       role="region"
@@ -1327,6 +1385,7 @@ const AssetPreviewModalContent = forwardRef<
               api={api}
               assetId={asset.assetId}
               libraryId={libraryId}
+              markdown={isMarkdownTextName(asset.relativeFilePath ?? asset.displayName)}
               onClose={onClose}
               onPresentationReady={notifyPresentationReady}
               onSaved={() => setDirectApproved(true)}
@@ -1486,7 +1545,7 @@ const AssetPreviewModalContent = forwardRef<
             pluginApi={pluginApi}
             refreshKey={pluginContributionRefreshKey}
           />
-          {!isTextViewer ? (
+          {!preloadOnly ? (
             <>
               <button
                 aria-label={t("preview.previous")}
@@ -1528,6 +1587,15 @@ const AssetPreviewModalContent = forwardRef<
             onRotateCounterClockwise={rotateViewerCounterClockwise}
             position={viewerContextMenu}
             transformable={viewerTransformable}
+            canTrash={canTrashAsset}
+            canDiskDelete={canDiskDeleteAsset}
+            canPermanentDelete={canPermanentDelete}
+            canRemoveFromCollection={canRemoveFromCollection}
+            diskDeleteLinked={asset.locationKind === "linked"}
+            onTrash={() => onTrashAsset?.()}
+            onDiskDelete={() => onDiskDeleteAsset?.()}
+            onPermanentDelete={() => onPermanentDelete?.()}
+            onRemoveFromCollection={() => onRemoveFromCollection?.()}
           />
         ) : null}
       </ShellSurface>
@@ -1547,10 +1615,88 @@ export const AssetPreviewModal = forwardRef<
   AssetPreviewModalProps
 >(function AssetPreviewModal(props, ref) {
   const { asset, ...contentProps } = props;
+  const videoTransportOnApproach = props.videoTransportOnApproach ?? false;
+  const chromeIdle = props.chromeIdle;
+  const fullscreenRootRef = useRef<HTMLDivElement>(null);
   const [activeAsset, setActiveAsset] = useState(asset);
   const [promotedTargetId, setPromotedTargetId] = useState<string | null>(null);
+  // The first opened asset shows its bar, then idle slides it away. Switching
+  // assets must start hidden: the navigation key wakes chrome, and a playing
+  // video can emit a stationary pointermove that would otherwise pin the bar.
+  const [drawer, setDrawer] = useState(INITIAL_VIEWER_DRAWER_STATE);
+  const dispatchDrawer = useCallback((event: ViewerDrawerEvent) => {
+    setDrawer((current) => reduceViewerDrawer(current, event));
+  }, []);
+  const lastPointerRef = useRef<PointerSample | null>(null);
+  const seenAssetIdRef = useRef(asset.assetId);
   const latestAssetIdRef = useRef(asset.assetId);
   latestAssetIdRef.current = asset.assetId;
+
+  const readPointerBands = useCallback((clientX: number, clientY: number) => {
+    const host = fullscreenRootRef.current;
+    if (!host) return { bottom: false, top: false };
+    const bounds = host.getBoundingClientRect();
+    return {
+      bottom: pointerInVideoTransportZone(bounds, clientX, clientY),
+      top: pointerInViewerTopZone(bounds, clientX, clientY),
+    };
+  }, []);
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      const userMove = pointerEventIsUserMove(event);
+      const ignored = shouldIgnoreViewerPointerMove(event, lastPointerRef.current);
+      if (!userMove || ignored) {
+        dispatchDrawer({
+          type: "pointer-move",
+          approach: videoTransportOnApproach,
+          userMove,
+          ignored,
+          bands: { bottom: false, top: false },
+        });
+        return;
+      }
+      lastPointerRef.current = { x: event.clientX, y: event.clientY };
+      dispatchDrawer({
+        type: "pointer-move",
+        approach: videoTransportOnApproach,
+        userMove: true,
+        ignored: false,
+        bands: readPointerBands(event.clientX, event.clientY),
+      });
+    };
+    const onLeaveWindow = (event: PointerEvent) => {
+      if (event.relatedTarget !== null) return;
+      lastPointerRef.current = null;
+      dispatchDrawer({
+        type: "pointer-left-window",
+        approach: videoTransportOnApproach,
+      });
+    };
+    window.addEventListener("pointermove", onMove, true);
+    window.addEventListener("pointerout", onLeaveWindow, true);
+    return () => {
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerout", onLeaveWindow, true);
+    };
+  }, [dispatchDrawer, readPointerBands, videoTransportOnApproach]);
+
+  useEffect(() => {
+    if (seenAssetIdRef.current === asset.assetId) return;
+    seenAssetIdRef.current = asset.assetId;
+    const last = lastPointerRef.current;
+    dispatchDrawer({
+      type: "asset-changed",
+      approach: videoTransportOnApproach,
+      hasPointer: last !== null,
+      bands: last ? readPointerBands(last.x, last.y) : { bottom: false, top: false },
+    });
+  }, [asset.assetId, dispatchDrawer, readPointerBands, videoTransportOnApproach]);
+
+  useEffect(() => {
+    if (!chromeIdle) return;
+    dispatchDrawer({ type: "chrome-idle", approach: videoTransportOnApproach });
+  }, [chromeIdle, dispatchDrawer, videoTransportOnApproach]);
 
   // Metadata/revision updates for the currently displayed asset should not
   // wait for a navigation transition. A different asset still preloads.
@@ -1569,11 +1715,15 @@ export const AssetPreviewModal = forwardRef<
   }, [asset]);
 
   return (
-    <div className="workspace-viewer-transition">
+    <div
+      className={`workspace-viewer-transition${drawer.open ? " is-drawer-open" : ""}${videoTransportOnApproach ? " is-toolbar-proximity" : ""}${drawer.toolbarNear ? " is-toolbar-near" : ""}${drawer.toolbarNearTop ? " is-toolbar-near-top" : ""}`}
+      ref={fullscreenRootRef}
+    >
       {!targetIsCurrent && !targetWasPromoted ? (
         <AssetPreviewModalContent
           {...contentProps}
           asset={activeAsset}
+          fullscreenRootRef={fullscreenRootRef}
           key={activeAsset.assetId}
           onPresentationReady={undefined}
           preloadOnly={false}
@@ -1584,6 +1734,7 @@ export const AssetPreviewModal = forwardRef<
         <AssetPreviewModalContent
           {...contentProps}
           asset={asset}
+          fullscreenRootRef={fullscreenRootRef}
           key={asset.assetId}
           onPresentationReady={targetIsCurrent || targetWasPromoted ? undefined : promoteTarget}
           preloadOnly={!targetIsCurrent && !targetWasPromoted}

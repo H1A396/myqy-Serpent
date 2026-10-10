@@ -11,6 +11,7 @@ export type IconName =
   | "check"
   | "clock"
   | "close"
+  | "code"
   | "collection"
   | "collapse-left"
   | "collapse-right"
@@ -150,6 +151,13 @@ const iconPaths: Record<IconName, ReactNode> = {
     </>
   ),
   close: <path d="m7 7 10 10M17 7 7 17" />,
+  // Lucide `code` (https://lucide.dev/icons/code): text viewer source mode.
+  code: (
+    <>
+      <path d="m16 18 6-6-6-6" />
+      <path d="m8 6-6 6 6 6" />
+    </>
+  ),
   collection: (
     <>
       <rect x="4" y="5" width="16" height="14" rx="1.5" />

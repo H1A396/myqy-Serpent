@@ -2793,6 +2793,16 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   backdrop-filter: blur(14px) saturate(120%);
 }
 
+.main-menu-item-check {
+  display: flex;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+
 .main-menu-item-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -4827,7 +4837,14 @@ body.serpent-modal-open .app-shell {
   background: transparent;
 }
 
-.workspace-viewer:fullscreen .preview-modal {
+.workspace-viewer:fullscreen,
+.workspace-viewer-transition:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-viewer:fullscreen .preview-modal,
+.workspace-viewer-transition:fullscreen .preview-modal {
   width: 100vw;
   height: 100vh;
   border: 0;
@@ -4870,7 +4887,8 @@ body.serpent-modal-open .app-shell {
    itself — a semi-transparent viewer-stage veil keeps the media readable
    (--ui-background-surface-opacity is 100% when no background is configured,
    restoring the solid dark stage). */
-.workspace-viewer:fullscreen .preview-content {
+.workspace-viewer:fullscreen .preview-content,
+.workspace-viewer-transition:fullscreen .preview-content {
   background-color: color-mix(
     in srgb,
     var(--viewer-stage) var(--ui-background-surface-opacity, 100%),
@@ -5082,6 +5100,11 @@ body.serpent-modal-open .app-shell {
   gap: 12px;
   min-height: 36px;
   padding: 8px 12px;
+  transition: opacity 220ms ease;
+}
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near-top) .preview-text-topbar {
+  opacity: 0;
+  pointer-events: none;
 }
 .preview-text-meta {
   display: flex;
@@ -5143,6 +5166,23 @@ body.serpent-modal-open .app-shell {
   background: var(--menu-item-hover-background);
   outline: none;
 }
+.preview-markdown {
+  min-width: 0;
+  padding: 16px 20px;
+}
+.preview-markdown .plugin-community-readme {
+  font-size: calc(15px * var(--ui-font-scale));
+  line-height: 1.6;
+}
+.preview-markdown .plugin-community-readme [data-level="1"] {
+  font-size: calc(22px * var(--ui-font-scale));
+}
+.preview-markdown .plugin-community-readme [data-level="2"] {
+  font-size: calc(18px * var(--ui-font-scale));
+}
+.preview-markdown .plugin-community-readme [data-level="3"] {
+  font-size: calc(16px * var(--ui-font-scale));
+}
 .preview-text-action:focus-visible {
   box-shadow: 0 0 0 2px var(--accent);
 }
@@ -5161,6 +5201,7 @@ body.serpent-modal-open .app-shell {
   overflow: auto;
 }
 .preview-text-line-layer {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
@@ -5169,13 +5210,11 @@ body.serpent-modal-open .app-shell {
   min-width: 100%;
 }
 .preview-text-line-layer.is-wrap {
+  display: block;
   width: 100%;
-  grid-template-columns: 1fr;
 }
-.preview-text-line-layer.is-wrap .preview-text-gutter {
-  display: none;
-}
-.preview-text-line-layer.is-wrap .preview-text-input {
+.preview-text-input.is-wrap {
+  width: 100%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -5192,6 +5231,9 @@ body.serpent-modal-open .app-shell {
   text-align: right;
   user-select: none;
   white-space: pre;
+}
+.preview-text-gutter-line {
+  line-height: 1.55;
 }
 .preview-text-input {
   display: block;
@@ -5249,6 +5291,64 @@ body.serpent-modal-open .app-shell {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.text-asset-preview-markdown {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 8px 10px;
+  color: var(--secondary);
+  pointer-events: none;
+}
+
+.text-asset-preview-markdown .plugin-community-readme {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  gap: 4px;
+  font-size: calc(10px * var(--ui-font-scale));
+  line-height: 1.35;
+}
+
+.text-asset-preview-markdown .plugin-community-readme-table-wrap {
+  overflow: hidden;
+}
+
+.text-asset-preview-markdown .plugin-community-readme table {
+  table-layout: fixed;
+}
+
+.text-asset-preview-markdown .plugin-community-readme [data-level="1"] {
+  font-size: calc(13px * var(--ui-font-scale));
+}
+
+.text-asset-preview-markdown .plugin-community-readme [data-level="2"] {
+  font-size: calc(12px * var(--ui-font-scale));
+}
+
+.text-asset-preview-markdown .plugin-community-readme [data-level="3"],
+.text-asset-preview-markdown .plugin-community-readme [data-level="4"],
+.text-asset-preview-markdown .plugin-community-readme [data-level="5"],
+.text-asset-preview-markdown .plugin-community-readme [data-level="6"] {
+  font-size: calc(11px * var(--ui-font-scale));
+}
+
+.text-asset-preview-markdown .plugin-community-readme p,
+.text-asset-preview-markdown .plugin-community-readme ul,
+.text-asset-preview-markdown .plugin-community-readme ol,
+.text-asset-preview-markdown .plugin-community-readme blockquote {
+  margin: 0;
+}
+
+.text-asset-preview-markdown .plugin-community-readme th,
+.text-asset-preview-markdown .plugin-community-readme td {
+  padding: 2px 4px;
+}
+
+.inspector-hero-text-preview .text-asset-preview-markdown .plugin-community-readme {
+  font-size: calc(12px * var(--ui-font-scale));
 }
 
 /* Browse cards: fill the existing .asset-preview frame (already ~4:3 / 1.3). */
@@ -5328,6 +5428,33 @@ body.serpent-modal-open .app-shell {
   backdrop-filter: blur(10px);
   /* Rate listbox is position:absolute above this bar; do not clip it. */
   overflow: visible;
+}
+.preview-video-controls.is-drawer {
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+.workspace-viewer.is-chrome-idle .preview-video-controls.is-drawer,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.is-drawer,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.is-drawer:hover,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.is-drawer:focus-within {
+  transform: translateY(calc(100% + 24px));
+}
+.preview-video-progress-rail {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  pointer-events: none;
+  background: transparent;
+}
+.preview-video-progress-rail > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.workspace-viewer-transition.is-drawer-open .preview-video-progress-rail {
+  opacity: 0;
 }
 .preview-video-playpause,
 .preview-video-fit,
@@ -5907,7 +6034,7 @@ body.serpent-modal-open .app-shell {
    In fullscreen, pointer movement wakes the whole viewer; focus alone must
    not keep the transport bar visible after the idle timer expires. */
 .workspace-viewer.is-chrome-idle .preview-chrome-fade:hover,
-.workspace-viewer.is-chrome-idle:not(:fullscreen) .preview-chrome-fade:focus-within,
+.workspace-viewer-transition:not(:fullscreen) .workspace-viewer.is-chrome-idle:not(:fullscreen) .preview-chrome-fade:focus-within,
 .workspace-viewer.is-chrome-idle .preview-chrome-fade:has(.preview-viewer-volume.is-adjusting),
 .workspace-viewer.is-chrome-idle .preview-chrome-fade:has(.preview-video-rate-host.is-open) {
   opacity: 1;
@@ -5923,11 +6050,54 @@ body.serpent-modal-open .app-shell {
   pointer-events: auto;
 }
 /* Fullscreen viewer: hide the system cursor when chrome is idle (Serpent-c3lf). */
-.workspace-viewer:fullscreen.is-chrome-idle {
+.workspace-viewer:fullscreen.is-chrome-idle,
+.workspace-viewer-transition:fullscreen.is-chrome-idle,
+.workspace-viewer-transition:fullscreen .workspace-viewer.is-chrome-idle {
   cursor: none;
 }
-.workspace-viewer:fullscreen.is-chrome-idle * {
+.workspace-viewer:fullscreen.is-chrome-idle *,
+.workspace-viewer-transition:fullscreen.is-chrome-idle *,
+.workspace-viewer-transition:fullscreen .workspace-viewer.is-chrome-idle * {
   cursor: none !important;
+}
+.workspace-viewer.is-nav-proximity .preview-nav.preview-chrome-fade {
+  opacity: 0;
+  pointer-events: none;
+}
+.workspace-viewer.is-nav-proximity.is-nav-near-prev:not(.is-chrome-idle) .preview-nav.is-prev.preview-chrome-fade,
+.workspace-viewer.is-nav-proximity.is-nav-near-next:not(.is-chrome-idle) .preview-nav.is-next.preview-chrome-fade,
+.workspace-viewer.is-nav-proximity .preview-nav.preview-chrome-fade:focus-visible {
+  opacity: 0.55;
+  pointer-events: auto;
+}
+.workspace-viewer.is-nav-proximity .preview-nav.preview-chrome-fade:hover:not(:disabled),
+.workspace-viewer.is-nav-proximity .preview-nav.preview-chrome-fade:focus-visible:not(:disabled) {
+  opacity: 1;
+}
+/* Video drawer slides off the bottom. Focus or hover inside the bar must not
+   pin it on screen after an asset change — the bar lives on the stable
+   transition host, not the viewer that remounts per asset. */
+.workspace-viewer.is-chrome-idle .preview-video-controls.preview-chrome-fade.is-drawer,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.preview-chrome-fade.is-drawer,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.preview-chrome-fade.is-drawer:hover,
+.workspace-viewer-transition:not(.is-drawer-open) .preview-video-controls.preview-chrome-fade.is-drawer:focus-within {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(100% + 24px));
+}
+.preview-zoom-controls,
+.model-viewer-toolbar {
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .preview-zoom-controls.is-approach-toolbar,
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .model-viewer-toolbar.is-approach-toolbar,
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .preview-zoom-controls.is-approach-toolbar:hover,
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .model-viewer-toolbar.is-approach-toolbar:hover,
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .preview-zoom-controls.is-approach-toolbar:focus-within,
+.workspace-viewer-transition.is-toolbar-proximity:not(.is-toolbar-near) .model-viewer-toolbar.is-approach-toolbar:focus-within {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(100% + 24px));
 }
 .preview-zoom-controls {
   position: absolute;
@@ -8351,6 +8521,47 @@ select.ai-config-input.ai-config-languages {
   margin: 4px 0;
   border: 0;
   border-top: 1px solid var(--divider);
+}
+
+.plugin-community-readme > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.plugin-community-readme-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* A max-content table inside this grid sizes the track from the table,
+   and the table's percentage width then sizes itself from that track. */
+.plugin-community-readme table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.plugin-community-readme th,
+.plugin-community-readme td {
+  padding: 6px 10px;
+  border: 1px solid var(--divider);
+  vertical-align: top;
+  text-align: left;
+}
+
+.plugin-community-readme th.is-center,
+.plugin-community-readme td.is-center {
+  text-align: center;
+}
+
+.plugin-community-readme th.is-right,
+.plugin-community-readme td.is-right {
+  text-align: right;
+}
+
+.plugin-community-readme th {
+  background: var(--raised);
+  color: var(--text);
+  font-weight: var(--ui-font-weight-semibold);
 }
 
 .plugin-community-readme pre {
@@ -13291,8 +13502,17 @@ select.ai-config-input.ai-config-languages {
 
 .nav-inline-edit .text-field {
   height: 23px;
-  padding: 0 6px;
+  padding: 0 6px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   font-size: calc(12px * var(--ui-font-scale));
+}
+
+.nav-inline-edit:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--divider));
+  background: var(--canvas);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* 类型化失败（非法名/同名冲突）内联呈现在编辑行下方，行保持打开供修正。 */

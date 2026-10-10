@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   communityPluginAuthor,
+  parseAssetMarkdown,
   parsePluginReadmeMarkdown,
   pluginReadmeCandidates,
   pluginReadmeRawUrl,
@@ -78,6 +79,86 @@ describe('plugin community readme', () => {
       {
         type: 'paragraph',
         children: [{ type: 'text', value: ' leftover' }],
+      },
+    ]);
+  });
+
+  it('parses markdown tables, including alignment and inline marks', () => {
+    expect(parseAssetMarkdown([
+      '| Name | Score |',
+      '| :--- | ---: |',
+      '| **hp** | 12 |',
+      '',
+      'After the table.',
+    ].join('\n'))).toEqual([
+      {
+        type: 'table',
+        align: ['left', 'right'],
+        header: [
+          [{ type: 'text', value: 'Name' }],
+          [{ type: 'text', value: 'Score' }],
+        ],
+        rows: [[
+          [{ type: 'strong', children: [{ type: 'text', value: 'hp' }] }],
+          [{ type: 'text', value: '12' }],
+        ]],
+      },
+      {
+        type: 'paragraph',
+        children: [{ type: 'text', value: 'After the table.' }],
+      },
+    ]);
+  });
+
+  it('finishes when a preview prefix ends on a bare list marker', () => {
+    const started = performance.now();
+    const blocks = parseAssetMarkdown('section\n- \n# next\n* \n1. \n+ ');
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(blocks.some((block) => block.type === 'heading' && block.level === 1)).toBe(true);
+    expect(parseAssetMarkdown('- item\n- other')).toEqual([{
+      type: 'list',
+      ordered: false,
+      items: [
+        [{ type: 'text', value: 'item' }],
+        [{ type: 'text', value: 'other' }],
+      ],
+    }]);
+  });
+
+  it('finishes a long table and a long run of unclosed markers', () => {
+    const table = [
+      '| Item | Value |',
+      '| :--- | ---: |',
+      ...Array.from({ length: 400 }, (_, index) => `| row ${index} | **${index}** |`),
+    ].join('\n');
+    const hostile = `[${'['.repeat(20_000)}`;
+    const started = performance.now();
+    const blocks = parseAssetMarkdown(`${table}\n\n${hostile}`);
+    const elapsed = performance.now() - started;
+    expect(blocks[0]).toMatchObject({ type: 'table' });
+    if (blocks[0]?.type === 'table') expect(blocks[0].rows).toHaveLength(400);
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it('renders asset markdown links that are http(s) and drops relative paths', () => {
+    expect(parseAssetMarkdown('# Title\n\nSee [docs](https://example.test/docs) and [local](./note.md).')).toEqual([
+      {
+        type: 'heading',
+        level: 1,
+        children: [{ type: 'text', value: 'Title' }],
+      },
+      {
+        type: 'paragraph',
+        children: [
+          { type: 'text', value: 'See ' },
+          {
+            type: 'link',
+            href: 'https://example.test/docs',
+            children: [{ type: 'text', value: 'docs' }],
+          },
+          { type: 'text', value: ' and ' },
+          { type: 'text', value: 'local.' },
+        ],
       },
     ]);
   });

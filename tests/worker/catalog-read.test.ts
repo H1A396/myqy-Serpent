@@ -267,6 +267,21 @@ describe('shared pure catalog reads', () => {
       hasSequenceFrames: true,
     });
     expect(predicates).toHaveLength(4);
+    const hiddenLinked = buildCatalogAssetVisibilityPredicates({
+      scopeKind: 'all',
+      showMissingLinked: false,
+      explicitIgnoreSql: '1 = 1',
+      hasLinkedIgnoredAssets: false,
+      hasSequenceFrames: false,
+    });
+    expect(hiddenLinked.join(' ')).toContain("NOT (a.location_kind = 'linked' AND a.availability = 'missing')");
+    expect(buildCatalogAssetVisibilityPredicates({
+      scopeKind: 'all',
+      showMissingLinked: true,
+      explicitIgnoreSql: '1 = 1',
+      hasLinkedIgnoredAssets: false,
+      hasSequenceFrames: false,
+    }).join(' ')).not.toContain('availability');
     const navigation = readConnection({ getResults: [{ total: 42 }] });
     expect(countCatalogNavigationAssets(navigation.connection, {
       scope: 'root',

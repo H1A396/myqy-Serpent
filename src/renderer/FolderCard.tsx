@@ -50,7 +50,8 @@ export function FolderCard({
   trashed = false,
 }: FolderCardProps) {
   const t = useT();
-  const isCollage = entry.directAssetCount === 0 && entry.coverArtifactIds.length > 0;
+  const customCover = entry.hasCustomCover ? folderCoverImageSrc(libraryId, entry) : null;
+  const isCollage = !customCover && entry.directAssetCount === 0 && entry.coverArtifactIds.length > 0;
   const coverArtifactId = entry.coverArtifactIds[0] ?? null;
   const sequenceCover = coverArtifactId ? null : folderCoverImageSrc(libraryId, entry);
 
@@ -104,7 +105,16 @@ export function FolderCard({
             />
           </svg>
           <div className="folder-card-pocket">
-            {entry.coverArtifactIds.length === 0 ? (
+            {customCover ? (
+              <div className="folder-card-cover-photo">
+                <img
+                  alt=""
+                  className="folder-card-cover-image"
+                  loading="eager"
+                  src={customCover}
+                />
+              </div>
+            ) : entry.coverArtifactIds.length === 0 ? (
               sequenceCover ? (
                 <div className="folder-card-cover-photo">
                   <img

@@ -340,6 +340,8 @@ interface AssetContextMenuProps {
     target: EntityAppearanceTarget,
     appearance: EntityAppearance | null,
   ) => void;
+  onChooseFolderCover: (folderIds: readonly string[]) => void;
+  onClearFolderCover: (folderIds: readonly string[]) => void;
   onBatchAssignTag: (tagId: string, assetIds: string[]) => void;
   onBatchRemoveTag: (tagId: string, assetIds: string[]) => void;
   onBatchAddToCollection: (collectionId: string, assetIds: string[]) => void;
@@ -435,6 +437,8 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
     onDeleteFolderFromDisk,
     onRemoveLinkedFolder,
     onSetEntityAppearance,
+    onChooseFolderCover,
+    onClearFolderCover,
     onBatchAssignTag,
     onBatchRemoveTag,
     onBatchAddToCollection,
@@ -1283,6 +1287,20 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                         />
                       </ContextMenuSubmenu>
                     )}
+                    {!desc.isLibraryRoot ? (
+                      <>
+                        <ContextMenuItem
+                          icon={<Icon name="file" size={14} />}
+                          label={t("command.folder.chooseCover")}
+                          onAction={() => onChooseFolderCover([commandSubjectId])}
+                        />
+                        <ContextMenuItem
+                          icon={<Icon name="eye-off" size={14} />}
+                          label={t("command.folder.clearCover")}
+                          onAction={() => onClearFolderCover([commandSubjectId])}
+                        />
+                      </>
+                    ) : null}
                     <PluginMenuItems
                       items={pluginItemsAtHostAnchor(pluginFolderMenuPlacement, "folder.rename", "after")}
                       onRun={(item) => runPluginCommand(item, { folderIds: [desc.folderId] })}
@@ -1485,6 +1503,12 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
               managedFolders,
               linkedFolders: linkedRootFolders,
               action: "appearance",
+            });
+            const coverPlan = planFolderBatch({
+              folderIds: targetFolderIds,
+              managedFolders,
+              linkedFolders: linkedRootFolders,
+              action: "cover",
             });
             const ignorePlan = planFolderBatch({
               folderIds: targetFolderIds,
@@ -1881,6 +1905,24 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                   />
                 </ContextMenuSubmenu>
               )}
+              {coverPlan.targets.length > 0 ? (
+                <>
+                  <ContextMenuItem
+                    icon={<Icon name="file" size={14} />}
+                    label={t("command.folder.chooseCover")}
+                    onAction={() =>
+                      onChooseFolderCover(coverPlan.targets.map((target) => target.folderId))
+                    }
+                  />
+                  <ContextMenuItem
+                    icon={<Icon name="eye-off" size={14} />}
+                    label={t("command.folder.clearCover")}
+                    onAction={() =>
+                      onClearFolderCover(coverPlan.targets.map((target) => target.folderId))
+                    }
+                  />
+                </>
+              ) : null}
               <PluginMenuItems
                 items={multiAssetPluginPlacement.organizeAfter}
                 onRun={(item) => runPluginCommand(item, { assetIds: targetAssetIds })}

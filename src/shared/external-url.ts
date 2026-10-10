@@ -174,6 +174,8 @@ export interface SerpentShellApi {
     command: ApplicationMenuCommand,
     label: string,
   ): void;
+  /** Persist whether linked-folder browse includes missing source files. */
+  setShowMissingLinkedFiles(show: boolean): Promise<void>;
   /** 请求 Main 对当前 webContents 执行原生 copy（文本框 ⌘C）。 */
   nativeEditCopy(): Promise<void>;
   /**

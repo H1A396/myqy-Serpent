@@ -22,6 +22,10 @@ import {
   shouldShowMissingAssetOverlay,
 } from "./availability-affordance";
 import {
+  readShowMissingLinkedFiles,
+  writeShowMissingLinkedFiles,
+} from "./linked-missing-preference";
+import {
   assetTypeBadgeLabel,
   fileExtensionLabel,
   formatSequenceDuration,
@@ -301,6 +305,10 @@ import {
   loadImageSequencePreferences,
   saveImageSequencePreferences,
 } from "./image-sequence-preferences";
+import {
+  loadViewerChromePreferences,
+  saveViewerChromePreferences,
+} from "./viewer-chrome-preferences";
 import {
   isPostImportSequenceOfferId,
   postImportFrameGroupsForAction,
@@ -1821,6 +1829,14 @@ function AppInner() {
   const syncRunNotifiedRef = useRef(false);
   const syncRunStartedAtRef = useRef<number | null>(null);
   const [showIgnoredItems, setShowIgnoredItems] = useState(false);
+  const [showMissingLinkedFiles, setShowMissingLinkedFiles] = useState(() =>
+    readShowMissingLinkedFiles(globalThis.localStorage),
+  );
+  const showMissingLinkedPublishRef = useRef<Promise<void>>(Promise.resolve());
+  useLayoutEffect(() => {
+    showMissingLinkedPublishRef.current = shellApi?.setShowMissingLinkedFiles(showMissingLinkedFiles)
+      ?? Promise.resolve();
+  }, [shellApi, showMissingLinkedFiles]);
   const [workspaceTabRevealTarget, setWorkspaceTabRevealTarget] = useState<{
     kind: "folder" | "collection";
     id: string;
@@ -2230,6 +2246,9 @@ function AppInner() {
   });
   const [imageSequencePrefs, setImageSequencePrefs] = useState(() =>
     loadImageSequencePreferences(),
+  );
+  const [viewerChromePrefs, setViewerChromePrefs] = useState(() =>
+    loadViewerChromePreferences(),
   );
   // Hover live previews (audio/video) carry the viewer volume preference over.
   const {
@@ -3820,6 +3839,9 @@ function AppInner() {
   useEffect(() => {
     saveImageSequencePreferences(imageSequencePrefs);
   }, [imageSequencePrefs]);
+  useEffect(() => {
+    saveViewerChromePreferences(viewerChromePrefs);
+  }, [viewerChromePrefs]);
 
   useEffect(() => {
     const canvas = workspaceCanvasRef.current;
@@ -4255,6 +4277,7 @@ function AppInner() {
       },
     ) => {
       if (!api) return;
+      await showMissingLinkedPublishRef.current;
       const trashMode = opts?.trashMode ?? false;
       const includeIgnored = opts?.showIgnored ?? showIgnoredItems;
       const refreshSidebar = opts?.refreshSidebar ?? true;
@@ -8306,6 +8329,41 @@ function AppInner() {
     })();
   }
 
+  function chooseFolderCover(folderIds: readonly string[]) {
+    if (!api || !library || folderIds.length === 0) return;
+    void (async () => {
+      try {
+        const result = await api.setFolderCover({
+          libraryId: library.libraryId,
+          folderIds: [...folderIds],
+        });
+        if (!result.ok) {
+          if (result.error.code === "CANCELLED") return;
+          throw new LibraryOperationError(result.error);
+        }
+        setFolderBrowseRefreshToken((token) => token + 1);
+      } catch (caught) {
+        setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
+      }
+    })();
+  }
+
+  function clearFolderCover(folderIds: readonly string[]) {
+    if (!api || !library || folderIds.length === 0) return;
+    void (async () => {
+      try {
+        const result = await api.clearFolderCover({
+          libraryId: library.libraryId,
+          folderIds: [...folderIds],
+        });
+        if (!result.ok) throw new LibraryOperationError(result.error);
+        setFolderBrowseRefreshToken((token) => token + 1);
+      } catch (caught) {
+        setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
+      }
+    })();
+  }
+
   // Serpent-vf8x: folder create/rename/trash chords (mac ⌘ / Windows Ctrl).
   useFolderCommandShortcuts({
     enabled: Boolean(library) && !showTrash,
@@ -9917,8 +9975,8 @@ function AppInner() {
     }
   }, [api, library, locale, operationHistory, refreshOperationHistory, setError, setNotice, t]);
 
-  async function deletePermanentFromTrash(assetIds: string[]) {
-    if (!api || !library || assetIds.length === 0) return;
+  async function deletePermanentFromTrash(assetIds: string[]): Promise<boolean> {
+    if (!api || !library || assetIds.length === 0) return false;
     const startedAt = Date.now();
     setUiState("loading");
     try {
@@ -9952,13 +10010,15 @@ function AppInner() {
         removedCount: result.value.deletedCount,
       });
       playTaskCompletionSound(startedAt);
+      return true;
     } catch (caught) {
       playTaskCompletionSound(startedAt);
       if (isUserCancellation(caught)) {
         setNotice(t(userCancellationNoticeKey("permanentDelete")));
-        return;
+        return false;
       }
       setError(toMessage(caught, t("toast.permanentDeleteFailed"), locale));
+      return false;
     } finally {
       setUiState("ready");
     }
@@ -11218,6 +11278,17 @@ function AppInner() {
     };
   }, [dialogFocusTrapActive]);
 
+  function advanceOpenViewer(removedId: string) {
+    const viewed = previewAssetRef.current;
+    if (!viewed || viewed.assetId !== removedId) return;
+    const index = visibleAssets.findIndex((item) => item.assetId === removedId);
+    const next = index >= 0
+      ? visibleAssets[index + 1] ?? (index > 0 ? visibleAssets[index - 1] ?? null : null)
+      : null;
+    if (next) navigateAssetPreview(next);
+    else void closeAssetPreview();
+  }
+
   useBrowseCommandKeyboard({
     enabled: Boolean(library) && !showTagManagement && !showPluginSidebarView,
     platform: SHORTCUT_PLATFORM,
@@ -11226,8 +11297,8 @@ function AppInner() {
     activeCollectionId,
     libraryOpen: Boolean(library),
     busy,
-    selectedAsset,
-    selectedAssets,
+    selectedAsset: previewAsset ?? selectedAsset,
+    selectedAssets: previewAsset ? [previewAsset] : selectedAssets,
     pasteDestinationFolderId: browsePasteDestination,
     diskDeleteAssetIds: diskDeleteKeyboardTargets.assetIds,
     diskDeleteFolderIds: diskDeleteKeyboardTargets.folderIds,
@@ -11236,7 +11307,10 @@ function AppInner() {
       void handleOpenExternal(assetId);
     },
     onTrashManaged: (assetIds) => {
-      void trashManagedAssets(assetIds);
+      const viewedId = previewAssetRef.current?.assetId;
+      void trashManagedAssets(assetIds).then(() => {
+        if (viewedId && assetIds.includes(viewedId)) advanceOpenViewer(viewedId);
+      });
     },
     onRename: openAssetRename,
     onCopyFiles: (assetIds) => {
@@ -11256,12 +11330,17 @@ function AppInner() {
       requestSelectionDiskDelete([...assetIds], folderIds);
     },
     onPermanentDelete: (assetIds) => {
-      void deletePermanentFromTrash([...assetIds]);
+      const viewedId = previewAssetRef.current?.assetId;
+      void deletePermanentFromTrash([...assetIds]).then((removed) => {
+        if (removed && viewedId && assetIds.includes(viewedId)) advanceOpenViewer(viewedId);
+      });
     },
     onRemoveFromCurrentCollection: (assetIds) => {
-      if (activeCollectionId) {
-        void batchRemoveSelectionFromCollection(activeCollectionId, [...assetIds]);
-      }
+      if (!activeCollectionId) return;
+      const viewedId = previewAssetRef.current?.assetId;
+      void batchRemoveSelectionFromCollection(activeCollectionId, [...assetIds]).then((removed) => {
+        if (removed && viewedId && assetIds.includes(viewedId)) advanceOpenViewer(viewedId);
+      });
     },
     onRefreshDisk: () => {
       void refreshAssets();
@@ -12436,6 +12515,7 @@ function AppInner() {
       hasSelectedAssets: selectedAssetIds.length > 0,
       hasPasteTarget: browsePasteDestination !== undefined,
       hasBrowseAssets: browseScopeAssetIds.length > 0,
+      showMissingLinkedFiles,
     },
     actions: {
       createLibrary: () => {
@@ -12462,6 +12542,21 @@ function AppInner() {
       openLibrarySettings: () => {
         setAppSettingsOpen(false);
         setLibrarySettingsOpen(true);
+      },
+      toggleShowMissingLinkedFiles: () => {
+        const next = !showMissingLinkedFiles;
+        setShowMissingLinkedFiles(next);
+        writeShowMissingLinkedFiles(next, globalThis.localStorage);
+        const pending = shellApi?.setShowMissingLinkedFiles(next) ?? Promise.resolve();
+        showMissingLinkedPublishRef.current = pending;
+        void pending.then(() => {
+          if (!library) return;
+          void loadContent(library, assetScope, {
+            trashMode: showTrash,
+            discovery: currentQueryDefinition(),
+            showIgnored: showIgnoredItems,
+          });
+        });
       },
       undo: () => void undoLastFileOp(),
       redo: () => void redoLastOperation(),
@@ -13121,6 +13216,7 @@ function AppInner() {
         activeCollectionId={activeCollectionId}
         activeSmartCollectionId={activeSmartCollectionId}
         showIgnoredItems={showIgnoredItems}
+        showMissingLinkedFiles={showMissingLinkedFiles}
         revealTarget={workspaceTabRevealTarget}
         onToggleShowIgnoredItems={() => {
           const next = !showIgnoredItems;
@@ -14118,6 +14214,7 @@ function AppInner() {
                               <TextAssetPreviewTile
                                 api={api}
                                 assetId={asset.assetId}
+                                fileName={asset.relativeFilePath || asset.displayName}
                                 libraryId={library.libraryId}
                                 revisionId={asset.currentRevisionId}
                               />
@@ -14598,7 +14695,40 @@ function AppInner() {
             asset={previewAsset}
             bakeImageRotation={bakeImageRotation}
             chromeIdle={viewerChromeIdle}
+            canDiskDeleteAsset={!showTrash && previewAsset.deletedAt === null}
+            canPermanentDelete={showTrash}
+            canRemoveFromCollection={Boolean(activeCollectionId) && !showTrash}
+            canTrashAsset={
+              previewAsset.locationKind === "managed"
+              && previewAsset.deletedAt === null
+              && !showTrash
+              && !activeCollectionId
+            }
             libraryId={library.libraryId}
+            navArrowsOnApproach={viewerChromePrefs.navArrowsOnApproach}
+            onDiskDeleteAsset={() => {
+              requestSelectionDiskDelete([previewAsset.assetId], []);
+            }}
+            onPermanentDelete={() => {
+              const assetId = previewAsset.assetId;
+              void deletePermanentFromTrash([assetId]).then((removed) => {
+                if (removed) advanceOpenViewer(assetId);
+              });
+            }}
+            onRemoveFromCollection={() => {
+              if (!activeCollectionId) return;
+              const assetId = previewAsset.assetId;
+              void batchRemoveSelectionFromCollection(activeCollectionId, [assetId]).then((removed) => {
+                if (removed) advanceOpenViewer(assetId);
+              });
+            }}
+            onTrashAsset={() => {
+              const assetId = previewAsset.assetId;
+              void trashManagedAssets([assetId]).then(() => {
+                advanceOpenViewer(assetId);
+              });
+            }}
+            videoTransportOnApproach={viewerChromePrefs.videoTransportOnApproach}
             onChromeActivity={onViewerChromeActivity}
             onSetColorSpace={(assetId, colorSpace) => {
               void persistAssetColorSpace(assetId, colorSpace);
@@ -14896,6 +15026,36 @@ function AppInner() {
         aiUiPrefs={aiUiPrefs}
         autoDetectImageSequences={imageSequencePrefs.autoDetectOnImport}
         imageSequenceDetectionEnabled={imageSequencePrefs.detectionEnabled}
+        navArrowsOnApproach={viewerChromePrefs.navArrowsOnApproach}
+        onToggleNavArrowsOnApproach={() => {
+          setViewerChromePrefs((current) => ({
+            ...current,
+            navArrowsOnApproach: !current.navArrowsOnApproach,
+          }));
+        }}
+        onToggleShowMissingLinkedFiles={() => {
+          const next = !showMissingLinkedFiles;
+          setShowMissingLinkedFiles(next);
+          writeShowMissingLinkedFiles(next, globalThis.localStorage);
+          const pending = shellApi?.setShowMissingLinkedFiles(next) ?? Promise.resolve();
+          showMissingLinkedPublishRef.current = pending;
+          void pending.then(() => {
+            if (!library) return;
+            void loadContent(library, assetScope, {
+              trashMode: showTrash,
+              discovery: currentQueryDefinition(),
+              showIgnored: showIgnoredItems,
+            });
+          });
+        }}
+        onToggleVideoTransportOnApproach={() => {
+          setViewerChromePrefs((current) => ({
+            ...current,
+            videoTransportOnApproach: !current.videoTransportOnApproach,
+          }));
+        }}
+        showMissingLinkedFiles={showMissingLinkedFiles}
+        videoTransportOnApproach={viewerChromePrefs.videoTransportOnApproach}
         canvasPrefs={canvasPrefs}
         onActiveCategoryChange={setAppSettingsCategory}
         onClose={() => {
@@ -15513,6 +15673,8 @@ function AppInner() {
           void removeLinkedFolder(folderId, name);
         }}
         onSetEntityAppearance={setEntityAppearance}
+        onChooseFolderCover={chooseFolderCover}
+        onClearFolderCover={clearFolderCover}
         onBatchAssignTag={(tagId, assetIds) => {
           void batchAssignTagToSelection(tagId, assetIds);
         }}
