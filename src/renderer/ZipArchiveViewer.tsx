@@ -44,10 +44,13 @@ export function ZipArchiveViewer({
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
-    setFiles([]);
-    setSelectedIndex(null);
-    setEntry(null);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setStatus("loading");
+      setFiles([]);
+      setSelectedIndex(null);
+      setEntry(null);
+    });
     void api.listZipEntries({ libraryId, assetId }).then((result) => {
       if (cancelled) return;
       if (!result.ok || result.value.status !== "ready") {
@@ -69,9 +72,14 @@ export function ZipArchiveViewer({
   }, [api, assetId, libraryId, onPresentationReady]);
 
   useEffect(() => {
+    let cancelled = false;
     if (entry?.kind !== "image" || !entry.bytesBase64) {
-      setObjectUrl(null);
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) setObjectUrl(null);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     const binary = atob(entry.bytesBase64);
     const bytes = new Uint8Array(binary.length);
@@ -81,8 +89,11 @@ export function ZipArchiveViewer({
     const url = URL.createObjectURL(new Blob([bytes], {
       type: entry.mimeType ?? "application/octet-stream",
     }));
-    setObjectUrl(url);
+    queueMicrotask(() => {
+      if (!cancelled) setObjectUrl(url);
+    });
     return () => {
+      cancelled = true;
       URL.revokeObjectURL(url);
     };
   }, [entry]);

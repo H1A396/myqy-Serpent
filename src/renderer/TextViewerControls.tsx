@@ -118,10 +118,6 @@ export const TextViewerControls = forwardRef<
     savingRef.current = saving;
   }, [saving]);
 
-  const sourceLines = useMemo(() => {
-    const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    return normalized.length === 0 ? [""] : normalized.split("\n");
-  }, [content]);
   const sourceVisible = !loading && !(markdown && markdownMode);
 
   const syncSourceLayout = useCallback(() => {
