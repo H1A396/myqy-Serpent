@@ -15503,8 +15503,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 /* Sidebar: empty hints align with item labels (past the glyph column);
    section headings quieter so they read as structure, not chrome. */
 .app-shell[data-shell-layout="islands"] .nav-empty {
-  margin: 2px 8px 6px;
-  padding: 2px 0 2px 31px;
+  /* Align with .nav-row-label of first-level folders:
+     disclosure spacer 16 + row gap 2 + row pad-left 7 + glyph 17 + gap 8 = 50. */
+  margin: 2px 0 6px;
+  padding: 2px 8px 2px 50px;
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
 }
