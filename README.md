@@ -51,7 +51,7 @@ xattr -cr /Applications/Serpent.app
 
 ## 本地构建
 
-要求 Node.js 24.15.0（见 `.nvmrc`）。原生开发目标为 macOS arm64 与 Windows x64。不要在 SMB/NAS 挂载目录上构建。
+要求 Node.js 24.15.0（见 `.nvmrc`）。原生开发目标为 macOS arm64、Windows x64 与 Linux x64。不要在 SMB/NAS 挂载目录上构建。
 
 ```bash
 npm ci --registry=https://registry.npmjs.org
@@ -67,7 +67,7 @@ npm run typecheck        # tsc --noEmit
 npm run test             # 单元 + Worker 集成测试
 npm run test:e2e         # Playwright E2E
 npm run package          # 打包到 out/Serpent-<platform>-<arch>/
-npm run make             # 按平台生成安装包（macOS dmg / Windows zip；Windows 安装器用 Inno Setup 构建）
+npm run make             # 按平台生成安装包（macOS dmg / Windows zip；Linux 用 make:appimage）
 ```
 
 完整的构建、打包、发布流程见[开发者文档](docs/developer/build-packaging.md)。
@@ -76,14 +76,20 @@ npm run make             # 按平台生成安装包（macOS dmg / Windows zip；
 
 Linux 沿用 Windows 风格的界面：无边框窗口 + Serpent 自绘标题栏（最小化 / 最大化 / 关闭、拖动、双击最大化、边缘缩放），用应用内主菜单（≡）代替原生菜单栏；有合成器时显示 Windows 11 风格圆角，没有合成器时自动退回直角。
 
-已在 Debian 13（X11 / xfwm4）和嵌套 Wayland 合成器下测试。依赖（Debian/Ubuntu）：
+与 Windows 的差异（当前实现）：
+
+- **无系统托盘**：关闭按钮会退出应用（不会像 Windows 那样隐藏到通知区域）。
+- **系统媒体工具**：不内置 pinned FFmpeg/OpenImageIO；从 `PATH` 使用 `ffmpeg` / `ffprobe` / `oiiotool`（可用 `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 覆盖）。
+- **显示协议**：已在 Debian 13（X11 / xfwm4）和嵌套 Wayland 合成器下测试；原生 Wayland 会话仍待专项验收，日常以 X11 / XWayland 为主。
+
+依赖（Debian/Ubuntu）：
 
 ```bash
 sudo apt install build-essential python3 ffmpeg    # better-sqlite3 需要编译器；视频/音频需要 ffmpeg/ffprobe
 # 可选：openimageio-tools（oiiotool），用于 EXR/RAW/PSD 等专业图像格式
 ```
 
-然后用 Node.js 24.15.0 执行上面的命令（`npm ci`、`npm run rebuild:native`、`npm start`）。Linux 上 Serpent 从 `PATH` 中查找 `ffmpeg`、`ffprobe`、`oiiotool`，也可以用 `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 指定。
+然后用 Node.js 24.15.0 执行上面的命令（`npm ci`、`npm run rebuild:native`、`npm start`）。
 
 环境变量：
 
@@ -92,15 +98,15 @@ sudo apt install build-essential python3 ffmpeg    # better-sqlite3 需要编译
 | `SERPENT_SOFTWARE_GL=1` | 没有可用 GPU / GL 驱动（虚拟机、远程桌面）时启用软件 WebGL（SwiftShader），让 3D 查看器能渲染 |
 | `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1` | 强制直角 / 圆角（默认自动：有合成器才用圆角） |
 
-AppImage：`npm run make:appimage` 生成 `out/make/appimage/Serpent-<version>-x86_64.AppImage`。
-
 #### AppImage（Linux）
 
 ```bash
-npm run make:appimage           # 在本机构建（运行环境的 glibc 需不低于构建机）
+npm run make:appimage           # 在本机构建 → out/make/appimage/Serpent-<version>-x86_64.AppImage
 npm run make:appimage:docker    # 在 Ubuntu 22.04（glibc 2.35 基线）中构建，需要 docker
 chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
 ```
+
+发布管线 `npm run release:make` 会优先 `make:appimage:docker`，并把产物重命名为 Release 规范名 `Serpent-linux-x86-64-<version>.AppImage`（与 macOS/Windows 资产命名一致）。
 
 AppImage 使用系统的 `ffmpeg` / `ffprobe` / `oiiotool`（请安装 `ffmpeg`，可选 `openimageio-tools`）。运行需要 FUSE（`libfuse2`），没有 FUSE 时加 `--appimage-extract-and-run`。系统不允许非特权 user namespace 时（部分容器、Ubuntu 24.04 的 AppArmor 策略），启动器会自动改用 `--no-sandbox`。
 

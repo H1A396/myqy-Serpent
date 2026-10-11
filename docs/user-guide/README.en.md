@@ -2,7 +2,7 @@
 
 A Serpent usage guide for end users. For Chinese, switch the site language; in the repository see `README.md`.
 
-- [Install](installation.md) — macOS / Windows, upgrades
+- [Install](installation.md) — macOS / Windows / Linux, upgrades
 - [Basics](basics.md) — libraries, importing, workspace tabs, custom folder/collection appearance, browsing layouts, tags, collections, and the viewer
 - [Search and filters](search-and-filters.md) — advanced query syntax, filter dimensions, and Shift multi-select
 - [WebDAV cloud sync](sync.md) — server configuration, library binding, auto-sync, opening remote synced libraries
@@ -23,7 +23,7 @@ Data stays in your local library directory; for syncing across machines, use Web
 
 ## Interface at a glance
 
-A typical workspace has library navigation on the left, the asset canvas in the center, and the Inspector on the right. On Windows, the upper-left Main menu contains File, Edit, Library, Window, About, and Settings (where you can view diagnostic logs and check for updates under About); macOS provides equivalent commands in the native system menu. Import, search, filtering, and sorting stay in the top toolbar.
+A typical workspace has library navigation on the left, the asset canvas in the center, and the Inspector on the right. On Windows and Linux, the upper-left Main menu contains File, Edit, Library, Window, About, and Settings (where you can view diagnostic logs and check for updates under About); macOS provides equivalent commands in the native system menu. Import, search, filtering, and sorting stay in the top toolbar.
 
 ![Serpent library overview](../assets/ui/Serpent-Preview.png)
 

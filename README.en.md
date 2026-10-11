@@ -53,7 +53,7 @@ xattr -cr /Applications/Serpent.app
 
 ## Build locally
 
-Requires Node.js 24.15.0 (see `.nvmrc`). Native development targets are macOS arm64 and Windows x64. Do not build from an SMB/NAS-mounted path.
+Requires Node.js 24.15.0 (see `.nvmrc`). Native development targets are macOS arm64, Windows x64, and Linux x64. Do not build from an SMB/NAS-mounted path.
 
 ```bash
 npm ci --registry=https://registry.npmjs.org
@@ -69,7 +69,7 @@ npm run typecheck        # tsc --noEmit
 npm run test             # unit + worker integration tests
 npm run test:e2e         # Playwright E2E
 npm run package          # package to out/Serpent-<platform>-<arch>/
-npm run make             # build platform installers (macOS dmg / Windows zip; Windows setup via Inno Setup)
+npm run make             # build platform installers (macOS dmg / Windows zip; Linux via make:appimage)
 ```
 
 The full build, packaging and release flow is in the [developer docs](docs/developer/build-packaging.en.md).
@@ -78,14 +78,20 @@ The full build, packaging and release flow is in the [developer docs](docs/devel
 
 Linux follows the Windows-style shell: a frameless window with Serpent's own title bar (minimize / maximize / close, drag, double-click to maximize, edge resize), the in-app main menu (≡) instead of a native menu bar, and Windows 11-style rounded corners when a compositor is running (square corners otherwise).
 
-Tested on Debian 13 (X11 / xfwm4) and under a nested Wayland compositor. Prerequisites (Debian/Ubuntu):
+Differences from Windows (current implementation):
+
+- **No system tray**: the close button quits the app (it does not hide to the notification area like on Windows).
+- **System media tools**: no pinned FFmpeg/OpenImageIO bundle; uses `ffmpeg` / `ffprobe` / `oiiotool` from `PATH` (`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` override).
+- **Display**: tested on Debian 13 (X11 / xfwm4) and under a nested Wayland compositor; native Wayland sessions still need dedicated acceptance — day-to-day use is X11 / XWayland.
+
+Prerequisites (Debian/Ubuntu):
 
 ```bash
 sudo apt install build-essential python3 ffmpeg    # compiler for better-sqlite3; ffmpeg/ffprobe for video/audio
 # optional: openimageio-tools (oiiotool) for EXR/RAW/PSD and other pro image formats
 ```
 
-Then use Node.js 24.15.0 and the same commands as above (`npm ci`, `npm run rebuild:native`, `npm start`). On Linux, Serpent uses `ffmpeg`, `ffprobe`, and `oiiotool` from `PATH`; `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` override this.
+Then use Node.js 24.15.0 and the same commands as above (`npm ci`, `npm run rebuild:native`, `npm start`).
 
 Environment switches:
 
@@ -94,15 +100,15 @@ Environment switches:
 | `SERPENT_SOFTWARE_GL=1` | Software WebGL (SwiftShader) for machines with no usable GPU / GL driver (VMs, remote desktops), so the 3D viewer can render |
 | `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1` | Force square / rounded window corners (the default is auto: rounded only when a compositor is running) |
 
-AppImage: `npm run make:appimage` produces `out/make/appimage/Serpent-<version>-x86_64.AppImage` (details below).
-
 #### AppImage (Linux)
 
 ```bash
-npm run make:appimage           # on this machine (AppImage needs the glibc of the build host or newer)
-npm run make:appimage:docker    # inside Ubuntu 22.04 (glibc 2.35 baseline), needs docker
+npm run make:appimage           # host build → out/make/appimage/Serpent-<version>-x86_64.AppImage
+npm run make:appimage:docker    # Ubuntu 22.04 (glibc 2.35 baseline), needs docker
 chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
 ```
+
+The release pipeline `npm run release:make` prefers `make:appimage:docker` and renames the artifact to the Release name `Serpent-linux-x86-64-<version>.AppImage` (same naming contract as macOS/Windows assets).
 
 The AppImage uses the system `ffmpeg` / `ffprobe` / `oiiotool` (install `ffmpeg`, optionally `openimageio-tools`). Running it needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`. When unprivileged user namespaces are unavailable (some containers; Ubuntu 24.04 AppArmor policy), the launcher falls back to `--no-sandbox`.
 
