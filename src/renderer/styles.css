@@ -15400,3 +15400,61 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: var(--tertiary);
   font-weight: 600;
 }
+
+/* ==== ui-concept-a: Islands — floating panels, canvas edge-to-edge ==== */
+.app-shell {
+  --island-gap: 10px;
+  grid-template-rows: 48px minmax(0, 1fr);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
+    var(--canvas);
+}
+.app-toolbar {
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+.navigation-pane,
+.inspector-pane {
+  margin: 0 var(--island-gap) var(--island-gap);
+  border: 1px solid color-mix(in srgb, var(--divider) 70%, transparent) !important;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--raised) 86%, transparent) !important;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 30px rgb(15 20 35 / 8%), 0 1px 0 rgb(255 255 255 / 40%) inset;
+  overflow: hidden;
+}
+.navigation-pane { margin-right: 0; }
+.inspector-pane { margin-left: 0; }
+.workspace {
+  position: relative;
+  margin: 0 var(--island-gap) var(--island-gap);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--pane);
+  border: 1px solid color-mix(in srgb, var(--divider) 60%, transparent);
+}
+/* Toolbar + filters float as a translucent strip over the canvas */
+.workspace-bar,
+.workspace-discovery {
+  background: color-mix(in srgb, var(--pane) 78%, transparent) !important;
+  backdrop-filter: blur(14px);
+  border-bottom: 0 !important;
+}
+.workspace-discovery { border-bottom: 1px solid var(--divider-soft) !important; }
+.workspace-canvas { padding-top: 6px; }
+.asset-card {
+  border-radius: 14px !important;
+  border-color: transparent !important;
+  box-shadow: 0 1px 2px rgb(15 20 35 / 6%);
+}
+.asset-preview { border-radius: 14px 14px 0 0 !important; }
+.nav-row { border-radius: 10px; }
+.nav-row.is-active {
+  background: var(--canvas) !important;
+  box-shadow: 0 1px 3px rgb(15 20 35 / 10%);
+  color: var(--text) !important;
+}
+.nav-row.is-active .icon { color: var(--accent); }
+.inspector-hero-preview { border-radius: 14px !important; overflow: hidden; }
+.panel-resizer { opacity: 0; }
