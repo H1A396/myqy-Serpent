@@ -285,6 +285,11 @@ import {
   type AutomationSource,
 } from '../automation/command-registry';
 import {
+  attachLinuxRoundedCorners,
+  linuxRoundedWindowOptions,
+  shouldUseLinuxRoundedCorners,
+} from "./linux-window-corners";
+import {
   shouldHideApplicationMenuBar,
   shouldUseFramelessTitleBar,
 } from "../shared/window-controls";
@@ -439,9 +444,13 @@ import {
 // Headless E2E hosts may expose no hardware WebGL implementation. Opt those
 // tests into Chromium's explicitly acknowledged software path; production
 // keeps the platform's normal GPU selection and never silently downgrades it.
+// SERPENT_SOFTWARE_GL=1 is the same explicit opt-in for users on GPU-less
+// hosts (Linux VMs / remote desktops without a usable GL driver), so the 3D
+// viewer and model thumbnails can render via SwiftShader. Off by default.
 if (
-  process.env.SERPENT_E2E === "1" &&
-  process.env.SERPENT_E2E_ENABLE_SWIFTSHADER === "1"
+  (process.env.SERPENT_E2E === "1" &&
+    process.env.SERPENT_E2E_ENABLE_SWIFTSHADER === "1") ||
+  process.env.SERPENT_SOFTWARE_GL === "1"
 ) {
   app.commandLine.appendSwitch("enable-unsafe-swiftshader");
   app.commandLine.appendSwitch("use-angle", "swiftshader");
@@ -1459,6 +1468,7 @@ async function createMainWindow(): Promise<void> {
     app.dock?.setIcon(devIcon);
   }
 
+  const linuxRoundedCorners = shouldUseLinuxRoundedCorners();
   const window = new BrowserWindow({
     width: isolatedPlacement?.width ?? defaultWidth,
     height: isolatedPlacement?.height ?? defaultHeight,
@@ -1481,6 +1491,7 @@ async function createMainWindow(): Promise<void> {
             titleBarStyle: "hidden" as const,
           }
         : {}),
+    ...(linuxRoundedCorners ? linuxRoundedWindowOptions() : {}),
     webPreferences: {
       preload: path.join(__dirname, "index.js"),
       sandbox: true,
@@ -1490,6 +1501,7 @@ async function createMainWindow(): Promise<void> {
   });
 
   mainWindow = window;
+  if (linuxRoundedCorners) attachLinuxRoundedCorners(window);
   const mainContentsId = window.webContents.id;
   // Keep renderer diagnostics active in both development and packaged builds.
   // A blank window in a packaged build must leave the same evidence as one

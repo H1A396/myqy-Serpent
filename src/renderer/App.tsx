@@ -626,7 +626,7 @@ import {
   isMacPlatform,
   type CommandPlatform,
 } from "./commands/command-types";
-import { resolveRendererPlatform } from "./renderer-platform";
+import { usesWindowsStyleShell } from "./renderer-platform";
 import {
   defaultKeyboardCardSize,
   matchGlobalZoomShortcut,
@@ -634,8 +634,8 @@ import {
 } from "./global-zoom-shortcuts";
 
 const IS_MAC_PLATFORM = isMacPlatform(navigator.userAgent);
-const IS_WINDOWS_PLATFORM =
-  resolveRendererPlatform(navigator.userAgent) === "windows";
+// Windows-style shell: Windows and Linux (see usesWindowsStyleShell).
+const IS_WINDOWS_PLATFORM = usesWindowsStyleShell(navigator.userAgent);
 
 const SHORTCUT_PLATFORM: CommandPlatform = IS_MAC_PLATFORM ? "mac" : "windows";
 /**
