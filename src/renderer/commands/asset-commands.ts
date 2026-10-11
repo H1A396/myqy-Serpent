@@ -20,6 +20,7 @@ export interface AssetCommandActions {
   readonly revealInFolder: (assetId: string) => void;
   /** Jump the browse canvas to the asset's library folder. */
   readonly showInLibraryFolder: (assetId: string) => void;
+  readonly findSimilar: (assetId: string) => void;
   /** OS file clipboard (Finder/Explorer interoperable). */
   readonly copyFiles: (assetIds: string[]) => void;
   /** Paste OS clipboard into a managed folder (reuse folder.paste). */
@@ -52,6 +53,12 @@ export interface AssetCommandContext extends CommandContext {
    * or the asset's parent). Null hides paste.
    */
   readonly pasteTargetFolderId: string | null | undefined;
+  /** Semantic search is on. The menu item stays hidden while this is false. */
+  readonly semanticSearchEnabled: boolean;
+  /** Original still, or another asset that already has a thumbnail. */
+  readonly similarImageSupported: boolean;
+  /** Preview failed or the revision row is gone. Do not search with it. */
+  readonly similarSourceDamaged: boolean;
   readonly actions: AssetCommandActions;
 }
 
@@ -151,6 +158,17 @@ export const assetCommandDefinitions: readonly AssetCommandDefinition[] = [
     visible: (ctx) => !ctx.assetDeleted,
     run: (ctx) =>
       withPrimaryAsset(ctx, (id) => ctx.actions.showInLibraryFolder(id)),
+  },
+  {
+    id: 'asset.find-similar',
+    title: (ctx) => t(ctx, 'command.asset.findSimilar'),
+    group: 'open',
+    visible: (ctx) => ctx.semanticSearchEnabled && !ctx.assetDeleted,
+    disabledReason: (ctx) => {
+      if (ctx.similarSourceDamaged) return t(ctx, 'command.reason.similarDamaged');
+      return ctx.similarImageSupported ? null : t(ctx, 'command.reason.similarUnsupported');
+    },
+    run: (ctx) => withPrimaryAsset(ctx, (id) => ctx.actions.findSimilar(id)),
   },
   // ---- 组织 ----
   {

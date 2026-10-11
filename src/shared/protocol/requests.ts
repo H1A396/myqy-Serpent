@@ -14,6 +14,7 @@ import {
   CONTENT_REPLACE_STAGE_CHUNK_MAX_BASE64_LENGTH,
 } from '../content-replace';
 import { performanceRequestEnvelopeSchema } from '../performance-contract';
+import { isEmbeddingSelectionId } from '../embedding/http-service';
 import {
   entityAppearanceSchema,
   entityAppearanceTargetSchema,
@@ -22,6 +23,7 @@ import {
 const nonBlankString = z.string().min(1).refine((value) => value.trim().length > 0, {
   message: 'Value must not be blank.',
 });
+const embeddingSelectionIdSchema = z.string().refine(isEmbeddingSelectionId);
 
 const displayNameSchema = nonBlankString.max(255);
 const identifierSchema = nonBlankString.max(255);
@@ -1372,6 +1374,76 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('ai.pending-assets.request'),
     libraryId: identifierSchema,
     assetIds: z.array(identifierSchema).min(1),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.models.list.request'),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.models.upsert.request'),
+    id: identifierSchema.optional(),
+    name: nonBlankString.max(80),
+    tier: z.enum(['Q4_K_XL', 'Q8_0', 'BF16']),
+    modelDirectory: nonBlankString.max(1024),
+    runtimePath: nonBlankString.max(1024),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.models.delete.request'),
+    id: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('embedding.models.set-default.request'),
+    id: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('embedding.services.list.request'),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.services.save.request'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/).optional(),
+    name: nonBlankString.max(80),
+    destination: z.enum(['loopback', 'lan', 'internet']),
+    baseUrl: nonBlankString.max(300),
+    modelName: nonBlankString.max(120),
+    apiKey: z.string().max(2048).optional(),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.services.delete.request'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.services.probe.request'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.services.grant.request'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+    libraryId: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('embedding.install.status.request'),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.install.start.request'),
+    modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.index.status.request'),
+    libraryId: identifierSchema,
+    modelId: embeddingSelectionIdSchema,
+    run: z.boolean(),
+    restart: z.boolean(),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.search.request'),
+    libraryId: identifierSchema,
+    modelId: embeddingSelectionIdSchema,
+    query: z.string().trim().min(1).max(500),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.similar.request'),
+    libraryId: identifierSchema,
+    modelId: embeddingSelectionIdSchema,
+    assetId: identifierSchema,
   }),
 ]);
 

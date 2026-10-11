@@ -2548,6 +2548,132 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
     type: z.literal('ai.pending-assets'),
     assetIds: z.array(nonBlankString),
   }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.models.listed'),
+    models: z.array(z.strictObject({
+      id: nonBlankString.max(255),
+      name: nonBlankString.max(80),
+      tier: z.enum(['Q4_K_XL', 'Q8_0', 'BF16']),
+      profileKey: nonBlankString,
+      modelDirectory: nonBlankString.max(1024),
+      runtimePath: nonBlankString.max(1024),
+      declaredChannels: z.array(z.enum(['text', 'image'])),
+      verifiedChannels: z.array(z.enum(['text', 'image'])),
+      isDefault: z.boolean(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.saved'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.deleted'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.default-set'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.services.listed'),
+    services: z.array(z.strictObject({
+      id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+      name: nonBlankString.max(80),
+      destination: z.enum(['loopback', 'lan', 'internet']),
+      baseUrl: nonBlankString.max(300),
+      modelName: nonBlankString.max(120),
+      textStatus: z.enum(['unsupported', 'declared', 'verified', 'failed']),
+      dimensions: z.number().int().positive().nullable(),
+      grantedLibraryIds: z.array(nonBlankString.max(255)).max(100),
+      hasCredential: z.boolean(),
+      profileKey: z.string().nullable(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.saved'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.deleted'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.probed'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+    textStatus: z.enum(['verified', 'failed']),
+    dimensions: z.number().int().positive().nullable(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.granted'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.install.status'),
+    runtimeInstalled: z.boolean(),
+    models: z.array(z.strictObject({
+      modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
+      installed: z.boolean(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.index.status'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.search'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+    assetIds: z.array(nonBlankString).max(100_000),
+    scores: z.array(z.strictObject({
+      assetId: nonBlankString,
+      score: z.number().finite(),
+    })).max(100_000).optional(),
+  }).superRefine((result, context) => {
+    if (!result.scores) return;
+    const rankedIds = new Set(result.assetIds);
+    const seen = new Set<string>();
+    result.scores.forEach(({ assetId }, index) => {
+      if (!rankedIds.has(assetId) || seen.has(assetId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["scores", index, "assetId"],
+          message: "Scores must identify unique ranked assets.",
+        });
+      }
+      seen.add(assetId);
+    });
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.similar'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+    status: z.enum(['ready', 'preparing', 'unsupported', 'unavailable']),
+    sourceAssetId: nonBlankString,
+    assetIds: z.array(nonBlankString).max(100_000),
+  }),
   ...assetOperationSuccessSchemas,
 ]);
 

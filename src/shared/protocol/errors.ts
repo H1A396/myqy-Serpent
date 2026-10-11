@@ -126,6 +126,12 @@ export const PUBLIC_ERROR_MESSAGES = {
     'Serpent could not reach the sync server. Check the address, username, password, and that the computer is online. A more specific reason is listed when Serpent can classify the failure.',
   SYNC_IN_PROGRESS: 'This library is syncing right now. Try again after the current sync finishes.',
   DISK_FULL: 'The disk does not have enough free space to complete this operation. Free up space and try again.',
+  EMBEDDING_MODEL_INVALID:
+    'This semantic model could not be saved. Check the name, weight tier, model folder, and runtime path.',
+  EMBEDDING_INSTALL_FAILED:
+    'Serpent could not install this semantic model. Check the network and try again.',
+  EMBEDDING_SERVICE_INVALID:
+    'This embedding service could not be saved. Check the name, address, and model name.',
 } as const;
 
 export type PublicErrorCode = keyof typeof PUBLIC_ERROR_MESSAGES;

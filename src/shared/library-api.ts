@@ -1,3 +1,5 @@
+import type { EmbeddingGemmaTier, EmbeddingIndexSnapshot, EmbeddingModelSummary, SemanticSearchModelId } from './embedding/profile';
+import type { EmbeddingServiceDestination, EmbeddingTextStatus } from './embedding/http-service';
 import type { PublicError, PublicErrorReason } from './protocol/errors';
 import type { LibraryNavigationSummary } from './library-navigation';
 import type { MutationReceipt } from './performance-contract';
@@ -25,6 +27,25 @@ export interface SyncReport {
   conflicts: number;
   remoteDeletes: number;
   localRecycles: number;
+}
+
+/** Raw cosine score paired with the asset that produced it. */
+export interface SemanticSearchAssetScore {
+  assetId: string;
+  score: number;
+}
+
+export interface EmbeddingHttpServiceSummary {
+  id: string;
+  name: string;
+  destination: EmbeddingServiceDestination;
+  baseUrl: string;
+  modelName: string;
+  textStatus: EmbeddingTextStatus;
+  dimensions: number | null;
+  grantedLibraryIds: string[];
+  hasCredential: boolean;
+  profileKey: string | null;
 }
 
 import type {
@@ -738,6 +759,65 @@ export interface SerpentLibraryApi {
   syncSaveServer(input: { id?: string; baseUrl: string; username?: string; password?: string; allowInsecureTls?: boolean }): Promise<LibraryApiResult<{ id: string }>>;
   /** Serpent-xffq: 删除同步服务器。 */
   syncDeleteServer(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  /** Device-local EmbeddingGemma 2 registration. Does not write a library index. */
+  embeddingListModels(): Promise<LibraryApiResult<EmbeddingModelSummary[]>>;
+  embeddingSaveModel(input: {
+    id?: string;
+    name: string;
+    tier: EmbeddingGemmaTier;
+    modelDirectory: string;
+    runtimePath: string;
+  }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingDeleteModel(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingSetDefaultModel(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingInstallStatus(): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
+  embeddingInstall(input: { modelId: SemanticSearchModelId }): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
+  embeddingIndexStatus(input: {
+    libraryId: string;
+    modelId: string;
+    run: boolean;
+    restart: boolean;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot>>;
+  embeddingSearch(input: {
+    libraryId: string;
+    modelId: string;
+    query: string;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
+    assetIds: string[];
+    /** Optional for compatibility with older Main processes. */
+    scores?: SemanticSearchAssetScore[];
+  }>>;
+  embeddingSimilar(input: {
+    libraryId: string;
+    modelId: string;
+    assetId: string;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
+    status: "ready" | "preparing" | "unsupported" | "unavailable";
+    sourceAssetId: string;
+    assetIds: string[];
+  }>>;
+  embeddingListServices(): Promise<LibraryApiResult<EmbeddingHttpServiceSummary[]>>;
+  embeddingSaveService(input: {
+    id?: string;
+    name: string;
+    destination: "loopback" | "lan" | "internet";
+    baseUrl: string;
+    modelName: string;
+    apiKey?: string;
+  }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingDeleteService(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingProbeService(input: { id: string }): Promise<LibraryApiResult<{
+    id: string;
+    textStatus: "verified" | "failed";
+    dimensions: number | null;
+  }>>;
+  embeddingGrantService(input: { id: string; libraryId: string }): Promise<LibraryApiResult<{ id: string }>>;
   /** Serpent-xffq: 保存库绑定（服务器 + 可选同步文件夹名，默认库名；enabled=自动同步开关；pollIntervalMs=云端轮询间隔；showCardSyncStatus=卡片同步状态）。 */
   syncSaveBinding(input: { libraryId: string; serverId: string; directoryName?: string; enabled?: boolean; pollIntervalMs?: number; showCardSyncStatus?: boolean }): Promise<LibraryApiResult<void>>;
   /** Serpent-xffq: 读取库绑定。 */

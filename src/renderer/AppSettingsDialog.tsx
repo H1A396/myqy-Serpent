@@ -11,6 +11,9 @@ import {
 import { McpSettingsPage } from "./McpSettingsPage";
 import { PluginSettingsPage } from "./PluginSettingsPage";
 import { PluginCommunityPage } from "./PluginCommunityPage";
+import { SemanticSearchSettings } from "./SemanticSearchSettings";
+import type { EmbeddingServiceSettingsApi } from "./EmbeddingServiceSettings";
+import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
 import { SyncSettingsPage, type SyncServerSettingsCallbacks } from "./SyncSettingsPage";
 import {
   PluginSettingsDetailPage,
@@ -58,6 +61,8 @@ export interface AppSettingsDialogProps {
   libraryId?: string;
   mcpApi?: SerpentMcpSettingsApi;
   syncServerCallbacks: SyncServerSettingsCallbacks;
+  embeddingIndex: EmbeddingIndexSnapshot;
+  embeddingServicesApi?: EmbeddingServiceSettingsApi;
   showCardSyncStatus: boolean;
   onShowCardSyncStatusChange: (checked: boolean) => void;
   showMissingLinkedFiles: boolean;
@@ -100,8 +105,10 @@ export function AppSettingsDialog({
   pluginApi,
   pluginContributionRefreshKey,
   libraryId,
+  embeddingServicesApi,
   mcpApi,
   syncServerCallbacks,
+  embeddingIndex,
   showCardSyncStatus,
   onShowCardSyncStatusChange,
   showMissingLinkedFiles,
@@ -288,6 +295,14 @@ export function AppSettingsDialog({
                 aiUiPrefs={aiUiPrefs}
                 aiConfigPanel={aiConfigPanel}
                 onToggleShowAiBadges={onToggleShowAiBadges}
+              />
+            ) : null}
+            {!showingPluginSettings && activeCategory === "semantic-search" ? (
+              <SemanticSearchSettings
+                index={embeddingIndex}
+                libraryId={libraryId}
+                libraryOpen={Boolean(libraryId)}
+                servicesApi={embeddingServicesApi}
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "mcp" ? <McpSettingsPage api={mcpApi} onOpenAppLog={onOpenAppLog} /> : null}

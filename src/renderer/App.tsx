@@ -56,6 +56,7 @@ import {
   isBenignThumbnailErrorCode,
 } from "../shared/thumbnail-support";
 import { AssetCardMedia } from "./AssetCardMedia";
+import { FindSimilarBanner } from "./FindSimilarBanner";
 import { useAssetCardHoverPreview } from "./use-asset-card-hover-preview";
 import { SyncCardStatusBadge } from "./SyncCardStatusBadge";
 import { useSyncCardStatuses } from "./use-sync-card-status";
@@ -494,6 +495,18 @@ import type { LibraryNavigationSummary } from "../shared/library-navigation";
 import { LIBRARY_ROOT_FOLDER_ID, isLibraryRootFolderId } from "../shared/library-root-folder";
 import { DEFAULT_COLOR_SIMILARITY } from "../shared/color-filter-presets";
 import { loadColorFilterPreferences } from "./color-filter-preferences";
+import {
+  loadSemanticSearchPreferences,
+  saveSemanticSearchPreferences,
+  subscribeSemanticSearchPreferences,
+  type SemanticSearchPageSize,
+} from "./semantic-search-preferences";
+import { semanticSearchNotice, embeddingIndexCopyKey } from "./semantic-index-copy";
+import {
+  resolveFindSimilar,
+  type FindSimilarSource,
+} from "./find-similar";
+import { isSemanticSearchModelId, type EmbeddingIndexSnapshot } from "../shared/embedding/profile";
 import { hasMeaningfulSmartCollectionCondition } from "../shared/smart-collection-query";
 import { compactFormatFilterTokens } from "../shared/text-media";
 import type {
@@ -574,6 +587,7 @@ import {
 } from "./library-transfer-progress";
 import {
   BROWSE_PAGE_SIZE,
+  fetchFirstRankedBrowsePage,
   registerBrowseSearchPage,
   registerBrowseSmartCollectionPage,
   useBrowsePagination,
@@ -847,6 +861,8 @@ function AppInner() {
     targetFolderId: string;
   }>({ folderId: "", name: "", targetFolderId: "" });
   const [assets, setAssets] = useState<AssetSummary[]>([]);
+  const [findSimilarSource, setFindSimilarSource] = useState<FindSimilarSource | null>(null);
+  const findSimilarTokenRef = useRef(0);
   const assetsRef = useRef<AssetSummary[]>([]);
   useEffect(() => {
     assetsRef.current = assets;
@@ -1898,6 +1914,21 @@ function AppInner() {
       );
     },
   });
+  const beginBrowsePageClearingSimilar = useCallback(
+    (...args: Parameters<typeof beginBrowsePage>) => {
+      const definition = args[0];
+      setFindSimilarSource((current) =>
+        current
+        && definition.kind === "search"
+        && definition.similaritySourceAssetId === current.assetId
+        && definition.libraryId === current.libraryId
+          ? current
+          : null,
+      );
+      return beginBrowsePage(...args);
+    },
+    [beginBrowsePage],
+  );
   useEffect(() => {
     activateRenderSnapshotLibrary(library?.libraryId ?? null);
   }, [activateRenderSnapshotLibrary, library?.libraryId]);
@@ -2619,6 +2650,67 @@ function AppInner() {
   const [pluginJobs, setPluginJobs] = useState<PluginJobStatus | null>(null);
   const [hiddenPluginJobActivityId, setHiddenPluginJobActivityId] = useState<string | null>(null);
   const [mediaJobsLoading, setMediaJobsLoading] = useState(false);
+  const [semanticSearchPrefs, setSemanticSearchPrefs] = useState(() => loadSemanticSearchPreferences());
+  const [embeddingIndex, setEmbeddingIndex] = useState<EmbeddingIndexSnapshot>({
+    phase: "starting",
+    done: 0,
+    total: 0,
+    failedCount: 0,
+  });
+  const embeddingRestartRef = useRef(true);
+  useEffect(() => subscribeSemanticSearchPreferences(() => {
+    const preferences = loadSemanticSearchPreferences();
+    setSemanticSearchPrefs(preferences);
+    if (!preferences.enabled) {
+      setFindSimilarSource(null);
+    }
+  }), []);
+  useEffect(() => {
+    embeddingRestartRef.current = true;
+  }, [semanticSearchPrefs.enabled, semanticSearchPrefs.modelId, library?.libraryId]);
+  useEffect(() => {
+    if (!api || !library || !semanticSearchPrefs.enabled) return;
+    let cancelled = false;
+    const tick = () => {
+      const restart = embeddingRestartRef.current;
+      embeddingRestartRef.current = false;
+      void api.embeddingIndexStatus({
+        libraryId: library.libraryId,
+        modelId: semanticSearchPrefs.modelId,
+        run: true,
+        restart,
+      }).then((result) => {
+        if (cancelled || !result.ok) return;
+        setEmbeddingIndex(result.value);
+      });
+    };
+    tick();
+    const timer = window.setInterval(
+      tick,
+      embeddingIndex.phase === "ready" || embeddingIndex.phase === "failed" || embeddingIndex.phase === "unavailable"
+        ? 5_000
+        : 1_500,
+    );
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    api,
+    library,
+    semanticSearchPrefs.enabled,
+    semanticSearchPrefs.modelId,
+    embeddingIndex.phase,
+  ]);
+  const semanticSearchActive = semanticSearchPrefs.enabled && semanticSearchPrefs.searchMode === "semantic";
+  const [embeddingBannerDismissed, setEmbeddingBannerDismissed] = useState(false);
+  const embeddingEnabledRef = useRef(semanticSearchPrefs.enabled);
+  if (embeddingEnabledRef.current !== semanticSearchPrefs.enabled) {
+    embeddingEnabledRef.current = semanticSearchPrefs.enabled;
+    if (semanticSearchPrefs.enabled && embeddingBannerDismissed) {
+      setEmbeddingBannerDismissed(false);
+    }
+  }
   const pluginJobsActive = hasActivePluginJobs(pluginJobs);
   const pluginJobActivityCandidate = selectPluginJobActivity(pluginJobs);
   const pluginJobActivity =
@@ -2634,8 +2726,8 @@ function AppInner() {
     const mediaActive =
       (mediaJobs?.queued ?? 0) + (mediaJobs?.running ?? 0) > 0;
     const aiActive = (aiJobs?.queued ?? 0) + (aiJobs?.running ?? 0) > 0;
-    return mediaActive || aiActive || pluginJobsActive;
-  }, [aiAnalyzing, aiJobs, mediaJobs, pluginJobsActive]);
+    return mediaActive || aiActive || pluginJobsActive || semanticSearchPrefs.enabled;
+  }, [aiAnalyzing, aiJobs, mediaJobs, pluginJobsActive, semanticSearchPrefs.enabled]);
   const openMediaJobs = useCallback(() => {
     setMediaJobsLoading(true);
     setMediaJobsOpen(true);
@@ -4458,7 +4550,7 @@ function AppInner() {
       );
       // Serpent-ws4k: register the paginated query so the scroll sentinel can
       // append the next page with the exact same scope/sort/filters.
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: activeLibrary.libraryId,
         query: opts?.discovery?.search ?? null,
         filters: opts?.discovery?.filters,
@@ -4517,7 +4609,7 @@ function AppInner() {
     },
     [
       api,
-      beginBrowsePage,
+      beginBrowsePageClearingSimilar,
       ensureLibraryView,
       isCurrentLibraryView,
       locale,
@@ -4544,7 +4636,7 @@ function AppInner() {
     setActiveSmartCollectionId,
     setAssets,
     setSearchTotal,
-    beginBrowsePage,
+    beginBrowsePage: beginBrowsePageClearingSimilar,
     setSelectedAssetId,
     setSelectedAssetIds,
     setAssetSelectionAnchor,
@@ -5140,6 +5232,7 @@ function AppInner() {
   }
 
   function beginWorkspaceNavigation(): () => boolean {
+    findSimilarTokenRef.current += 1;
     const token = (workspaceTabTransitionRef.current += 1);
     workspaceHistoryReplayEpochRef.current += 1;
     return () => workspaceTabTransitionRef.current === token;
@@ -5148,6 +5241,7 @@ function AppInner() {
   function beginWorkspaceNavigationRequest(
     historyMode: WorkspaceNavigationHistoryMode,
   ): WorkspaceNavigationRequest {
+    findSimilarTokenRef.current += 1;
     const token = beginWorkspaceTabNavigation(historyMode);
     const request: WorkspaceNavigationRequest = {
       token,
@@ -5166,6 +5260,7 @@ function AppInner() {
   }
 
   function applyWorkspaceLocationFlags(location: WorkspaceNavLocation): void {
+    if (location.kind === "similar") return;
     setShowTrash(location.kind === "trash");
     setShowTagManagement(location.kind === "tag-management");
     setActivePluginSidebarViewId(
@@ -5579,6 +5674,9 @@ function AppInner() {
         return;
       case "plugin-sidebar":
         await enterPluginSidebarView(location.viewId, request);
+        return;
+      case "similar":
+        await runFindSimilar(location.assetId, request);
         return;
     }
   }
@@ -6521,7 +6619,7 @@ function AppInner() {
       setSearchOffset(0);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -6605,7 +6703,7 @@ function AppInner() {
       setSearchOffset(0);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -7205,7 +7303,7 @@ function AppInner() {
       resetDiscoveryIfNavigationReplacesLive(request);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         scope: { kind: "collection", collectionId, recursive },
@@ -8504,7 +8602,7 @@ function AppInner() {
     applySearchResult(result.value);
     // Serpent-ws4k: subsequent pages must reuse the same query/scope/sort.
     if (activeSmartCollectionId) {
-      registerBrowseSmartCollectionPage(beginBrowsePage, {
+      registerBrowseSmartCollectionPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         collectionId: activeSmartCollectionId,
         sessionId: result.value.sessionId,
@@ -8515,7 +8613,7 @@ function AppInner() {
       });
       setUiState("ready");
     } else {
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -8543,12 +8641,210 @@ function AppInner() {
     return result.value;
   }
 
+  function showSemanticResults(
+    items: AssetSummary[],
+    rankedAssetIds: readonly string[],
+    rankedPageSize: SemanticSearchPageSize,
+    source?: FindSimilarSource,
+  ) {
+    if (!library) return;
+    setShowTrash(false);
+    setShowTagManagement(false);
+    setActivePluginSidebarViewId(null);
+    setActiveSmartCollectionId(null);
+    if (!pendingRevealRef.current) clearAssetSelection({ preserveFolders: true });
+    registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
+      libraryId: library.libraryId,
+      query: null,
+      showIgnored: showIgnoredItems,
+      rankedAssetIds,
+      rankedPageSize,
+      items,
+      total: rankedAssetIds.length,
+      offset: 0,
+      ...(source ? { similaritySourceAssetId: source.assetId } : {}),
+    });
+    if (source) setFindSimilarSource(source);
+  }
+
+  async function runSemanticSearch(query: string, silent?: boolean) {
+    if (!api || !library) return;
+    if (silent && (previewAssetRef.current || previewRestoringRef.current)) return;
+    const searchPreferences = loadSemanticSearchPreferences();
+    const pageSize = searchPreferences.pageSize;
+    const request = silent
+      ? { isCurrent: () => true }
+      : beginWorkspaceNavigationRequest("none");
+    try {
+      if (!silent) await closeAssetPreview(false);
+      if (!request.isCurrent()) return;
+      const ranked = await api.embeddingSearch({
+        libraryId: library.libraryId,
+        modelId: searchPreferences.modelId,
+        query,
+      });
+      if (!request.isCurrent()) return;
+      if (!ranked.ok) throw new LibraryOperationError(ranked.error);
+      if (ranked.value.assetIds.length === 0) {
+        const notice = semanticSearchNotice({ ...ranked.value, matched: 0 });
+        setNotice(t(notice.key, notice.params));
+        if (ranked.value.phase === "ready") {
+          showSemanticResults([], [], pageSize);
+        }
+        return;
+      }
+      const firstPage = await fetchFirstRankedBrowsePage({
+        api,
+        libraryId: library.libraryId,
+        rankedAssetIds: ranked.value.assetIds,
+        pageSize,
+        shouldContinue: () => request.isCurrent(),
+      });
+      if (!request.isCurrent() || !firstPage) return;
+      if (!firstPage.ok) throw new LibraryOperationError(firstPage.error);
+      showSemanticResults(
+        firstPage.value.items,
+        firstPage.value.rankedAssetIds,
+        pageSize,
+      );
+      setNotice(null);
+    } catch (caught) {
+      if (request.isCurrent()) {
+        setError(toMessage(caught, t("toast.searchFailed"), locale));
+        if (!silent) setWorkspaceNavigationPending(false);
+      }
+    } finally {
+      if (request.isCurrent()) setUiState("ready");
+    }
+  }
+
+  async function describeSimilarSource(assetId: string): Promise<FindSimilarSource | null> {
+    if (!api || !library) return null;
+    const known = assetsRef.current.find((asset) => asset.assetId === assetId);
+    const listed = known
+      ? null
+      : await api.listAssets({
+          libraryId: library.libraryId,
+          recursive: true,
+          assetIds: [assetId],
+        });
+    if (listed && !listed.ok) throw new LibraryOperationError(listed.error);
+    const asset = known ?? listed?.value[0];
+    const coverUrl = asset
+      ? resolveAssetCardCoverUrl({
+          libraryId: library.libraryId,
+          assetId: asset.assetId,
+          mediaType: asset.mediaType,
+          availability: asset.availability,
+          deletedAt: asset.deletedAt,
+          thumbnailStatus: asset.thumbnailStatus,
+          thumbnailArtifactId: asset.thumbnailArtifactId,
+        }).url
+      : null;
+    return {
+      libraryId: library.libraryId,
+      workspaceTabId: workspaceTabsState.activeTabId,
+      assetId,
+      displayName: asset?.displayName ?? "",
+      coverUrl,
+    };
+  }
+
+  async function runFindSimilar(
+    assetId: string,
+    navigation?: WorkspaceNavigationRequest,
+  ) {
+    if (!api || !library) return;
+    const preferences = loadSemanticSearchPreferences();
+    if (!preferences.enabled) return;
+    const token = ++findSimilarTokenRef.current;
+    const polling = () =>
+      findSimilarTokenRef.current === token && (navigation?.isCurrent() ?? true);
+    let page;
+    try {
+      page = await resolveFindSimilar({
+        query: async () => {
+          const result = await api.embeddingSimilar({
+            libraryId: library.libraryId,
+            modelId: preferences.modelId,
+            assetId,
+          });
+          if (!result.ok) throw new LibraryOperationError(result.error);
+          return { status: result.value.status, assetIds: result.value.assetIds };
+        },
+        shouldContinue: polling,
+        delay: (milliseconds) => new Promise((resolve) => {
+          window.setTimeout(resolve, milliseconds);
+        }),
+        onPreparing: () => setNotice(t("settings.semanticSearch.similarPreparing")),
+      });
+    } catch (caught) {
+      if (polling()) setError(toMessage(caught, t("toast.searchFailed"), locale));
+      return;
+    }
+    if (!page || !polling()) return;
+    if (page.status === "unsupported") {
+      setNotice(t("settings.semanticSearch.similarUnsupported"));
+      return;
+    }
+    if (page.status === "unavailable") {
+      setNotice(t("settings.semanticSearch.similarUnavailable"));
+      return;
+    }
+    const request = navigation ?? beginWorkspaceNavigationRequest("push");
+    if (!request.isCurrent()) return;
+    try {
+      if (!navigation) await closeAssetPreview(false);
+      if (!request.isCurrent()) return;
+      const source = await describeSimilarSource(assetId);
+      if (!request.isCurrent() || !source) return;
+      if (page.assetIds.length === 0) {
+        showSemanticResults([], [], preferences.pageSize, source);
+        setNotice(t("settings.semanticSearch.similarEmpty"));
+      } else {
+        const firstPage = await fetchFirstRankedBrowsePage({
+          api,
+          libraryId: library.libraryId,
+          rankedAssetIds: page.assetIds,
+          pageSize: preferences.pageSize,
+          shouldContinue: () => request.isCurrent(),
+        });
+        if (!request.isCurrent() || !firstPage) return;
+        if (!firstPage.ok) throw new LibraryOperationError(firstPage.error);
+        showSemanticResults(
+          firstPage.value.items,
+          firstPage.value.rankedAssetIds,
+          preferences.pageSize,
+          source,
+        );
+        setNotice(null);
+      }
+      if (!navigation) {
+        recordNavigation({ kind: "similar", assetId }, request);
+        finishWorkspaceNavigation(request);
+      }
+    } catch (caught) {
+      if (request.isCurrent()) {
+        setError(toMessage(caught, t("toast.searchFailed"), locale));
+        if (!navigation) setWorkspaceNavigationPending(false);
+      }
+    } finally {
+      if (request.isCurrent()) setUiState("ready");
+    }
+  }
+
   async function runSearch(
     event?: FormEvent,
     opts?: { silent?: boolean },
   ) {
     event?.preventDefault();
     if (!api || !library) return;
+    const semanticQuery = searchValue.trim();
+    const semantic = loadSemanticSearchPreferences();
+    if (semantic.enabled && semantic.searchMode === "semantic" && semanticQuery) {
+      await runSemanticSearch(semanticQuery, opts?.silent);
+      return;
+    }
     if (opts?.silent && (previewAssetRef.current || previewRestoringRef.current)) {
       return;
     }
@@ -8740,7 +9036,7 @@ function AppInner() {
         ),
       );
       applySearchResult(result.value);
-      registerBrowseSmartCollectionPage(beginBrowsePage, {
+      registerBrowseSmartCollectionPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         collectionId,
         sessionId: result.value.sessionId,
@@ -9603,6 +9899,7 @@ function AppInner() {
     setFolders([]);
     setLinkedFolders([]);
     setAssets([]);
+    setFindSimilarSource(null);
     setBrowseLayout([]);
     setVirtualBrowseLayout(null);
     setLayoutThumbnailArtifacts({ libraryId: "", ids: new Map() });
@@ -9697,6 +9994,7 @@ function AppInner() {
       // to rm the library root, then wait one paint so handles actually close.
       flushSync(() => {
         setAssets([]);
+        setFindSimilarSource(null);
         setSelectedAssetIds([]);
         setSelectedAssetId(undefined);
         setHoveredAssetId(null);
@@ -13042,7 +13340,9 @@ function AppInner() {
               tabs={workspaceTabPresentations}
               onAdd={() => void addWorkspaceTab()}
               onClose={(tabId) => void closeWorkspaceTab(tabId)}
-              onSelect={(tabId) => void selectWorkspaceTab(tabId)}
+              onSelect={(tabId) => {
+                void selectWorkspaceTab(tabId);
+              }}
               onReorder={(tabId, toIndex) => moveWorkspaceTab(tabId, toIndex)}
               onContextMenu={(tabId, position) => {
                 const tab = workspaceTabPresentations.find(
@@ -13166,6 +13466,27 @@ function AppInner() {
                   }}
                 />
               )}
+              <button
+                aria-label={t("toolbar.semanticSearch")}
+                aria-pressed={semanticSearchActive}
+                className={`search-semantic-toggle${semanticSearchActive ? " is-active" : ""}`}
+                data-hover-tip={t("toolbar.semanticSearchHint")}
+                disabled={!library}
+                onClick={() => {
+                  const current = loadSemanticSearchPreferences();
+                  const active = current.enabled && current.searchMode === "semantic";
+                  saveSemanticSearchPreferences({
+                    version: 1,
+                    enabled: active ? current.enabled : true,
+                    modelId: current.modelId,
+                    searchMode: active ? "keyword" : "semantic",
+                    pageSize: current.pageSize,
+                  });
+                }}
+                type="button"
+              >
+                <Icon name="smart" size={13} />
+              </button>
               <button
                 aria-label={t("toolbar.searchSyntax")}
                 className="search-syntax-help"
@@ -13789,6 +14110,40 @@ function AppInner() {
               </div>
             );
           })()}
+        {semanticSearchPrefs.enabled && library && !embeddingBannerDismissed ? (
+          <div className="workspace-ai-progress" role="status">
+            <div className="workspace-ai-progress-body">
+              <div className="workspace-ai-progress-headline">
+                <span className="workspace-ai-progress-message">
+                  {t(embeddingIndexCopyKey(embeddingIndex), {
+                    done: embeddingIndex.done,
+                    total: embeddingIndex.total,
+                    failed: embeddingIndex.failedCount,
+                  })}
+                </span>
+              </div>
+            </div>
+            <div className="workspace-ai-progress-actions">
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setEmbeddingBannerDismissed(true);
+                  openMediaJobs();
+                }}
+                type="button"
+              >
+                {t("toolbar.backgroundJobs")}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => setEmbeddingBannerDismissed(true)}
+                type="button"
+              >
+                {t("dialog.mediaJobs.runInBackground")}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {pluginJobActivity !== null && (
           <PluginJobActivityBanner
             job={pluginJobActivity}
@@ -13841,6 +14196,16 @@ function AppInner() {
                 document.body,
               )
             : null}
+        {findSimilarSource
+          && findSimilarSource.libraryId === library?.libraryId
+          && findSimilarSource.workspaceTabId === workspaceTabsState.activeTabId
+          && !previewAsset ? (
+            <FindSimilarBanner
+              coverUrl={findSimilarSource.coverUrl}
+              displayName={findSimilarSource.displayName}
+              onBack={() => void goWorkspaceBack()}
+            />
+          ) : null}
         <div
           className={`workspace-canvas${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}${externalDropActive ? " is-external-drop" : ""}`}
           onDragEnter={handleExternalDragEnter}
@@ -15117,6 +15482,8 @@ function AppInner() {
             fields: { ...current.fields, badgeSync: checked },
           }));
         }}
+        embeddingIndex={embeddingIndex}
+        embeddingServicesApi={api ?? undefined}
         syncServerCallbacks={{
           async syncListServers() {
             if (!api) return { ok: false, message: t("common.unavailable") };
@@ -15527,6 +15894,7 @@ function AppInner() {
         mediaJobs={mediaJobs}
         mediaJobsLoading={mediaJobsLoading}
         aiJobs={aiJobs}
+        embeddingIndex={semanticSearchPrefs.enabled ? { modelId: semanticSearchPrefs.modelId, snapshot: embeddingIndex } : null}
         pluginJobs={pluginJobs}
         onClose={() => setMediaJobsOpen(false)}
         onControlMediaJobs={(action, jobIds) => void controlMediaJobs(action, jobIds)}
@@ -15752,6 +16120,11 @@ function AppInner() {
         onRevealInFolder={(assetId) => { void handleRevealInFolder(assetId); }}
         onShowInLibraryFolder={(assetId) => {
           void showAssetInContainingFolder(assetId);
+        }}
+        semanticSearchEnabled={semanticSearchPrefs.enabled}
+        semanticModelSupportsSimilar={isSemanticSearchModelId(semanticSearchPrefs.modelId)}
+        onFindSimilar={(assetId) => {
+          void runFindSimilar(assetId);
         }}
         onCopyFilePath={(assetId) => { void handleCopyFilePath(assetId); }}
         onCopyAssetFiles={(assetIds) => {

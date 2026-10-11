@@ -11,6 +11,18 @@ import {
   getPluginJobDisplayProgress,
 } from "./plugin-job-display";
 import type { MediaJobStatus, AiJobStatus, PluginJobStatus } from "../shared/library-api";
+import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
+import { embeddingIndexCopyKey } from "./semantic-index-copy";
+
+function embeddingModelLabel(
+  modelId: string,
+  t: ReturnType<typeof useT>,
+): string {
+  if (modelId === "embeddinggemma-2-compact") return t("settings.semanticSearch.modelCompact");
+  if (modelId === "embeddinggemma-2-quality") return t("settings.semanticSearch.modelQuality");
+  if (modelId === "embeddinggemma-2-balanced") return t("settings.semanticSearch.modelBalanced");
+  return t("settings.semanticSearch.customModel");
+}
 
 function MediaJobAssetLabel({
   assetName,
@@ -34,6 +46,7 @@ export interface MediaJobsDialogProps {
   mediaJobs: MediaJobStatus | null;
   mediaJobsLoading: boolean;
   aiJobs: AiJobStatus | null;
+  embeddingIndex?: { modelId: string; snapshot: EmbeddingIndexSnapshot } | null;
   pluginJobs: PluginJobStatus | null;
   onClose: () => void;
   onControlMediaJobs: (
@@ -56,6 +69,7 @@ export function MediaJobsDialog({
   mediaJobs,
   mediaJobsLoading,
   aiJobs,
+  embeddingIndex,
   pluginJobs,
   onClose,
   onControlMediaJobs,
@@ -217,6 +231,22 @@ export function MediaJobsDialog({
                 </div>
               ) : null}
             </div>
+            {embeddingIndex ? (
+              <section className="media-jobs-embedding-section">
+                <h3 className="media-jobs-section-title">
+                  {t("dialog.mediaJobs.embeddingSection")}
+                </h3>
+                <p className="field-help">
+                  {embeddingModelLabel(embeddingIndex.modelId, t)}
+                  {" · "}
+                  {t(embeddingIndexCopyKey(embeddingIndex.snapshot), {
+                    done: embeddingIndex.snapshot.done,
+                    total: embeddingIndex.snapshot.total,
+                    failed: embeddingIndex.snapshot.failedCount,
+                  })}
+                </p>
+              </section>
+            ) : null}
             {aiJobs && (
               <section
                 style={{

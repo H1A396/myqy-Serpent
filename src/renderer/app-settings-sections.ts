@@ -39,6 +39,7 @@ export type AppSettingsCategoryId =
   | "appearance"
   | "browse"
   | "ai"
+  | "semantic-search"
   | "mcp"
   | "plugins"
   | "safety"
@@ -58,6 +59,7 @@ export type AppSettingsCategory = {
     | "settings.categoryAppearance"
     | "settings.categoryBrowse"
     | "settings.categoryAi"
+    | "settings.categorySemanticSearch"
     | "settings.categoryMcp"
     | "settings.categoryPlugins"
     | "settings.categorySync";
@@ -88,6 +90,11 @@ export const APP_SETTINGS_CATEGORIES: readonly AppSettingsCategory[] = [
     id: "ai",
     icon: "activity",
     labelKey: "settings.categoryAi",
+  },
+  {
+    id: "semantic-search",
+    icon: "search",
+    labelKey: "settings.categorySemanticSearch",
   },
   {
     id: "mcp",

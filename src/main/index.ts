@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
-  readFileSync,
-  writeFileSync,
   existsSync,
+  mkdirSync,
+  readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 
 import {
@@ -73,6 +74,14 @@ import {
   type SyncBindingRecord,
 } from "./library-request/sync";
 import { tryHandleAiOwnedRequest } from "./library-request/ai";
+import { tryHandleEmbeddingModelRequest } from "./library-request/embedding-models";
+import { EmbeddingTestIndex } from "./embedding-test-index";
+import { EmbeddingHttpIndex } from "./embedding-http-index";
+import {
+  parseEmbeddingServiceCatalog,
+  type EmbeddingServiceCatalog,
+} from "./embedding-service-registry";
+import type { EmbeddingModelCatalog } from "./embedding-model-catalog";
 import { tryHandlePreviewOwnedRequest } from "./library-request/preview";
 import { tryHandleMediaShellWorkerResult } from "./library-request/media-shell";
 import { maybePrimeNativeDrag } from "./library-request/native-drag";
@@ -492,6 +501,33 @@ let mainWindow: BrowserWindow | undefined;
 /** Effective UI locale for native dialogs; synced from Renderer (Serpent-bwb). */
 let appLocale: AppLocale = "en";
 let workerClient: LibraryWorkerClient | undefined;
+let embeddingTestIndex: EmbeddingTestIndex | undefined;
+let embeddingHttpIndex: EmbeddingHttpIndex | undefined;
+
+function embeddingIndex(): EmbeddingTestIndex {
+  embeddingTestIndex ??= new EmbeddingTestIndex({
+    cacheDirectory: path.join(app.getPath("userData"), "embedding-test-index"),
+    configDirectories: [process.cwd(), app.getAppPath()],
+    requestWorker: (command) => {
+      if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
+      return workerClient.request(command);
+    },
+  });
+  return embeddingTestIndex;
+}
+
+function embeddingHttp(): EmbeddingHttpIndex {
+  embeddingHttpIndex ??= new EmbeddingHttpIndex({
+    cacheDirectory: path.join(app.getPath("userData"), "embedding-http-index"),
+    requestWorker: (command) => {
+      if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
+      return workerClient.request(command);
+    },
+    loadService: (id) => parseEmbeddingServiceCatalog(readEmbeddingServices()).services.find((service) => service.id === id) ?? null,
+    readKey: readEmbeddingServiceKey,
+  });
+  return embeddingHttpIndex;
+}
 /** 自动同步调度器（Serpent-bfsb 后续），随 Worker 生命周期启停。 */
 let syncAutoScheduler: SyncAutoScheduler | undefined;
 type ArtifactPathBatchWaiter = {
@@ -1151,6 +1187,60 @@ function readSyncBindings(): Record<string, SyncBindingRecord> {
 
 function writeSyncBindings(bindings: Record<string, SyncBindingRecord>): void {
   writeFileSync(syncBindingsPath(), JSON.stringify(bindings, null, 2), "utf-8");
+}
+
+function embeddingModelsPath(): string {
+  return path.join(app.getPath("userData"), "embedding-models.json");
+}
+
+function readEmbeddingModels(): unknown {
+  try {
+    return JSON.parse(readFileSync(embeddingModelsPath(), "utf-8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingModels(catalog: EmbeddingModelCatalog): void {
+  writeFileSync(embeddingModelsPath(), JSON.stringify(catalog, null, 2), "utf-8");
+}
+
+function embeddingServicesPath(): string {
+  return path.join(app.getPath("userData"), "embedding-services.json");
+}
+
+function readEmbeddingServices(): unknown {
+  try {
+    return JSON.parse(readFileSync(embeddingServicesPath(), "utf-8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingServices(catalog: EmbeddingServiceCatalog): void {
+  writeFileSync(embeddingServicesPath(), JSON.stringify(catalog, null, 2), "utf-8");
+}
+
+function embeddingServiceKeyPath(id: string): string {
+  return path.join(app.getPath("userData"), "embedding-service-keys", `${id}.bin`);
+}
+
+function readEmbeddingServiceKey(id: string): string | null {
+  try {
+    return safeStorage.decryptString(readFileSync(embeddingServiceKeyPath(id)));
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingServiceKey(id: string, apiKey: string): void {
+  const filePath = embeddingServiceKeyPath(id);
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, safeStorage.encryptString(apiKey));
+}
+
+function deleteEmbeddingServiceKey(id: string): void {
+  rmSync(embeddingServiceKeyPath(id), { force: true });
 }
 
 function resolveSyncServerCredentials(serverId: string): {
@@ -2017,6 +2107,8 @@ function publishAssetChange(event: AssetChangeEvent): void {
   // library.changed channel and do not evict the viewer's hot path.
   sourcePathCache.clearLibrary(parsed.libraryId);
   evictArtifactPathCache(parsed.libraryId);
+  embeddingTestIndex?.catchUp(parsed.libraryId);
+  embeddingHttpIndex?.catchUp(parsed.libraryId);
   pluginActivationCoordinator?.fanOutDomainEvent(createPluginDomainEvent({
     kind: 'asset.changed',
     libraryId: parsed.libraryId,
@@ -2607,6 +2699,21 @@ async function commandFor(
         createNativeDialogHost,
       });
     }
+    case "embedding.models.list.request":
+    case "embedding.models.upsert.request":
+    case "embedding.models.delete.request":
+    case "embedding.models.set-default.request":
+    case "embedding.services.list.request":
+    case "embedding.services.save.request":
+    case "embedding.services.delete.request":
+    case "embedding.services.probe.request":
+    case "embedding.services.grant.request":
+    case "embedding.install.status.request":
+    case "embedding.install.start.request":
+    case "embedding.index.status.request":
+    case "embedding.search.request":
+    case "embedding.similar.request":
+      return undefined;
     default:
       return assertNever(request);
   }
@@ -2747,6 +2854,26 @@ async function handleLibraryRequest(
       },
     });
     if (syncOwnedResult) return syncOwnedResult;
+
+    const embeddingModelResult = await tryHandleEmbeddingModelRequest(request, {
+      readCatalog: readEmbeddingModels,
+      writeCatalog: writeEmbeddingModels,
+      readServices: readEmbeddingServices,
+      writeServices: writeEmbeddingServices,
+      serviceCredentials: {
+        has: (id) => existsSync(embeddingServiceKeyPath(id)),
+        read: readEmbeddingServiceKey,
+        write: writeEmbeddingServiceKey,
+        delete: deleteEmbeddingServiceKey,
+      },
+      userDataPath: () => app.getPath("userData"),
+      homePath: () => app.getPath("home"),
+      embeddingIndex: embeddingIndex(),
+      embeddingHttpIndex: embeddingHttp(),
+      stopGemmaIndex: () => { void embeddingTestIndex?.close(); },
+      stopHttpIndex: () => { embeddingHttpIndex?.close(); },
+    });
+    if (embeddingModelResult) return embeddingModelResult;
 
     const aiOwnedResult = await tryHandleAiOwnedRequest(request, {
       loadAiConfig,
@@ -6103,6 +6230,8 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    void embeddingTestIndex?.close();
+    embeddingHttpIndex?.close();
     void cleanupAllExternalSources();
     syncAutoScheduler?.stop();
     syncAutoScheduler = undefined;
