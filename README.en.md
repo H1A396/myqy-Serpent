@@ -94,6 +94,16 @@ Environment switches:
 
 AppImage: `npm run make:appimage` produces `out/make/appimage/Serpent-<version>-x86_64.AppImage` (details below).
 
+#### AppImage (Linux)
+
+```bash
+npm run make:appimage           # on this machine (AppImage needs the glibc of the build host or newer)
+npm run make:appimage:docker    # inside Ubuntu 22.04 (glibc 2.35 baseline), needs docker
+chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+```
+
+The AppImage uses the system `ffmpeg` / `ffprobe` / `oiiotool` (install `ffmpeg`, optionally `openimageio-tools`). Running it needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`. When unprivileged user namespaces are unavailable (some containers; Ubuntu 24.04 AppArmor policy), the launcher falls back to `--no-sandbox`.
+
 ## Documentation
 
 | Doc | Content |

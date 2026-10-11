@@ -92,6 +92,16 @@ sudo apt install build-essential python3 ffmpeg    # better-sqlite3 需要编译
 
 AppImage：`npm run make:appimage` 生成 `out/make/appimage/Serpent-<version>-x86_64.AppImage`。
 
+#### AppImage（Linux）
+
+```bash
+npm run make:appimage           # 在本机构建（运行环境的 glibc 需不低于构建机）
+npm run make:appimage:docker    # 在 Ubuntu 22.04（glibc 2.35 基线）中构建，需要 docker
+chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+```
+
+AppImage 使用系统的 `ffmpeg` / `ffprobe` / `oiiotool`（请安装 `ffmpeg`，可选 `openimageio-tools`）。运行需要 FUSE（`libfuse2`），没有 FUSE 时加 `--appimage-extract-and-run`。系统不允许非特权 user namespace 时（部分容器、Ubuntu 24.04 的 AppArmor 策略），启动器会自动改用 `--no-sandbox`。
+
 ## 文档
 
 | 文档 | 内容 |
