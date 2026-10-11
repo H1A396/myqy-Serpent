@@ -14450,11 +14450,9 @@ select.ai-config-input.ai-config-languages {
   gap: var(--ui-space-3);
 }
 
-/* === Serpent ui-minimal + accent restore (calm DAM shell) ===
-   Keep minimal calm shell; restore stronger highlight/accent on
-   selection, active nav, focus rings, primary buttons, selected cards.
-   Quiet space, thin hairlines, muted sidebar chrome, flat cards.
-   Eagle / Figma / Notion calm — not neon, not glassmorphism overload.
+/* === Serpent ui-next (calm DAM + accent, balanced gutters) ===
+   Minimal modern + restored accent. Owner follow-ups: quieter settings
+   heading, balanced browse/panel gutters, softened asset cards.
    Windows-style Linux/Windows frameless shell kept. No macOS chrome
    layout. No caption line-height / masonry band geometry. Library-
    settings / sync-binding dialog excluded. */
@@ -14572,7 +14570,7 @@ select.ai-config-input.ai-config-languages {
 }
 
 .navigation-scroll {
-  padding: 14px 8px 28px;
+  padding: 14px 12px 28px;
 }
 
 .nav-section {
@@ -14654,14 +14652,14 @@ select.ai-config-input.ai-config-languages {
 }
 
 .asset-grid {
-  gap: 16px;
-  padding: 20px 20px 64px;
+  gap: 14px;
+  padding: 14px 14px 56px;
 }
 
 .asset-card {
   border: 1px solid var(--divider-soft);
   border-radius: var(--ui-radius-surface);
-  background: var(--raised);
+  background: color-mix(in srgb, var(--raised) 42%, var(--canvas));
   box-shadow: none;
   transform: none;
 }
@@ -14671,13 +14669,13 @@ select.ai-config-input.ai-config-languages {
 }
 
 .asset-card:hover {
-  background: var(--raised);
+  background: color-mix(in srgb, var(--raised) 58%, var(--canvas));
   border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
   transform: none;
 }
 
 .asset-card.is-selected {
-  background: color-mix(in srgb, var(--accent) 12%, var(--raised));
+  background: color-mix(in srgb, var(--accent) 11%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
   border-color: transparent;
   box-shadow:
     0 0 0 2px var(--accent),
@@ -14701,12 +14699,13 @@ select.ai-config-input.ai-config-languages {
 
 .asset-preview {
   border-radius: calc(var(--ui-radius-surface) - 1px) calc(var(--ui-radius-surface) - 1px) 0 0;
-  background: color-mix(in srgb, var(--canvas) 55%, var(--pane));
+  background: color-mix(in srgb, var(--canvas) 72%, var(--pane));
 }
 
 .asset-caption {
-  border-top: 1px solid var(--divider-soft);
+  border-top: 1px solid color-mix(in srgb, var(--divider-soft) 88%, transparent);
   padding-top: 2px;
+  background: transparent;
 }
 
 .asset-caption strong {
@@ -14749,7 +14748,7 @@ select.ai-config-input.ai-config-languages {
 
 /* --- Inspector: quiet labels, flat fields --- */
 .inspector-content {
-  padding: 16px 16px 28px;
+  padding: 14px 14px 28px;
 }
 
 .inspector-section h2 {
@@ -14801,12 +14800,32 @@ select.ai-config-input.ai-config-languages {
 .app-settings-dialog:not(.library-settings-dialog) {
   border-radius: var(--ui-radius-dialog);
   border-color: var(--divider-soft);
+  background: color-mix(in srgb, var(--canvas) 55%, var(--pane));
   box-shadow: var(--ui-shadow-modal);
+}
+
+/* DialogShell header (data-dialog-header) — was reading as bright raised white. */
+.app-settings-dialog:not(.library-settings-dialog) > [data-dialog-header="true"] {
+  padding: 12px 16px 11px 18px;
+  border-bottom: 1px solid var(--divider-soft);
+  background: color-mix(in srgb, var(--text) 7%, var(--canvas));
+  color: var(--text);
+}
+
+.app-settings-dialog:not(.library-settings-dialog) > [data-dialog-header="true"] h2 {
+  color: var(--text);
+  font-size: calc(14px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.app-settings-dialog:not(.library-settings-dialog).ui-dialog-shell {
+  background: color-mix(in srgb, var(--canvas) 55%, var(--pane));
 }
 
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-nav {
   padding: 12px 10px;
-  background: var(--pane);
+  background: color-mix(in srgb, var(--canvas) 62%, var(--pane));
   border-right: 1px solid var(--divider-soft);
 }
 
@@ -14828,21 +14847,21 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-content {
   gap: 14px;
-  padding: 28px 32px 36px;
-  background: var(--canvas);
+  padding: 22px 24px 30px;
+  background: color-mix(in srgb, var(--canvas) 88%, var(--pane));
 }
 
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-page-heading h3 {
-  font-size: calc(20px * var(--ui-font-scale));
+  font-size: calc(18px * var(--ui-font-scale));
   font-weight: 650;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
 }
 
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-card {
-  padding: 16px 16px;
+  padding: 14px 14px;
   border: 1px solid var(--divider-soft);
   border-radius: var(--ui-radius-surface);
-  background: var(--raised);
+  background: color-mix(in srgb, var(--raised) 62%, var(--canvas));
   box-shadow: none;
 }
 
@@ -14872,6 +14891,44 @@ select.ai-config-input.ai-config-languages {
   border-radius: var(--ui-radius-surface);
   background: var(--raised);
   padding: 4px;
+  box-shadow: none;
+}
+
+
+/* --- Extra calm polish --- */
+.workspace-bar {
+  border-bottom: 1px solid var(--divider-soft);
+  background: color-mix(in srgb, var(--pane) 82%, var(--canvas));
+  box-shadow: none;
+}
+
+.folder-card {
+  border: 1px solid var(--divider-soft);
+  border-radius: var(--ui-radius-surface);
+  background: color-mix(in srgb, var(--raised) 42%, var(--canvas));
+  box-shadow: none;
+}
+
+.folder-card:hover {
+  background: color-mix(in srgb, var(--raised) 58%, var(--canvas));
+  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
+}
+
+.folder-card.is-selected {
+  background: color-mix(in srgb, var(--accent) 11%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.navigation-pane,
+.inspector-pane {
+  box-shadow: none;
+}
+
+:root:not([data-elevation="0"]) .navigation-pane,
+:root:not([data-elevation="0"]) .inspector-pane {
   box-shadow: none;
 }
 
