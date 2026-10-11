@@ -15412,31 +15412,27 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --island-inner-radius: 12px;      /* cards / hero, nested tier */
   --island-control-radius: 10px;    /* rows / chips */
   --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 60%, var(--ui-surface-raised-subtle)));
-  --island-backdrop-glow: color-mix(in srgb, var(--accent) 5%, transparent);
   --island-surface: var(--ui-surface-raised-subtle);
   --island-canvas: var(--ui-surface-raised-subtle);
   --island-border: rgb(20 24 36 / 6%);
-  --island-shadow: 0 1px 2px rgb(20 24 36 / 5%), 0 6px 20px -8px rgb(20 24 36 / 8%);
-  --island-bar: color-mix(in srgb, var(--island-canvas) 82%, transparent);
+  --island-shadow: 0 1px 2px rgb(20 24 36 / 4%);
+  --island-bar: var(--island-canvas);
   --island-card-shadow: 0 1px 2px rgb(20 24 36 / 6%), 0 0 0 1px rgb(20 24 36 / 5%);
   --island-card-shadow-hover: 0 4px 14px -4px rgb(20 24 36 / 16%), 0 0 0 1px rgb(20 24 36 / 7%);
 }
 :root[data-theme="dark"] {
   --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 75%, var(--ui-surface-pane)));
-  --island-backdrop-glow: color-mix(in srgb, var(--accent) 5%, transparent);
   --island-surface: var(--ui-surface-pane);
   --island-canvas: var(--ui-surface-pane);
   --island-border: rgb(255 255 255 / 6%);
-  --island-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset, 0 8px 24px -10px rgb(0 0 0 / 45%);
+  --island-shadow: 0 1px 2px rgb(0 0 0 / 20%);
   --island-card-shadow: 0 0 0 1px rgb(255 255 255 / 5%);
   --island-card-shadow-hover: 0 0 0 1px rgb(255 255 255 / 10%), 0 6px 18px -6px rgb(0 0 0 / 60%);
 }
 
 .app-shell[data-shell-layout="islands"] {
   background-color: var(--island-backdrop);
-  background-image:
-    radial-gradient(900px 480px at 12% -12%, var(--island-backdrop-glow), transparent 65%),
-    var(--ui-backdrop-image, none);
+  background-image: var(--ui-backdrop-image, none);
 }
 
 /* Title bar merges into the backdrop; active tab reads as a tab of the canvas island. */
@@ -15478,12 +15474,17 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
+/* Islands carry their own border; drop the legacy 1px top seam on side panes. */
+.app-shell[data-shell-layout="islands"] > .navigation-pane::before,
+.app-shell[data-shell-layout="islands"] > .inspector-pane::before {
+  content: none;
+}
+
 /* Floating bar: workspace toolbar + filters share one translucent header. */
 .app-shell[data-shell-layout="islands"] .workspace-bar,
 .app-shell[data-shell-layout="islands"] .workspace-discovery {
   border-bottom-color: transparent;
   background: var(--island-bar);
-  backdrop-filter: blur(16px) saturate(1.1);
 }
 .app-shell[data-shell-layout="islands"] .workspace-bar { padding-top: 4px; }
 .app-shell[data-shell-layout="islands"] .workspace-discovery {
