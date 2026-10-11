@@ -55,7 +55,7 @@
   align-items: stretch;
   min-width: 0;
   height: auto;
-  padding-inline: var(--workspace-tab-curve);
+  padding-inline: var(--ui-space-1);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -96,44 +96,34 @@
 
 .workspace-tab.is-active {
   z-index: 1;
+  /* Join the browse canvas cleanly. Side borders + transparent bottom used to
+     leave dark triangular stubs at the bottom corners; drop the border and
+     draw a top/side hairline with inset shadows instead. */
+  margin-bottom: -1px;
+  padding-bottom: 1px;
   background: var(--canvas);
-  border-color: var(--divider-soft);
+  border-color: transparent;
+  border-radius: var(--workspace-tab-curve) var(--workspace-tab-curve) 0 0;
   color: var(--text);
+  /* No inset hairlines — side insets ended in dark stubs at the bottom join. */
+  box-shadow: none;
 }
 
-/* Halo on the toolbar around the folder tab. The list clips overflow-y, so
-   the downward component never lands on the canvas (that would reopen the
-   seam). Size/alpha come from --elev-*; level 0 omits paint. */
-:root:not([data-elevation="0"]) .workspace-tab.is-active {
-  box-shadow: var(--shadow-workspace-tab);
-}
-
-.workspace-tab.is-active::before,
+/* Canvas tongue under the tab face hides any residual toolbar/canvas seam. */
 .workspace-tab.is-active::after {
   content: "";
   position: absolute;
-  bottom: 0;
-  width: var(--workspace-tab-curve);
-  height: var(--workspace-tab-curve);
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--canvas);
   pointer-events: none;
+  z-index: 2;
 }
 
 .workspace-tab.is-active::before {
-  right: 100%;
-  background: radial-gradient(
-    circle at 0 0,
-    transparent var(--workspace-tab-curve),
-    var(--canvas) calc(var(--workspace-tab-curve) + 1px)
-  );
-}
-
-.workspace-tab.is-active::after {
-  left: 100%;
-  background: radial-gradient(
-    circle at 100% 0,
-    transparent var(--workspace-tab-curve),
-    var(--canvas) calc(var(--workspace-tab-curve) + 1px)
-  );
+  content: none;
 }
 
 .workspace-tab-select,
@@ -196,9 +186,7 @@
   align-self: center;
   width: var(--shell-control-height);
   height: var(--shell-control-height);
-  /* List padding-inline keeps the last tab's right scoop unclipped; pull
-     the plus back into that gutter so it sits a space-1 from the tab. */
-  margin-inline-start: calc(-1 * var(--workspace-tab-curve) + var(--ui-space-1));
+  margin-inline-start: var(--ui-space-1);
   border-radius: var(--ui-radius-surface);
   color: var(--secondary);
 }

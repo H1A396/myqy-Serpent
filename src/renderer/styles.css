@@ -1695,9 +1695,10 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .search-history-header span {
-  color: var(--text);
-  font-size: calc(13px * var(--ui-font-scale));
-  font-weight: var(--ui-font-weight-medium);
+  color: var(--tertiary);
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .search-history-chips {
@@ -1717,9 +1718,9 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   overflow: hidden;
   padding: 0 8px;
   border: 1px solid var(--divider-soft);
-  border-radius: 4px;
-  background: var(--raised-2);
-  color: var(--text);
+  border-radius: var(--ui-radius-control);
+  background: transparent;
+  color: var(--secondary);
   cursor: pointer;
   font-size: calc(12px * var(--ui-font-scale));
   line-height: 1;
@@ -1727,10 +1728,16 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   white-space: nowrap;
 }
 
-.search-history-item.is-highlighted,
-.search-history-item:hover {
-  border-color: var(--divider);
-  background: color-mix(in srgb, var(--text) 6%, var(--raised-2));
+.search-history-item:hover:not(.is-highlighted) {
+  border-color: var(--divider-soft);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.search-history-item.is-highlighted {
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
 }
 
 .search-history-clear {
@@ -14476,6 +14483,12 @@ select.ai-config-input.ai-config-languages {
   box-shadow: none;
 }
 
+/* Workspace tabs own the seam — do not redraw a hairline under the active tab. */
+.app-shell:has(.workspace-tabs) .app-toolbar {
+  border-bottom: none;
+  box-shadow: none;
+}
+
 .windows-caption-button {
   color: color-mix(in srgb, var(--text) 48%, var(--secondary));
 }
@@ -14598,9 +14611,16 @@ select.ai-config-input.ai-config-languages {
   font-weight: 450;
 }
 
-.nav-row:hover:not(:disabled) {
-  background: var(--hover);
+.nav-row:hover:not(:disabled):not(.is-active) {
+  background: transparent;
+  border-color: transparent;
   color: var(--text);
+}
+
+.nav-row.is-active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-soft-fg);
 }
 
 .nav-row.is-active {
@@ -14891,10 +14911,16 @@ select.ai-config-input.ai-config-languages {
 
 
 /* --- Extra calm polish --- */
+/* Workspace bar must share --canvas with the active tab face so the tab
+   joins the browse chrome without a tint seam under the tab. */
 .workspace-bar {
   border-bottom: 1px solid var(--divider-soft);
-  background: color-mix(in srgb, var(--pane) 82%, var(--canvas));
+  background: var(--canvas);
   box-shadow: none;
+}
+
+.workspace-discovery {
+  background: var(--canvas);
 }
 
 .folder-card {
@@ -14926,35 +14952,48 @@ select.ai-config-input.ai-config-languages {
 }
 
 
-/* --- Hover almost off (cards / tools / chips) --- */
-.tool-button:hover:not(:disabled):not([aria-pressed="true"]),
-.tiny-action:hover,
-.nav-row:hover:not(:disabled):not(.is-active),
-.nav-disclosure:hover:not(:disabled),
-.windows-caption-button:hover:not(.windows-caption-button-close),
-.search-control-wrap:hover {
+/* --- Hover: no borders/outlines; nav idle hover wash removed (read as outline) --- */
+.nav-row:hover:not(:disabled):not(.is-active) {
   background: transparent;
-  border-color: inherit;
-  color: inherit;
+  border-color: transparent;
+  color: var(--text);
+}
+
+.tool-button:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.tiny-action:hover {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.nav-disclosure:hover:not(:disabled) {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.windows-caption-button:hover:not(.windows-caption-button-close) {
+  background: var(--hover);
+  border-color: transparent;
+}
+
+.main-menu-trigger:hover:not(:disabled):not([aria-expanded="true"]) {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--text);
 }
 
 .search-control-wrap:hover {
   border-color: var(--divider-soft);
   background: color-mix(in srgb, var(--canvas) 70%, var(--raised));
+  box-shadow: none;
 }
 
-.tool-button:hover:not(:disabled):not([aria-pressed="true"]) {
-  border-color: transparent;
-  color: var(--secondary);
-}
-
-.main-menu-trigger:hover:not(:disabled):not([aria-expanded="true"]) {
-  background: transparent;
-  color: inherit;
-  border-color: transparent;
-}
-
-/* Keep pressed/active accent; only idle hover is quiet. */
 
 /* --- Settings layout polish (app settings only) --- */
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-page-heading {
@@ -15077,6 +15116,28 @@ select.ai-config-input.ai-config-languages {
   border-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
+
+/* Nav rows: never paint a hover/active outline; idle hover has no wash pill. */
+.nav-row,
+.nav-row:hover:not(:disabled),
+.nav-row:hover:not(:disabled):not(.is-active),
+.nav-row.is-active,
+.nav-row:focus-visible {
+  border-color: transparent;
+  outline: none;
+}
+
+.nav-row:hover:not(:disabled):not(.is-active) {
+  background: transparent;
+}
+
+.nav-row.is-active {
+  box-shadow: none;
+}
+
+.nav-row:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
 
 /* Linux frameless: client edge/corner resize hit targets (no WM frame). */
 .window-edge-resize-layer {
