@@ -1430,6 +1430,7 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('embedding.binding.save.request'),
     libraryId: identifierSchema,
     selectionId: z.union([z.null(), embeddingSelectionIdSchema]),
+    inherit: z.boolean().optional(),
   }),
   z.strictObject({
     type: z.literal('embedding.install.status.request'),

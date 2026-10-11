@@ -1,7 +1,5 @@
 import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, createWriteStream, unlinkSync, rmSync, chmodSync } from "node:fs";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import path from "node:path";
 import { open as openZip, type Entry } from "yauzl";
@@ -115,48 +113,193 @@ export function embeddingDownloadUrl(fileName: string): string {
   return `https://huggingface.co/unsloth/embeddinggemma-2-GGUF/resolve/${EMBEDDING_GEMMA2_MODEL_REVISION}/${fileName}`;
 }
 
-export async function downloadEmbeddingFile(url: string, destination: string): Promise<void> {
+export async function downloadEmbeddingFile(
+  url: string,
+  destination: string,
+  options?: {
+    onProgress?: (progress: { bytesDownloaded: number; totalBytes?: number }) => void;
+    signal?: AbortSignal;
+    stallTimeoutMs?: number;
+  },
+): Promise<void> {
   mkdirSync(path.dirname(destination), { recursive: true });
-  const response = await fetch(url, { redirect: "follow" });
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed with status ${response.status}.`);
-  }
   const temporary = `${destination}.partial`;
+  const candidates = candidateDownloadUrls(url);
+  let lastError: unknown;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]!;
+    try {
+      await downloadEmbeddingFileOnce(candidate, temporary, destination, options);
+      return;
+    } catch (error) {
+      lastError = error;
+      try {
+        unlinkSync(temporary);
+      } catch {
+        // Partial file may already be gone.
+      }
+      if (options?.signal?.aborted) break;
+      if (index + 1 < candidates.length) await sleep(400);
+    }
+  }
+  if (lastError instanceof EmbeddingInstallError) throw lastError;
+  throw new EmbeddingInstallError(
+    "network",
+    lastError instanceof Error ? lastError.message : "Download failed.",
+  );
+}
+
+async function downloadEmbeddingFileOnce(
+  url: string,
+  temporary: string,
+  destination: string,
+  options?: {
+    onProgress?: (progress: { bytesDownloaded: number; totalBytes?: number }) => void;
+    signal?: AbortSignal;
+    stallTimeoutMs?: number;
+  },
+): Promise<void> {
+  const stallTimeoutMs = options?.stallTimeoutMs ?? 45_000;
+  const response = await fetch(url, { redirect: "follow", signal: options?.signal });
+  if (!response.ok || !response.body) {
+    throw new EmbeddingInstallError("network", `Download failed with status ${response.status}.`);
+  }
+  const totalHeader = response.headers.get("content-length");
+  const parsedTotal = totalHeader ? Number(totalHeader) : Number.NaN;
+  const knownTotal = Number.isFinite(parsedTotal) && parsedTotal > 0 ? parsedTotal : undefined;
+  let bytesDownloaded = 0;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  const stallController = new AbortController();
+  const reader = response.body.getReader();
+  const refreshStall = (): void => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stallController.abort();
+      void reader.cancel("stall").catch(() => undefined);
+    }, stallTimeoutMs);
+  };
+  const onOuterAbort = (): void => {
+    stallController.abort();
+    void reader.cancel("abort").catch(() => undefined);
+  };
+  options?.signal?.addEventListener("abort", onOuterAbort, { once: true });
+  refreshStall();
+  options?.onProgress?.({
+    bytesDownloaded: 0,
+    ...(knownTotal === undefined ? {} : { totalBytes: knownTotal }),
+  });
+
+  const output = createWriteStream(temporary);
   try {
-    await pipeline(Readable.fromWeb(response.body), createWriteStream(temporary));
+    while (true) {
+      if (stallController.signal.aborted || options?.signal?.aborted) {
+        throw new EmbeddingInstallError("network", "Download stalled.");
+      }
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || value.byteLength === 0) continue;
+      const buffer = Buffer.from(value);
+      await new Promise<void>((resolve, reject) => {
+        output.write(buffer, (error) => (error ? reject(error) : resolve()));
+      });
+      bytesDownloaded += buffer.byteLength;
+      refreshStall();
+      options?.onProgress?.({
+        bytesDownloaded,
+        ...(knownTotal === undefined ? {} : { totalBytes: knownTotal }),
+      });
+    }
+    await new Promise<void>((resolve, reject) => {
+      output.end((error) => (error ? reject(error) : resolve()));
+    });
     renameSync(temporary, destination);
   } catch (error) {
     try {
+      await reader.cancel();
+    } catch {
+      // Ignore cancel errors.
+    }
+    try {
+      output.destroy();
+    } catch {
+      // Stream already closed.
+    }
+    try {
       unlinkSync(temporary);
     } catch {
-      // The partial file is already gone.
+      // Partial file may already be gone.
+    }
+    if (error instanceof EmbeddingInstallError) throw error;
+    if (stallController.signal.aborted) {
+      throw new EmbeddingInstallError("network", "Download stalled.");
     }
     throw error;
+  } finally {
+    if (stallTimer) clearTimeout(stallTimer);
+    options?.signal?.removeEventListener("abort", onOuterAbort);
   }
 }
+
+export type EmbeddingFileDownloader = (
+  url: string,
+  destination: string,
+  options?: {
+    onProgress?: (progress: { bytesDownloaded: number; totalBytes?: number }) => void;
+    signal?: AbortSignal;
+    stallTimeoutMs?: number;
+  },
+) => Promise<void>;
 
 export async function downloadMissingTierFiles(
   modelId: SemanticSearchModelId,
   destinationDir: string,
   alreadyFound: ReadonlySet<string>,
-  downloadFile: (url: string, destination: string) => Promise<void> = downloadEmbeddingFile,
+  downloadFile: EmbeddingFileDownloader = downloadEmbeddingFile,
+  onProgress?: (progress: EmbeddingDownloadProgress) => void,
 ): Promise<void> {
   const model = SEMANTIC_SEARCH_MODELS.find((entry) => entry.id === modelId);
   if (!model) throw new Error("Unknown semantic model.");
   const files = EMBEDDING_GEMMA2_TIER_FILES[model.tier];
   for (const fileName of [files.coreFile, files.projectorFile]) {
     if (alreadyFound.has(fileName)) continue;
-    await downloadFile(embeddingDownloadUrl(fileName), path.join(destinationDir, fileName));
+    await downloadFile(
+      embeddingDownloadUrl(fileName),
+      path.join(destinationDir, fileName),
+      {
+        onProgress: (progress) => {
+          onProgress?.({
+            phase: "downloading-model",
+            fileName,
+            bytesDownloaded: progress.bytesDownloaded,
+            ...(progress.totalBytes === undefined ? {} : { totalBytes: progress.totalBytes }),
+          });
+        },
+      },
+    );
   }
 }
 
 /** Pinned llama.cpp build that passed the EmbeddingGemma image canary. Not shipped in the app package. */
 export const LLAMA_CPP_RELEASE = "b11457";
 
+/** Approximate download sizes used for free-space checks and UI labels. */
+const TIER_CORE_BYTES = {
+  Q4_K_XL: 176_000_000,
+  Q8_0: 330_000_000,
+  BF16: 620_000_000,
+} as const;
+
+const TIER_PROJECTOR_BYTES = {
+  Q4_K_XL: 530_000_000,
+  Q8_0: 530_000_000,
+  BF16: 1_050_000_000,
+} as const;
+
+/** @deprecated Prefer per-file estimates; kept for older call sites in tests. */
 const TIER_DOWNLOAD_BYTES = {
-  Q4_K_XL: 800_000_000,
-  Q8_0: 950_000_000,
-  BF16: 1_700_000_000,
+  Q4_K_XL: TIER_CORE_BYTES.Q4_K_XL + TIER_PROJECTOR_BYTES.Q4_K_XL,
+  Q8_0: TIER_CORE_BYTES.Q8_0 + TIER_PROJECTOR_BYTES.Q8_0,
+  BF16: TIER_CORE_BYTES.BF16 + TIER_PROJECTOR_BYTES.BF16,
 } as const;
 
 const RUNTIME_DOWNLOAD_BYTES: Partial<Record<NodeJS.Platform, number>> = {
@@ -196,9 +339,8 @@ export function embeddingInstallBytes(input: {
   if (!model) return 0;
   const files = EMBEDDING_GEMMA2_TIER_FILES[model.tier];
   let bytes = 0;
-  for (const fileName of [files.coreFile, files.projectorFile]) {
-    if (!input.alreadyFound.has(fileName)) bytes += TIER_DOWNLOAD_BYTES[model.tier];
-  }
+  if (!input.alreadyFound.has(files.coreFile)) bytes += TIER_CORE_BYTES[model.tier];
+  if (!input.alreadyFound.has(files.projectorFile)) bytes += TIER_PROJECTOR_BYTES[model.tier];
   if (!input.runtimeFound && pinnedLlamaRuntimeAsset(input.platform, input.arch)) {
     bytes += RUNTIME_DOWNLOAD_BYTES[input.platform] ?? 80_000_000;
   }
@@ -226,13 +368,45 @@ export function resolveInstalledEmbeddingLayout(
 }
 
 export class EmbeddingInstallError extends Error {
-  readonly kind: "space" | "failed";
+  readonly kind: "space" | "network" | "extract" | "failed";
 
-  constructor(kind: EmbeddingInstallError["kind"]) {
-    super(kind);
+  constructor(kind: EmbeddingInstallError["kind"], detail?: string) {
+    super(detail ?? kind);
     this.name = "EmbeddingInstallError";
     this.kind = kind;
   }
+}
+
+export type EmbeddingDownloadProgress = {
+  readonly bytesDownloaded: number;
+  readonly totalBytes?: number;
+  readonly fileName?: string;
+  readonly phase: "downloading-model" | "downloading-runtime" | "extracting";
+};
+
+const GITHUB_DOWNLOAD_MIRRORS: ReadonlyArray<(url: string) => string> = [
+  (url) => url,
+  (url) => `https://ghproxy.net/${url}`,
+  (url) => `https://mirror.ghproxy.com/${url}`,
+];
+
+function candidateDownloadUrls(url: string): string[] {
+  if (!url.includes("://github.com/") && !url.includes("://objects.githubusercontent.com/")) {
+    return [url];
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const mirror of GITHUB_DOWNLOAD_MIRRORS) {
+    const next = mirror(url);
+    if (seen.has(next)) continue;
+    seen.add(next);
+    out.push(next);
+  }
+  return out;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const execFileAsync = promisify(execFile);
@@ -245,8 +419,9 @@ export async function installEmbeddingFiles(input: {
   platform: NodeJS.Platform;
   arch: string;
   freeBytes?: number;
-  downloadFile?: (url: string, destination: string) => Promise<void>;
+  downloadFile?: EmbeddingFileDownloader;
   extractArchive?: (archivePath: string, destinationDir: string) => Promise<void>;
+  onProgress?: (progress: EmbeddingDownloadProgress) => void;
 }): Promise<void> {
   const needed = embeddingInstallBytes({
     modelId: input.modelId,
@@ -259,7 +434,13 @@ export async function installEmbeddingFiles(input: {
     throw new EmbeddingInstallError("space");
   }
   const downloadFile = input.downloadFile ?? downloadEmbeddingFile;
-  await downloadMissingTierFiles(input.modelId, input.destinationDir, input.alreadyFound, downloadFile);
+  await downloadMissingTierFiles(
+    input.modelId,
+    input.destinationDir,
+    input.alreadyFound,
+    downloadFile,
+    input.onProgress,
+  );
   if (input.runtimeFound) return;
   const asset = pinnedLlamaRuntimeAsset(input.platform, input.arch);
   if (!asset) return;
@@ -267,15 +448,39 @@ export async function installEmbeddingFiles(input: {
   mkdirSync(runtimeDir, { recursive: true });
   const archivePath = path.join(runtimeDir, asset.fileName);
   try {
-    await downloadFile(pinnedLlamaRuntimeUrl(asset.fileName), archivePath);
+    await downloadFile(pinnedLlamaRuntimeUrl(asset.fileName), archivePath, {
+      onProgress: (progress) => {
+        input.onProgress?.({
+          phase: "downloading-runtime",
+          fileName: asset.fileName,
+          bytesDownloaded: progress.bytesDownloaded,
+          ...(progress.totalBytes === undefined ? {} : { totalBytes: progress.totalBytes }),
+        });
+      },
+    });
+    input.onProgress?.({
+      phase: "extracting",
+      fileName: asset.fileName,
+      bytesDownloaded: 0,
+    });
     await (input.extractArchive ?? extractRuntimeArchive)(archivePath, runtimeDir);
   } catch (error) {
     rmSync(archivePath, { force: true });
     if (error instanceof EmbeddingInstallError) throw error;
-    throw new EmbeddingInstallError("failed");
+    throw new EmbeddingInstallError(
+      "extract",
+      error instanceof Error ? error.message : "Runtime install failed.",
+    );
   }
   rmSync(archivePath, { force: true });
   markRuntimeExecutable(runtimeDir);
+}
+
+/** Compact (lowest quant) package size for Settings labels — models + runtime archive. */
+export function semanticModelPackageBytes(modelId: SemanticSearchModelId): number {
+  const model = SEMANTIC_SEARCH_MODELS.find((entry) => entry.id === modelId);
+  if (!model) return 0;
+  return TIER_CORE_BYTES[model.tier] + TIER_PROJECTOR_BYTES[model.tier] + (RUNTIME_DOWNLOAD_BYTES.darwin ?? 12_000_000);
 }
 
 function markRuntimeExecutable(directory: string): void {
@@ -310,7 +515,7 @@ async function extractTarArchive(archivePath: string, destinationDir: string): P
   const listed = await execFileAsync("tar", ["-tzf", archivePath], { timeout: 60_000, maxBuffer: 8_000_000 });
   const names = listed.stdout.split("\n").map((line) => line.trim()).filter(Boolean);
   if (names.length === 0 || names.some((name) => !runtimeArchiveEntryAllowed(name))) {
-    throw new EmbeddingInstallError("failed");
+    throw new EmbeddingInstallError("extract", "Runtime archive looks invalid.");
   }
   await execFileAsync("tar", ["-xzf", archivePath, "-C", destinationDir], { timeout: 120_000 });
 }

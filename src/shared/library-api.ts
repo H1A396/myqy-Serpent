@@ -1,3 +1,4 @@
+import type { EmbeddingInstallProgress } from "./embedding/install-progress";
 import type { EmbeddingGemmaTier, EmbeddingIndexSnapshot, EmbeddingModelSummary, SemanticSearchModelId } from './embedding/profile';
 import type { EmbeddingHttpAdapter, EmbeddingServiceDestination, EmbeddingTextStatus } from './embedding/http-service';
 import type { EmbeddingModality } from './embedding/modalities';
@@ -54,6 +55,8 @@ export interface EmbeddingHttpServiceSummary {
 export interface EmbeddingLibraryBinding {
   selectionId: string | null;
   enabled: boolean;
+  /** True when this library has no override and should use Settings default. */
+  inherit: boolean;
 }
 
 import type {
@@ -788,6 +791,7 @@ export interface SerpentLibraryApi {
     runtimeDownloadable: boolean;
     models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
   }>>;
+  onEmbeddingInstallProgress?(listener: (event: EmbeddingInstallProgress) => void): () => void;
   embeddingIndexStatus(input: {
     libraryId: string;
     modelId: string;
@@ -832,7 +836,7 @@ export interface SerpentLibraryApi {
   }>>;
   embeddingGrantService(input: { id: string; libraryId: string }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingGetBinding(input: { libraryId: string }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
-  embeddingSaveBinding(input: { libraryId: string; selectionId: string | null }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
+  embeddingSaveBinding(input: { libraryId: string; selectionId: string | null; inherit?: boolean }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
   /** Serpent-xffq: 保存库绑定（服务器 + 可选同步文件夹名，默认库名；enabled=自动同步开关；pollIntervalMs=云端轮询间隔；showCardSyncStatus=卡片同步状态）。 */
   syncSaveBinding(input: { libraryId: string; serverId: string; directoryName?: string; enabled?: boolean; pollIntervalMs?: number; showCardSyncStatus?: boolean }): Promise<LibraryApiResult<void>>;
   /** Serpent-xffq: 读取库绑定。 */

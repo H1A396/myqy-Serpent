@@ -17,9 +17,13 @@ import {
   installEmbeddingFiles,
   installedSemanticModels,
   pinnedLlamaRuntimeAsset,
+  semanticModelPackageBytes,
+  type EmbeddingDownloadProgress,
 } from "../embedding-install";
+import type { EmbeddingInstallProgress } from "../../shared/embedding/install-progress";
 import { probeFreeBytes } from "../disk-free-space";
 import {
+  clearEmbeddingBinding,
   writeEmbeddingBinding,
   type EmbeddingLibraryBinding,
 } from "../embedding-library-binding";
@@ -57,6 +61,8 @@ export type EmbeddingModelRuntime = {
   embeddingHttpIndex?: EmbeddingHttpIndex;
   stopGemmaIndex?: () => void;
   stopHttpIndex?: () => void;
+  onInstallProgress?: (event: EmbeddingInstallProgress) => void;
+  logError?: (scope: string, error: unknown, context?: Record<string, unknown>) => void;
 };
 
 export async function tryHandleEmbeddingModelRequest(
@@ -89,7 +95,7 @@ export async function tryHandleEmbeddingModelRequest(
     case "embedding.binding.get.request":
       return readBinding(request.libraryId, runtime);
     case "embedding.binding.save.request":
-      return saveBinding(request.libraryId, request.selectionId, runtime);
+      return saveBinding(request.libraryId, request.selectionId, runtime, request.inherit === true);
     case "embedding.install.status.request":
       return installStatus(runtime);
     case "embedding.install.start.request":
@@ -191,6 +197,15 @@ async function installModel(modelId: SemanticSearchModelId, runtime: EmbeddingMo
     userData: runtime.userDataPath(),
     home: runtime.homePath(),
   }));
+  const emit = (progress: EmbeddingDownloadProgress): void => {
+    runtime.onInstallProgress?.({
+      modelId,
+      phase: progress.phase,
+      bytesDownloaded: progress.bytesDownloaded,
+      ...(progress.totalBytes === undefined ? {} : { totalBytes: progress.totalBytes }),
+      ...(progress.fileName === undefined ? {} : { fileName: progress.fileName }),
+    });
+  };
   try {
     const freeBytes = await probeFreeBytes(destinationDir);
     await installEmbeddingFiles({
@@ -201,8 +216,22 @@ async function installModel(modelId: SemanticSearchModelId, runtime: EmbeddingMo
       platform: process.platform,
       arch: process.arch,
       freeBytes,
+      onProgress: emit,
+    });
+    runtime.onInstallProgress?.({
+      modelId,
+      phase: "ready",
+      bytesDownloaded: semanticModelPackageBytes(modelId),
+      totalBytes: semanticModelPackageBytes(modelId),
     });
   } catch (error) {
+    runtime.logError?.("embedding.install.failed", error, { modelId });
+    runtime.onInstallProgress?.({
+      modelId,
+      phase: "failed",
+      bytesDownloaded: 0,
+      message: error instanceof Error ? error.message : undefined,
+    });
     if (error instanceof EmbeddingInstallError && error.kind === "space") {
       return { ok: false, error: createPublicError("DISK_FULL") };
     }
@@ -353,13 +382,24 @@ async function probeService(id: string, runtime: EmbeddingModelRuntime): Promise
 }
 
 function readBinding(libraryId: string, runtime: EmbeddingModelRuntime): RendererResult {
-  const binding = runtime.readBindings?.()[libraryId] ?? { selectionId: null, enabled: false };
+  const record = runtime.readBindings?.()[libraryId];
+  if (!record) {
+    return {
+      ok: true,
+      type: "embedding.binding",
+      libraryId,
+      selectionId: null,
+      enabled: false,
+      inherit: true,
+    };
+  }
   return {
     ok: true,
     type: "embedding.binding",
     libraryId,
-    selectionId: binding.selectionId,
-    enabled: binding.enabled,
+    selectionId: record.selectionId,
+    enabled: record.enabled,
+    inherit: false,
   };
 }
 
@@ -367,9 +407,21 @@ function saveBinding(
   libraryId: string,
   selectionId: string | null,
   runtime: EmbeddingModelRuntime,
+  inherit = false,
 ): RendererResult {
   if (!runtime.readBindings || !runtime.writeBindings) {
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
+  }
+  if (inherit) {
+    runtime.writeBindings(clearEmbeddingBinding(runtime.readBindings(), libraryId));
+    return {
+      ok: true,
+      type: "embedding.binding",
+      libraryId,
+      selectionId: null,
+      enabled: false,
+      inherit: true,
+    };
   }
   const next = writeEmbeddingBinding(runtime.readBindings(), libraryId, selectionId);
   const saved = next[libraryId] ?? { selectionId: null, enabled: false };
@@ -383,6 +435,7 @@ function saveBinding(
     libraryId,
     selectionId: saved.selectionId,
     enabled: saved.enabled,
+    inherit: false,
   };
 }
 

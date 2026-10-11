@@ -39,6 +39,24 @@ const MODALITY_KEYS = {
   text: "settings.semanticSearch.modalityText",
 } as const;
 
+const PLACEHOLDER_URL: Record<EmbeddingHttpAdapter, Record<EmbeddingServiceDestination, string>> = {
+  "openai-embeddings-v1": {
+    loopback: "http://127.0.0.1:11434/v1",
+    lan: "http://192.168.1.10:8080/v1",
+    internet: "https://api.openai.com/v1",
+  },
+  "dashscope-multimodal-v1": {
+    loopback: "http://127.0.0.1:8080",
+    lan: "http://192.168.1.10:8080",
+    internet: "https://dashscope.aliyuncs.com/api/v1",
+  },
+};
+
+const PLACEHOLDER_MODEL: Record<EmbeddingHttpAdapter, string> = {
+  "openai-embeddings-v1": "text-embedding-3-small",
+  "dashscope-multimodal-v1": "qwen3-vl-embedding",
+};
+
 export function EmbeddingServiceSettings({
   api,
   libraryId,
@@ -52,7 +70,7 @@ export function EmbeddingServiceSettings({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [destination, setDestination] = useState<EmbeddingServiceDestination>("loopback");
-  const [baseUrl, setBaseUrl] = useState("http://127.0.0.1:8080");
+  const [baseUrl, setBaseUrl] = useState("");
   const [modelName, setModelName] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [adapter, setAdapter] = useState<EmbeddingHttpAdapter>("openai-embeddings-v1");
@@ -81,7 +99,7 @@ export function EmbeddingServiceSettings({
     setEditingId(null);
     setName("");
     setDestination("loopback");
-    setBaseUrl("http://127.0.0.1:8080");
+    setBaseUrl("");
     setModelName("");
     setApiKey("");
     setAdapter("openai-embeddings-v1");
@@ -144,6 +162,9 @@ export function EmbeddingServiceSettings({
     notifyEmbeddingCatalogChanged();
   }
 
+  const urlPlaceholder = PLACEHOLDER_URL[adapter][destination];
+  const modelPlaceholder = PLACEHOLDER_MODEL[adapter];
+
   return (
     <div className="semantic-custom-panel">
       <div className="app-settings-action-row semantic-settings-toolbar">
@@ -191,74 +212,151 @@ export function EmbeddingServiceSettings({
         </div>
       ) : null}
       {open ? (
-        <div className="semantic-service-form editor-field ai-config-field">
-          <span className="micro-label">{t("settings.semanticSearch.adapterTitle")}</span>
-          <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.adapterTitle")}>
-            {ADAPTERS.map((item) => (
-              <button
-                aria-checked={adapter === item}
-                className="app-settings-option"
-                key={item}
-                onClick={() => setAdapter(item)}
-                role="radio"
-                type="button"
-              >
-                {t(item === "openai-embeddings-v1" ? "settings.semanticSearch.adapterOpenAi" : "settings.semanticSearch.adapterDashScope")}
-              </button>
-            ))}
+        <div className="semantic-service-form">
+          <div className="editor-field ai-config-field">
+            <span className="micro-label">{t("settings.semanticSearch.adapterTitle")}</span>
+            <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.adapterTitle")}>
+              {ADAPTERS.map((item) => (
+                <button
+                  aria-checked={adapter === item}
+                  className="app-settings-option"
+                  key={item}
+                  onClick={() => setAdapter(item)}
+                  role="radio"
+                  type="button"
+                >
+                  {t(item === "openai-embeddings-v1" ? "settings.semanticSearch.adapterOpenAi" : "settings.semanticSearch.adapterDashScope")}
+                </button>
+              ))}
+            </div>
+            {adapter === "dashscope-multimodal-v1" ? (
+              <p className="ai-config-hint">{t("settings.semanticSearch.adapterDashScopeHint")}</p>
+            ) : (
+              <p className="ai-config-hint">{t("settings.semanticSearch.adapterOpenAiHint")}</p>
+            )}
           </div>
-          {adapter === "dashscope-multimodal-v1" ? <p className="ai-config-hint">{t("settings.semanticSearch.adapterDashScopeHint")}</p> : null}
-          <label className="micro-label" htmlFor="embedding-service-name">{t("settings.semanticSearch.serviceName")}</label>
-          <input className="text-field ai-config-input" id="embedding-service-name" maxLength={80} onChange={(event) => setName(event.target.value)} value={name} />
-          <span className="micro-label">{t("settings.semanticSearch.serviceWhere")}</span>
-          <div className="app-settings-option-group" role="radiogroup">
-            {DESTINATIONS.map((item) => (
-              <button
-                aria-checked={destination === item}
-                className="app-settings-option"
-                key={item}
-                onClick={() => setDestination(item)}
-                role="radio"
-                type="button"
-              >
-                {t(`settings.semanticSearch.destination.${item}`)}
-              </button>
-            ))}
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-name">{t("settings.semanticSearch.serviceName")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-name"
+              maxLength={80}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t("settings.semanticSearch.serviceNamePlaceholder")}
+              value={name}
+            />
           </div>
-          <label className="micro-label" htmlFor="embedding-service-url">{t("settings.semanticSearch.serviceAddress")}</label>
-          <input className="text-field ai-config-input" id="embedding-service-url" maxLength={300} onChange={(event) => setBaseUrl(event.target.value)} spellCheck={false} value={baseUrl} />
-          <label className="micro-label" htmlFor="embedding-service-model">{t("settings.semanticSearch.serviceModel")}</label>
-          <input className="text-field ai-config-input" id="embedding-service-model" maxLength={120} onChange={(event) => setModelName(event.target.value)} spellCheck={false} value={modelName} />
-          <span className="micro-label">{t("settings.semanticSearch.modalitiesTitle")}</span>
-          <div className="app-settings-option-group" role="group" aria-label={t("settings.semanticSearch.modalitiesTitle")}>
-            {EMBEDDING_MODALITIES.map((modality) => (
-              <button
-                aria-pressed={modalities.includes(modality)}
-                className="app-settings-option"
-                key={modality}
-                onClick={() => toggleModality(modality)}
-                type="button"
-              >
-                {t(MODALITY_KEYS[modality])}
-              </button>
-            ))}
+
+          <div className="editor-field ai-config-field">
+            <span className="micro-label">{t("settings.semanticSearch.serviceWhere")}</span>
+            <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.serviceWhere")}>
+              {DESTINATIONS.map((item) => (
+                <button
+                  aria-checked={destination === item}
+                  className="app-settings-option"
+                  key={item}
+                  onClick={() => setDestination(item)}
+                  role="radio"
+                  type="button"
+                >
+                  {t(`settings.semanticSearch.destination.${item}`)}
+                </button>
+              ))}
+            </div>
           </div>
-          <label className="micro-label" htmlFor="embedding-service-dimensions">{t("settings.semanticSearch.dimensions")}</label>
-          <input
-            className="text-field ai-config-input"
-            id="embedding-service-dimensions"
-            inputMode="numeric"
-            onChange={(event) => setDimensions(event.target.value)}
-            spellCheck={false}
-            value={dimensions}
-          />
-          <p className="ai-config-hint">{t("settings.semanticSearch.dimensionsHint")}</p>
-          <label className="micro-label" htmlFor="embedding-service-key">{t("settings.semanticSearch.serviceKey")}</label>
-          <input className="text-field ai-config-input" id="embedding-service-key" maxLength={2048} onChange={(event) => setApiKey(event.target.value)} spellCheck={false} type="password" value={apiKey} />
-          <p className="ai-config-hint">{issue ? t(`settings.semanticSearch.serviceIssue.${issue}`) : t("settings.semanticSearch.serviceFormHint")}</p>
-          <button className="primary-button" disabled={busy} onClick={() => { void save(); }} type="button">
-            {t("settings.semanticSearch.serviceSave")}
-          </button>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-url">{t("settings.semanticSearch.serviceAddress")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-url"
+              maxLength={300}
+              onChange={(event) => setBaseUrl(event.target.value)}
+              placeholder={urlPlaceholder}
+              spellCheck={false}
+              value={baseUrl}
+            />
+            <p className="ai-config-hint">{t("settings.semanticSearch.serviceAddressHint")}</p>
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-model">{t("settings.semanticSearch.serviceModel")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-model"
+              maxLength={120}
+              onChange={(event) => setModelName(event.target.value)}
+              placeholder={modelPlaceholder}
+              spellCheck={false}
+              value={modelName}
+            />
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <span className="micro-label">{t("settings.semanticSearch.modalitiesTitle")}</span>
+            <div className="app-settings-option-group" role="group" aria-label={t("settings.semanticSearch.modalitiesTitle")}>
+              {EMBEDDING_MODALITIES.map((modality) => (
+                <button
+                  aria-pressed={modalities.includes(modality)}
+                  className="app-settings-option"
+                  key={modality}
+                  onClick={() => toggleModality(modality)}
+                  type="button"
+                >
+                  {t(MODALITY_KEYS[modality])}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-dimensions">{t("settings.semanticSearch.dimensions")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-dimensions"
+              inputMode="numeric"
+              onChange={(event) => setDimensions(event.target.value)}
+              placeholder={t("settings.semanticSearch.dimensionsPlaceholder")}
+              spellCheck={false}
+              value={dimensions}
+            />
+            <p className="ai-config-hint">{t("settings.semanticSearch.dimensionsHint")}</p>
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-key">{t("settings.semanticSearch.serviceKey")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-key"
+              maxLength={2048}
+              onChange={(event) => setApiKey(event.target.value)}
+              placeholder={editingId ? t("settings.semanticSearch.serviceKeyConfigured") : "sk-…"}
+              spellCheck={false}
+              type="password"
+              value={apiKey}
+            />
+            <p className="ai-config-hint">
+              {issue ? t(`settings.semanticSearch.serviceIssue.${issue}`) : t("settings.semanticSearch.serviceFormHint")}
+            </p>
+          </div>
+
+          <div className="semantic-service-form-actions">
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => {
+                resetForm();
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {t("common.cancel")}
+            </button>
+            <button className="primary-button" disabled={busy} onClick={() => { void save(); }} type="button">
+              {t("settings.semanticSearch.serviceSave")}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

@@ -198,6 +198,7 @@ import {
   NATIVE_EDIT_COPY_CHANNEL,
   PLUGIN_MANAGER_CHANNEL,
   PLUGIN_INSTALL_PROGRESS_CHANNEL,
+  EMBEDDING_INSTALL_PROGRESS_CHANNEL,
   PLUGIN_CONTRIBUTIONS_CHANGED_CHANNEL,
   PLUGIN_INPUT_CAPTURE_EVENT_CHANNEL,
   PLUGIN_INPUT_CAPTURE_SESSIONS_CHANNEL,
@@ -2905,6 +2906,14 @@ async function handleLibraryRequest(
       embeddingHttpIndex: embeddingHttp(),
       stopGemmaIndex: () => { void embeddingTestIndex?.close(); },
       stopHttpIndex: () => { embeddingHttpIndex?.close(); },
+      onInstallProgress: (event) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(EMBEDDING_INSTALL_PROGRESS_CHANNEL, event);
+        }
+      },
+      logError: (scope, error, context) => {
+        logger?.error(scope, error, context);
+      },
     });
     if (embeddingModelResult) return embeddingModelResult;
 

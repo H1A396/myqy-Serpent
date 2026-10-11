@@ -21,15 +21,15 @@ function storage(initial?: string) {
 }
 
 describe("semantic search preferences", () => {
-  it("starts off and preselects the standard model", () => {
+  it("starts off and preselects the compact model", () => {
     expect(loadSemanticSearchPreferences(storage())).toEqual({
       version: 1,
       enabled: false,
-      modelId: "embeddinggemma-2-balanced",
+      modelId: "embeddinggemma-2-compact",
       searchMode: "keyword",
       pageSize: 50,
     });
-    expect(DEFAULT_SEMANTIC_SEARCH_PREFERENCES.modelId).toBe("embeddinggemma-2-balanced");
+    expect(DEFAULT_SEMANTIC_SEARCH_PREFERENCES.modelId).toBe("embeddinggemma-2-compact");
   });
 
   it("remembers the switch and the chosen model", () => {
@@ -54,12 +54,12 @@ describe("semantic search preferences", () => {
     expect(loadSemanticSearchPreferences(storage(JSON.stringify({
       version: 1,
       enabled: true,
-      modelId: "embeddinggemma-2-balanced",
+      modelId: "embeddinggemma-2-compact",
       searchMode: "semantic",
     })))).toEqual({
       version: 1,
       enabled: true,
-      modelId: "embeddinggemma-2-balanced",
+      modelId: "embeddinggemma-2-compact",
       searchMode: "semantic",
       pageSize: 50,
     });
@@ -69,14 +69,14 @@ describe("semantic search preferences", () => {
     expect(loadSemanticSearchPreferences(storage(JSON.stringify({
       version: 1,
       enabled: true,
-      modelId: "embeddinggemma-2-balanced",
+      modelId: "embeddinggemma-2-compact",
       pageSize: 37,
     }))).pageSize).toBe(50);
     for (const pageSize of [25, 50, 100] as const) {
       expect(loadSemanticSearchPreferences(storage(JSON.stringify({
         version: 1,
         enabled: true,
-        modelId: "embeddinggemma-2-balanced",
+        modelId: "embeddinggemma-2-compact",
         pageSize,
       }))).pageSize).toBe(pageSize);
     }

@@ -505,6 +505,7 @@ import { semanticSearchNotice } from "./semantic-index-copy";
 import { semanticBrowseRegistration } from "./semantic-browse";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
 import { semanticBackgroundWorkActive, semanticToolbarReady } from "./semantic-work";
+import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-binding";
 import { subscribeEmbeddingCatalog, subscribeEmbeddingInstallActivity } from "./embedding-catalog-events";
 import {
   resolveFindSimilar,
@@ -2662,7 +2663,7 @@ function AppInner() {
     total: 0,
     failedCount: 0,
   });
-  const [embeddingBinding, setEmbeddingBinding] = useState<{ selectionId: string | null; enabled: boolean } | null>(null);
+  const [embeddingBinding, setEmbeddingBinding] = useState<{ selectionId: string | null; enabled: boolean; inherit: boolean } | null>(null);
   const [embeddingForLibraryId, setEmbeddingForLibraryId] = useState<string | null>(null);
   const [embeddingInstall, setEmbeddingInstall] = useState<{
     runtimeInstalled: boolean;
@@ -2693,7 +2694,15 @@ function AppInner() {
       if (status.ok) setEmbeddingInstall(status.value);
       if (services.ok && services.value) setEmbeddingServices(services.value);
       setEmbeddingForLibraryId(openLibraryId);
-      const selectionId = binding.ok && binding.value.enabled ? binding.value.selectionId : null;
+      const prefs = loadSemanticSearchPreferences();
+      const libraryBinding = binding.ok
+        ? (binding.value.inherit ? undefined : { selectionId: binding.value.selectionId, enabled: binding.value.enabled })
+        : undefined;
+      const selectionId = resolveEffectiveEmbeddingSelection({
+        globalEnabled: prefs.enabled,
+        defaultModelId: prefs.modelId,
+        libraryBinding,
+      });
       const service = services.ok && services.value
         ? services.value.find((item) => item.id === selectionId) ?? null
         : null;
@@ -2718,7 +2727,13 @@ function AppInner() {
     };
   }, [api, openLibraryId]);
   const activeEmbeddingBinding = embeddingForLibraryId === openLibraryId ? embeddingBinding : null;
-  const embeddingSelectionId = activeEmbeddingBinding?.enabled ? activeEmbeddingBinding.selectionId : null;
+  const embeddingSelectionId = resolveEffectiveEmbeddingSelection({
+    globalEnabled: semanticSearchPrefs.enabled,
+    defaultModelId: semanticSearchPrefs.modelId,
+    libraryBinding: activeEmbeddingBinding == null || activeEmbeddingBinding.inherit
+      ? undefined
+      : { selectionId: activeEmbeddingBinding.selectionId, enabled: activeEmbeddingBinding.enabled },
+  });
   const embeddingService = embeddingServices.find((service) => service.id === embeddingSelectionId) ?? null;
   const embeddingSearchReady = semanticToolbarReady({
     selectionId: embeddingSelectionId,

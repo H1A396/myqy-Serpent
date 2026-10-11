@@ -73,3 +73,35 @@ export function embeddingBindingIssue(input: {
   if (service.textStatus !== "verified" || service.dimensions == null) return "configure";
   return "ready";
 }
+
+
+export function clearEmbeddingBinding(
+  bindings: Record<string, EmbeddingLibraryBinding>,
+  libraryId: string,
+): Record<string, EmbeddingLibraryBinding> {
+  if (!libraryId || !(libraryId in bindings)) return bindings;
+  const next = { ...bindings };
+  delete next[libraryId];
+  return next;
+}
+
+/**
+ * Effective model for a library:
+ * - global off → null
+ * - library has an explicit selection → that id
+ * - library explicitly off (binding present, enabled false) → null
+ * - no library binding → Settings default model id
+ */
+export function resolveEffectiveEmbeddingSelection(input: {
+  globalEnabled: boolean;
+  defaultModelId: string;
+  /** `undefined` means no per-library record (inherit default). */
+  libraryBinding: EmbeddingLibraryBinding | undefined;
+}): string | null {
+  if (!input.globalEnabled) return null;
+  if (input.libraryBinding === undefined) {
+    return isEmbeddingSelectionId(input.defaultModelId) ? input.defaultModelId : null;
+  }
+  if (!input.libraryBinding.enabled || !input.libraryBinding.selectionId) return null;
+  return input.libraryBinding.selectionId;
+}

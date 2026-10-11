@@ -26,7 +26,7 @@ export const SEMANTIC_SEARCH_PREF_KEY = "serpent.semantic-search.v1";
 export const DEFAULT_SEMANTIC_SEARCH_PREFERENCES: SemanticSearchPreferences = {
   version: 1,
   enabled: false,
-  modelId: "embeddinggemma-2-balanced",
+  modelId: "embeddinggemma-2-compact",
   searchMode: "keyword",
   pageSize: DEFAULT_SEMANTIC_SEARCH_PAGE_SIZE,
 };

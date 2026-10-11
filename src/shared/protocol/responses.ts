@@ -2627,6 +2627,7 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
       z.string().regex(/^(?:embeddinggemma-2-(?:compact|balanced|quality)|svc_[a-z0-9]{8,40})$/),
     ]),
     enabled: z.boolean(),
+    inherit: z.boolean(),
   }),
   z.strictObject({
     ok: z.literal(true),

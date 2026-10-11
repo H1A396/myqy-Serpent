@@ -45,6 +45,18 @@ export const SEMANTIC_SEARCH_MODELS: readonly {
   { id: "embeddinggemma-2-quality", tier: "BF16" },
 ];
 
+/** Settings → Semantic search only offers the compact Unsloth quant. */
+export const SETTINGS_LOCAL_SEMANTIC_MODELS = [
+  "embeddinggemma-2-compact",
+] as const satisfies readonly SemanticSearchModelId[];
+
+/** Approximate on-disk package size for Settings size labels (core + projector + runtime). */
+export const SEMANTIC_MODEL_PACKAGE_BYTES: Record<SemanticSearchModelId, number> = {
+  "embeddinggemma-2-compact": 176_000_000 + 530_000_000 + 12_000_000,
+  "embeddinggemma-2-balanced": 330_000_000 + 530_000_000 + 12_000_000,
+  "embeddinggemma-2-quality": 620_000_000 + 1_050_000_000 + 12_000_000,
+};
+
 export function isSemanticSearchModelId(value: string): value is SemanticSearchModelId {
   return (SEMANTIC_SEARCH_MODEL_IDS as readonly string[]).includes(value);
 }

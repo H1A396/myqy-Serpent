@@ -28,6 +28,7 @@ import {
   LIBRARY_LIFECYCLE_CHANNEL,
   LIBRARY_CHANGED_CHANNEL,
   PROGRESS_CHANNEL,
+  EMBEDDING_INSTALL_PROGRESS_CHANNEL,
   AI_PROGRESS_CHANNEL,
   AI_COMPLETED_CHANNEL,
   AI_CLEARED_CHANNEL,
@@ -2105,6 +2106,13 @@ export const library: SerpentLibraryApi = Object.freeze({
       },
     };
   },
+  onEmbeddingInstallProgress(listener: (event: import('../../shared/embedding/install-progress').EmbeddingInstallProgress) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+      listener(payload as import('../../shared/embedding/install-progress').EmbeddingInstallProgress);
+    };
+    ipcRenderer.on(EMBEDDING_INSTALL_PROGRESS_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(EMBEDDING_INSTALL_PROGRESS_CHANNEL, handler);
+  },
   async embeddingIndexStatus(input: {
     libraryId: string;
     modelId: string;
@@ -2190,13 +2198,27 @@ export const library: SerpentLibraryApi = Object.freeze({
     const result = await request({ type: 'embedding.binding.get.request', libraryId });
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.binding') throw new Error('Unexpected embedding binding response.');
-    return { ok: true as const, value: { selectionId: result.selectionId, enabled: result.enabled } };
+    return {
+      ok: true as const,
+      value: {
+        selectionId: result.selectionId,
+        enabled: result.enabled,
+        inherit: result.inherit,
+      },
+    };
   },
-  async embeddingSaveBinding(input: { libraryId: string; selectionId: string | null }) {
+  async embeddingSaveBinding(input: { libraryId: string; selectionId: string | null; inherit?: boolean }) {
     const result = await request({ type: 'embedding.binding.save.request', ...input });
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.binding') throw new Error('Unexpected embedding binding save response.');
-    return { ok: true as const, value: { selectionId: result.selectionId, enabled: result.enabled } };
+    return {
+      ok: true as const,
+      value: {
+        selectionId: result.selectionId,
+        enabled: result.enabled,
+        inherit: result.inherit,
+      },
+    };
   },
   async embeddingSimilar(input: {
     libraryId: string;

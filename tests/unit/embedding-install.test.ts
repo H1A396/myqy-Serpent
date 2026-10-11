@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -12,6 +12,9 @@ import {
   pinnedLlamaRuntimeUrl,
   resolveInstalledEmbeddingLayout,
   runtimeArchiveEntryAllowed,
+  semanticModelPackageBytes,
+  EmbeddingInstallError,
+  downloadEmbeddingFile,
 } from "../../src/main/embedding-install";
 import { EMBEDDING_GEMMA2_MODEL_REVISION } from "../../src/shared/embedding/profile";
 
@@ -65,5 +68,49 @@ describe("embedding install lookup", () => {
     const inspection = inspectEmbeddingTree([{ path: root, restrictNames: false }]);
     expect(resolveInstalledEmbeddingLayout(inspection, "embeddinggemma-2-compact", "darwin")?.modelDirectory).toBe(models);
     expect(resolveInstalledEmbeddingLayout(inspection, "embeddinggemma-2-quality", "darwin")).toBeNull();
+  });
+});
+
+
+describe("embedding install download sizing", () => {
+  it("quotes a compact package size for settings labels", () => {
+    expect(semanticModelPackageBytes("embeddinggemma-2-compact")).toBeGreaterThan(600_000_000);
+    expect(embeddingInstallBytes({
+      modelId: "embeddinggemma-2-compact",
+      alreadyFound: new Set(),
+      runtimeFound: false,
+      platform: "darwin",
+      arch: "arm64",
+    })).toBeGreaterThan(600_000_000);
+  });
+
+  it("falls back across github mirrors when the first candidate fails", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-embed-dl-"));
+    const destination = path.join(root, "llama.tar.gz");
+    let attempts = 0;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      attempts += 1;
+      const url = String(input);
+      if (attempts === 1) {
+        return new Response("nope", { status: 502 });
+      }
+      expect(url.includes("ghproxy")).toBe(true);
+      return new Response(Uint8Array.from([1, 2, 3, 4]), {
+        status: 200,
+        headers: { "content-length": "4" },
+      });
+    }) as typeof fetch;
+    try {
+      await downloadEmbeddingFile(
+        "https://github.com/ggml-org/llama.cpp/releases/download/b11457/llama-b11457-bin-macos-arm64.tar.gz",
+        destination,
+        { stallTimeoutMs: 200 },
+      );
+      expect(attempts).toBeGreaterThanOrEqual(2);
+      expect(readFileSync(destination).byteLength).toBe(4);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
