@@ -59,29 +59,29 @@
   color-scheme: dark;
 
   /* Surface */
-  --ui-surface-canvas: #252729;
-  --ui-surface-pane: #2c2e31;
-  --ui-surface-raised: #35383b;
-  --ui-surface-raised-subtle: #3a3d40;
+  --ui-surface-canvas: #12141a;
+  --ui-surface-pane: #1a1d24;
+  --ui-surface-raised: #232731;
+  --ui-surface-raised-subtle: #2a2f3a;
   --ui-surface-overlay: color-mix(in srgb, var(--ui-surface-raised) 96%, transparent);
   --ui-surface-scrim: rgb(0 0 0 / 46%);
-  --ui-surface-hover: rgb(255 255 255 / 7%);
-  --ui-surface-pressed: rgb(255 255 255 / 12%);
-  --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 14%, transparent);
+  --ui-surface-hover: rgb(255 255 255 / 8%);
+  --ui-surface-pressed: rgb(255 255 255 / 14%);
+  --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 18%, transparent);
   --ui-surface-disabled: color-mix(in srgb, var(--ui-surface-raised) 58%, var(--ui-surface-canvas));
 
   /* Content / icon ink */
-  --ui-content-primary: #f1f2ef;
-  --ui-content-secondary: #b7bbb7;
-  --ui-content-tertiary: #8b908c;
+  --ui-content-primary: #f4f5f7;
+  --ui-content-secondary: #a8adb8;
+  --ui-content-tertiary: #7a8090;
   --ui-content-disabled: color-mix(in srgb, var(--ui-content-tertiary) 62%, transparent);
   --ui-content-inverse: #111314;
   --ui-content-on-accent: #ffffff;
   --ui-content-accent: color-mix(in srgb, var(--ui-action-accent) 55%, white);
 
   /* Border / focus */
-  --ui-border-divider: #52565a;
-  --ui-border-subtle: #43474b;
+  --ui-border-divider: #3a4050;
+  --ui-border-subtle: #2e3440;
   --ui-border-control: color-mix(in srgb, var(--ui-border-divider) 92%, transparent);
   --ui-border-focus: color-mix(in srgb, var(--ui-action-accent) 72%, transparent);
   --ui-border-selection: var(--ui-action-accent);
@@ -91,7 +91,7 @@
   --ui-action-accent: var(--accent, #3b82f6);
   --ui-action-accent-hover: color-mix(in srgb, var(--ui-action-accent) 86%, white);
   --ui-action-accent-pressed: color-mix(in srgb, var(--ui-action-accent) 78%, black);
-  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 14%, transparent);
+  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 20%, transparent);
   --ui-action-hover: var(--ui-surface-hover);
   --ui-action-pressed: var(--ui-surface-pressed);
   --ui-action-selected: var(--ui-surface-selected);
@@ -130,12 +130,12 @@
   --ui-size-icon-sm: 16px;
   --ui-size-icon-md: 20px;
   --ui-size-icon-lg: 24px;
-  --ui-gutter-pane: 12px;
-  --ui-gutter-grid: 12px;
-  --ui-radius-control: 4px;
-  --ui-radius-surface: 6px;
-  --ui-radius-dialog: 8px;
-  --ui-radius-overlay: 10px;
+  --ui-gutter-pane: 14px;
+  --ui-gutter-grid: 16px;
+  --ui-radius-control: 8px;
+  --ui-radius-surface: 12px;
+  --ui-radius-dialog: 16px;
+  --ui-radius-overlay: 18px;
   --ui-radius-pill: 999px;
   --ui-border-width-hairline: 1px;
   --ui-border-width-focus: 2px;
@@ -164,10 +164,10 @@
 
   /* Elevation: use semantic level names, never page-local shadow values. */
   --ui-shadow-none: none;
-  --ui-shadow-surface: 0 2px 10px rgb(0 0 0 / 24%);
-  --ui-shadow-popover: 0 8px 24px rgb(0 0 0 / 28%);
-  --ui-shadow-modal: 0 24px 70px rgb(0 0 0 / 42%);
-  --ui-shadow-notice: 0 12px 32px rgb(0 0 0 / 28%);
+  --ui-shadow-surface: 0 4px 18px rgb(0 0 0 / 28%);
+  --ui-shadow-popover: 0 12px 32px rgb(0 0 0 / 32%);
+  --ui-shadow-modal: 0 28px 80px rgb(0 0 0 / 48%);
+  --ui-shadow-notice: 0 14px 36px rgb(0 0 0 / 30%);
   --ui-shadow-control-inset: inset 0 0 0 1px rgb(0 0 0 / 12%);
   --ui-shadow-control-thumb: 0 1px 2px rgb(0 0 0 / 22%);
 
@@ -199,29 +199,29 @@
   color-scheme: light;
 
   /* Surface */
-  --ui-surface-canvas: #ebeceb;
-  --ui-surface-pane: #f4f5f3;
-  --ui-surface-raised: #f2f4f0;
-  --ui-surface-raised-subtle: #f8f9f7;
+  --ui-surface-canvas: #e8eaf0;
+  --ui-surface-pane: #f3f4f8;
+  --ui-surface-raised: #ffffff;
+  --ui-surface-raised-subtle: #fafbfd;
   --ui-surface-overlay: color-mix(in srgb, var(--ui-surface-raised) 96%, transparent);
   --ui-surface-scrim: rgb(0 0 0 / 28%);
-  --ui-surface-hover: rgb(0 0 0 / 6.5%);
-  --ui-surface-pressed: rgb(0 0 0 / 11%);
-  --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 18%, #ffffff);
+  --ui-surface-hover: rgb(0 0 0 / 5.5%);
+  --ui-surface-pressed: rgb(0 0 0 / 9%);
+  --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 16%, #ffffff);
   --ui-surface-disabled: color-mix(in srgb, var(--ui-surface-raised) 58%, var(--ui-surface-canvas));
 
   /* Content / icon ink */
-  --ui-content-primary: #1c1e1c;
-  --ui-content-secondary: #454a45;
-  --ui-content-tertiary: #6a706a;
+  --ui-content-primary: #15181f;
+  --ui-content-secondary: #4a5160;
+  --ui-content-tertiary: #6e7688;
   --ui-content-disabled: color-mix(in srgb, var(--ui-content-tertiary) 64%, transparent);
   --ui-content-inverse: #ffffff;
   --ui-content-on-accent: #ffffff;
   --ui-content-accent: color-mix(in srgb, var(--ui-action-accent) 68%, black);
 
   /* Border / focus */
-  --ui-border-divider: #b4bab3;
-  --ui-border-subtle: #c9cec7;
+  --ui-border-divider: #d0d4de;
+  --ui-border-subtle: #e0e3ea;
   --ui-border-control: color-mix(in srgb, var(--ui-border-divider) 92%, transparent);
   --ui-border-focus: color-mix(in srgb, var(--ui-action-accent) 58%, transparent);
   --ui-border-selection: var(--ui-action-accent);
@@ -231,7 +231,7 @@
   --ui-action-accent: var(--accent, #3b82f6);
   --ui-action-accent-hover: color-mix(in srgb, var(--ui-action-accent) 86%, black);
   --ui-action-accent-pressed: color-mix(in srgb, var(--ui-action-accent) 78%, black);
-  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 18%, #ffffff);
+  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 14%, #ffffff);
   --ui-action-hover: var(--ui-surface-hover);
   --ui-action-pressed: var(--ui-surface-pressed);
   --ui-action-selected: var(--ui-surface-selected);
@@ -254,10 +254,10 @@
   --ui-status-danger-content: #b42318;
 
   /* Elevation */
-  --ui-shadow-surface: 0 1px 8px rgb(0 0 0 / 10%);
-  --ui-shadow-popover: 0 6px 18px rgb(0 0 0 / 12%), 0 1px 3px rgb(0 0 0 / 8%);
-  --ui-shadow-modal: 0 18px 48px rgb(0 0 0 / 16%);
-  --ui-shadow-notice: 0 8px 20px rgb(0 0 0 / 10%);
+  --ui-shadow-surface: 0 2px 14px rgb(0 0 0 / 8%);
+  --ui-shadow-popover: 0 10px 28px rgb(0 0 0 / 12%), 0 2px 6px rgb(0 0 0 / 6%);
+  --ui-shadow-modal: 0 24px 64px rgb(0 0 0 / 18%);
+  --ui-shadow-notice: 0 10px 28px rgb(0 0 0 / 10%);
   --ui-shadow-control-inset: inset 0 0 0 1px rgb(0 0 0 / 10%);
   --ui-shadow-control-thumb: 0 1px 2px rgb(0 0 0 / 16%);
 }
