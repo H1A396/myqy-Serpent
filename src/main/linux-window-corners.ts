@@ -91,6 +91,10 @@ html, body { background: transparent !important; }
   overflow: hidden;
 }
 html.serpent-window-square #root { border-radius: 0; clip-path: none; }
+/* Caption buttons portal to body (outside #root clip). Round the close
+   hover so it follows the window corner instead of painting a square nub. */
+.windows-caption-button-close { border-top-right-radius: ${radius}px; }
+html.serpent-window-square .windows-caption-button-close { border-top-right-radius: 0; }
 `;
 }
 

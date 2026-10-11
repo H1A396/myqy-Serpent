@@ -634,22 +634,23 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 /* Windows caption buttons sit at the far right. Keep the Inspector toggle
    immediately to their left and reserve both hit areas before the search. */
 :root[data-platform="windows"] .app-shell.right-collapsed .toolbar-inspector-cluster {
-  right: calc(3 * var(--windows-caption-width, 46px) + 8px);
+  right: calc(3 * var(--windows-caption-width, 46px) + 14px);
   padding-right: 0;
 }
 
 :root[data-platform="windows"] .app-shell.right-collapsed .toolbar-workspace-cluster {
   padding-right: calc(
     3 * var(--windows-caption-width, 46px) +
-    8px +
+    14px +
     var(--shell-control-height) +
     6px
   );
 }
 
-/* Serpent-znex: reserve space for custom Windows caption buttons. */
+/* Serpent-znex: reserve space for custom Windows caption buttons.
+   Extra 14px keeps search / inspector chrome from crowding the captions. */
 :root[data-platform="windows"] .toolbar-inspector-cluster {
-  padding-right: calc(3 * var(--windows-caption-width, 46px) + 8px);
+  padding-right: calc(3 * var(--windows-caption-width, 46px) + 14px);
 }
 
 
@@ -666,6 +667,17 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   display: flex;
   height: var(--shell-toolbar-height);
   -webkit-app-region: no-drag;
+}
+
+/* Quiet separator so captions read as chrome, not another toolbar cluster. */
+.windows-window-controls::before {
+  content: "";
+  align-self: center;
+  width: 1px;
+  height: 14px;
+  margin-right: 2px;
+  background: color-mix(in srgb, var(--divider) 70%, transparent);
+  pointer-events: none;
 }
 
 .windows-caption-button {
@@ -740,7 +752,8 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   transition:
     background-color 120ms ease,
     border-color 120ms ease,
-    color 120ms ease;
+    color 120ms ease,
+    box-shadow 120ms ease;
   white-space: nowrap;
 }
 .discovery-filters > summary::-webkit-details-marker {
@@ -748,6 +761,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 .discovery-filters > summary:hover {
   background: var(--hover);
+  border-color: color-mix(in srgb, var(--divider) 70%, var(--text));
   color: var(--text);
 }
 .discovery-filters[open] > summary {
@@ -2147,7 +2161,8 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   align-items: center;
   justify-content: space-between;
   padding: 0 3px 0 6px;
-  color: var(--tertiary);
+  /* Secondary (not tertiary) so FOLDERS / COLLECTIONS stay readable on light panes. */
+  color: color-mix(in srgb, var(--secondary) 88%, var(--tertiary));
   font-size: calc(10px * var(--ui-font-scale));
   font-weight: 650;
   letter-spacing: 0.08em;
@@ -2238,12 +2253,17 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   padding: 0;
   place-items: center;
   border: 0;
+  border-radius: 5px;
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .tiny-action:hover {
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -2749,6 +2769,16 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   outline: none;
 }
 
+.main-menu-section.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--menu-item-hover-background));
+}
+
+.main-menu-section:hover > .icon,
+.main-menu-section.is-active > .icon,
+.main-menu-section:focus-visible > .icon {
+  color: var(--text);
+}
+
 .main-menu-section:disabled,
 .main-menu-section[aria-disabled="true"] {
   color: var(--tertiary);
@@ -2834,10 +2864,13 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .nav-empty {
-  margin: 2px 6px 0 29px;
-  color: var(--tertiary);
+  margin: 4px 8px 2px 29px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--hover) 70%, transparent);
+  color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 /* REQ-VIEW: hide browse workspace toolbar while the viewer is open. */
@@ -7753,8 +7786,8 @@ select.ai-config-input.ai-config-languages {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px 10px;
+  gap: 8px;
+  padding: 14px 10px;
   border-right: 1px solid var(--divider);
   background:
     linear-gradient(
@@ -7810,7 +7843,7 @@ select.ai-config-input.ai-config-languages {
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 9px;
-  padding: 8px 9px;
+  padding: 7px 9px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -7849,8 +7882,8 @@ select.ai-config-input.ai-config-languages {
 }
 
 .app-settings-nav-item.is-active {
-  border-color: color-mix(in srgb, var(--accent) 18%, var(--divider));
-  background: color-mix(in srgb, var(--accent) 11%, var(--raised));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--divider));
+  background: color-mix(in srgb, var(--accent) 14%, var(--raised));
   color: var(--text);
 }
 
@@ -7866,9 +7899,9 @@ select.ai-config-input.ai-config-languages {
 .app-settings-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
-  padding: 28px 32px 34px;
+  padding: 22px 26px 28px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -7884,7 +7917,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-page-heading p {
   margin: 6px 0 0;
-  color: var(--tertiary);
+  color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
 }
@@ -7900,7 +7933,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-card {
   min-width: 0;
-  padding: 15px 16px;
+  padding: 14px 15px;
   border: 1px solid color-mix(in srgb, var(--divider) 92%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--raised) 92%, var(--pane));
@@ -7932,7 +7965,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-help-note {
   margin: 0;
-  color: var(--tertiary);
+  color: color-mix(in srgb, var(--secondary) 82%, var(--tertiary));
   font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.5;
 }
@@ -11260,6 +11293,7 @@ select.ai-config-input.ai-config-languages {
    while the pointer scans across cards. */
 .asset-card:hover {
   background: var(--hover);
+  border-color: color-mix(in srgb, var(--divider) 55%, transparent);
 }
 
 /* Serpent-wgl2: while a marquee drag is active the per-card selection
@@ -12046,15 +12080,24 @@ select.ai-config-input.ai-config-languages {
 }
 .empty-orbit {
   display: grid;
-  width: 55px;
-  height: 55px;
-  margin-bottom: 17px;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
   place-items: center;
-  border: 1px solid var(--divider);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--divider));
   border-radius: 50%;
-  background: radial-gradient(circle, var(--raised-2), var(--pane) 65%);
+  background: radial-gradient(
+    circle at 40% 35%,
+    color-mix(in srgb, var(--accent-soft) 55%, var(--raised-2)),
+    var(--pane) 70%
+  );
   color: var(--accent);
-  box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 3%, transparent);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.empty-library .empty-actions {
+  justify-content: center;
+  margin-top: 20px;
 }
 
 .toast {
