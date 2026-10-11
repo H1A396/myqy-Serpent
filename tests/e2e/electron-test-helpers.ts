@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { expect, type ElectronApplication, type Locator, type Page } from '@playwright/test';
 
+import { shouldHideApplicationMenuBar } from '../../src/shared/window-controls';
+
 const require = createRequire(path.resolve('package.json'));
 
 /**
@@ -38,6 +40,16 @@ export function resolveElectronExecutablePath(): string {
   }
 
   return executablePath;
+}
+
+/**
+ * Windows and Linux use the frameless in-app main menu; macOS keeps the native
+ * menu bar and a dedicated toolbar Settings gear.
+ */
+export function usesInAppMainMenuShell(
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return shouldHideApplicationMenuBar(platform);
 }
 
 /** Locate a browse card by filename, independent of caption formatting. */
@@ -112,14 +124,14 @@ export async function clickNativeApplicationMenuItem(
 
 /**
  * Open the linked-folder import action through the platform's real menu path.
- * Windows renders the canonical menu in the app shell; macOS/Linux keep the
+ * Windows/Linux render the canonical menu in the app shell; macOS keeps the
  * native Electron menu.
  */
 export async function openLinkedFolderImportMenu(
   application: ElectronApplication,
   window: Page,
 ): Promise<void> {
-  if (process.platform === 'win32') {
+  if (usesInAppMainMenuShell()) {
     await window.getByRole('button', { name: '主菜单' }).click();
     await window.getByRole('menuitem', { name: '文件', exact: true }).hover();
     await window.getByRole('menuitem', { name: '导入链接文件夹' }).click();
@@ -133,7 +145,7 @@ export async function openFolderImportMenu(
   application: ElectronApplication,
   window: Page,
 ): Promise<void> {
-  if (process.platform === 'win32') {
+  if (usesInAppMainMenuShell()) {
     await window.getByRole('button', { name: '主菜单' }).click();
     await window.getByRole('menuitem', { name: '文件', exact: true }).hover();
     await window.getByRole('menuitem', { name: '导入文件夹', exact: true }).click();
@@ -211,12 +223,12 @@ export function electronLaunchEnv(
   );
 }
 
-/** Open the in-app settings dialog (Windows uses the shell main menu). */
+/** Open the in-app settings dialog (Windows/Linux use the shell main menu). */
 export async function openAppSettingsDialog(
   application: ElectronApplication,
   window: Page,
 ): Promise<Locator> {
-  if (process.platform === 'win32') {
+  if (usesInAppMainMenuShell()) {
     await window.getByRole('button', { name: '主菜单' }).click();
     await window.getByRole('menuitem', { name: '设置', exact: true }).click();
   } else {
@@ -251,7 +263,7 @@ export async function pasteClipboardImageThroughFileMenu(
   application: ElectronApplication,
   window: Page,
 ): Promise<void> {
-  if (process.platform === 'win32') {
+  if (usesInAppMainMenuShell()) {
     await window.getByRole('button', { name: '主菜单' }).click();
     await window.getByRole('menuitem', { name: '文件', exact: true }).click();
     await window
