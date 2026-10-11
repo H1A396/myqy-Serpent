@@ -40,6 +40,12 @@ export const SHOW_EDIT_CONTEXT_MENU_CHANNEL =
   'serpent:shell:show-edit-context-menu' as const;
 export const SHELL_SWIPE_CHANNEL = 'serpent:shell:swipe' as const;
 export const WINDOW_CONTROL_CHANNEL = 'serpent:shell:window-control' as const;
+/** Renderer → Main: begin frameless edge resize (Linux). */
+export const WINDOW_EDGE_RESIZE_CHANNEL = 'serpent:shell:window-edge-resize' as const;
+/** Renderer → Main: setBounds fallback while dragging a resize edge. */
+export const WINDOW_SET_BOUNDS_CHANNEL = 'serpent:shell:window-set-bounds' as const;
+/** Renderer → Main: read current window bounds (Linux edge-resize fallback). */
+export const WINDOW_GET_BOUNDS_CHANNEL = 'serpent:shell:window-get-bounds' as const;
 /** Main → Renderer: trigger invert selection (macOS Edit menu, Serpent-te8p). */
 export const INVERT_SELECTION_CHANNEL = 'serpent:shell:invert-selection' as const;
 /** Main → Renderer: Edit Copy (⌘C) — file copy when assets selected (Serpent-166q). */

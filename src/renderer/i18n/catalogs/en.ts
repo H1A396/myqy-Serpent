@@ -1484,6 +1484,12 @@ export const en = {
     elevationOff: "Off",
     elevationStrong: "Strong",
     elevationLevelValue: "Level {level}",
+    cornerRadiusSection: "Corner radius",
+    cornerRadiusHint:
+      "Roundness of buttons, cards, dialogs, and menus. 0 is sharp; 1–3 go from subtle to soft. Applies immediately.",
+    cornerRadiusSharp: "Sharp",
+    cornerRadiusSoft: "Soft",
+    cornerRadiusLevelValue: "Radius level {level}",
     menuAcrylicSection: "Context-menu acrylic",
     menuAcrylicHint:
       "Controls transparency and background blur for asset, folder, collection, and viewer context menus. Applies immediately and persists across restarts.",

@@ -1465,6 +1465,12 @@ export const zhCN = {
     elevationOff: "关闭",
     elevationStrong: "最强",
     elevationLevelValue: "等级 {level}",
+    cornerRadiusSection: "圆角",
+    cornerRadiusHint:
+      "控制按钮、卡片、对话框与菜单的圆角。0 为直角，1–3 由弱到强；立即生效。",
+    cornerRadiusSharp: "直角",
+    cornerRadiusSoft: "圆润",
+    cornerRadiusLevelValue: "圆角等级 {level}",
     menuAcrylicSection: "右键菜单亚克力",
     menuAcrylicHint:
       "控制资产、文件夹、合集和查看器右键菜单的透明与背景模糊强度；立即生效并跨重启保存。",

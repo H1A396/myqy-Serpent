@@ -2864,11 +2864,12 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .nav-empty {
-  margin: 4px 8px 2px 29px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--hover) 70%, transparent);
-  color: var(--secondary);
+  margin: 4px 8px 2px 10px;
+  padding: 2px 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
   line-height: 1.45;
 }
@@ -14450,9 +14451,9 @@ select.ai-config-input.ai-config-languages {
   gap: var(--ui-space-3);
 }
 
-/* === Serpent ui-next (calm DAM + accent, balanced gutters) ===
-   Minimal modern + restored accent. Owner follow-ups: quieter settings
-   heading, balanced browse/panel gutters, softened asset cards.
+/* === Serpent ui-feedback2 (calm DAM + accent) ===
+   Quieter selection, minimal hover, settings layout polish, plain empty
+   nav hints, corner-radius tiers via --ui-radius-* tokens.
    Windows-style Linux/Windows frameless shell kept. No macOS chrome
    layout. No caption line-height / masonry band geometry. Library-
    settings / sync-binding dialog excluded. */
@@ -14508,8 +14509,8 @@ select.ai-config-input.ai-config-languages {
 }
 
 .search-control-wrap:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--divider));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--divider));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 /* --- Main menu: compact flat surface --- */
@@ -14619,10 +14620,10 @@ select.ai-config-input.ai-config-languages {
 }
 
 .nav-empty {
-  margin: 6px 6px 4px 28px;
-  padding: 10px 12px;
-  border: 1px dashed color-mix(in srgb, var(--divider) 70%, var(--tertiary));
-  border-radius: 8px;
+  margin: 4px 8px 6px 10px;
+  padding: 2px 2px;
+  border: none;
+  border-radius: 0;
   background: transparent;
   color: var(--tertiary);
   font-size: calc(11.5px * var(--ui-font-scale));
@@ -14669,32 +14670,26 @@ select.ai-config-input.ai-config-languages {
 }
 
 .asset-card:hover {
-  background: color-mix(in srgb, var(--raised) 58%, var(--canvas));
-  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
+  background: color-mix(in srgb, var(--raised) 42%, var(--canvas));
+  border-color: var(--divider-soft);
   transform: none;
 }
 
 .asset-card.is-selected {
-  background: color-mix(in srgb, var(--accent) 11%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
+  background: color-mix(in srgb, var(--accent) 6%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
   border-color: transparent;
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 82%, var(--divider));
 }
 
 .asset-card:focus-visible {
   outline: none;
   border-color: transparent;
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: 0 0 0 1.5px var(--accent);
 }
 
 :root:not([data-elevation="0"]) .asset-card.is-selected,
 :root:not([data-elevation="0"]) .asset-card:focus-visible {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px color-mix(in srgb, var(--accent) 24%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 82%, var(--divider));
 }
 
 .asset-preview {
@@ -14729,12 +14724,12 @@ select.ai-config-input.ai-config-languages {
 .dimension-filter-btn:hover:not(:disabled):not(.is-active),
 .dimension-filter-btn.is-open:not(:disabled):not(.is-active),
 .discovery-filters > summary:hover {
-  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
-  background: var(--hover);
+  border-color: var(--divider-soft);
+  background: transparent;
 }
 
 .dimension-filter-btn.is-active {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
 }
@@ -14910,16 +14905,14 @@ select.ai-config-input.ai-config-languages {
 }
 
 .folder-card:hover {
-  background: color-mix(in srgb, var(--raised) 58%, var(--canvas));
-  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
+  background: color-mix(in srgb, var(--raised) 42%, var(--canvas));
+  border-color: var(--divider-soft);
 }
 
 .folder-card.is-selected {
-  background: color-mix(in srgb, var(--accent) 11%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
+  background: color-mix(in srgb, var(--accent) 6%, color-mix(in srgb, var(--raised) 42%, var(--canvas)));
   border-color: transparent;
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 82%, var(--divider));
 }
 
 .navigation-pane,
@@ -14930,6 +14923,118 @@ select.ai-config-input.ai-config-languages {
 :root:not([data-elevation="0"]) .navigation-pane,
 :root:not([data-elevation="0"]) .inspector-pane {
   box-shadow: none;
+}
+
+
+/* --- Hover almost off (cards / tools / chips) --- */
+.tool-button:hover:not(:disabled):not([aria-pressed="true"]),
+.tiny-action:hover,
+.nav-row:hover:not(:disabled):not(.is-active),
+.nav-disclosure:hover:not(:disabled),
+.windows-caption-button:hover:not(.windows-caption-button-close),
+.search-control-wrap:hover {
+  background: transparent;
+  border-color: inherit;
+  color: inherit;
+}
+
+.search-control-wrap:hover {
+  border-color: var(--divider-soft);
+  background: color-mix(in srgb, var(--canvas) 70%, var(--raised));
+}
+
+.tool-button:hover:not(:disabled):not([aria-pressed="true"]) {
+  border-color: transparent;
+  color: var(--secondary);
+}
+
+.main-menu-trigger:hover:not(:disabled):not([aria-expanded="true"]) {
+  background: transparent;
+  color: inherit;
+  border-color: transparent;
+}
+
+/* Keep pressed/active accent; only idle hover is quiet. */
+
+/* --- Settings layout polish (app settings only) --- */
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-page-heading {
+  margin: 0 0 4px;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-page-heading h3 {
+  margin: 0;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-content {
+  gap: 18px;
+  padding: 20px 28px 32px;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 18px 18px;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-row-copy {
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-row-copy strong {
+  font-size: calc(13px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-row-copy > span {
+  max-width: 52rem;
+  color: var(--tertiary);
+  font-size: calc(12px * var(--ui-font-scale));
+  line-height: 1.5;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-row.app-settings-row-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-card-divider {
+  margin: 18px 0;
+  background: var(--divider-soft);
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-option-group {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-toggle-row {
+  align-items: flex-start;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-nav-item {
+  border-radius: var(--ui-radius-control);
+}
+
+/* Radius-tier consumers already on tokens; keep shell controls consistent. */
+.nav-row,
+.tiny-action,
+.tool-button,
+.main-menu-trigger,
+.dimension-filter-btn,
+.discovery-filters > summary {
+  border-radius: var(--ui-radius-control);
+}
+
+.main-menu-section,
+.main-menu-item {
+  border-radius: max(4px, calc(var(--ui-radius-control) - 0px));
 }
 
 /* --- Focus rings + primary accent --- */
@@ -14970,4 +15075,50 @@ select.ai-config-input.ai-config-languages {
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
   border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+
+/* Linux frameless: client edge/corner resize hit targets (no WM frame). */
+.window-edge-resize-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+.window-edge-resize-handle {
+  position: absolute;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  background: transparent;
+}
+.window-edge-resize-n,
+.window-edge-resize-s {
+  left: 6px;
+  right: 6px;
+  height: 6px;
+}
+.window-edge-resize-n { top: 0; }
+.window-edge-resize-s { bottom: 0; }
+.window-edge-resize-e,
+.window-edge-resize-w {
+  top: 6px;
+  bottom: 6px;
+  width: 6px;
+}
+.window-edge-resize-w { left: 0; }
+.window-edge-resize-e { right: 0; }
+.window-edge-resize-nw,
+.window-edge-resize-ne,
+.window-edge-resize-sw,
+.window-edge-resize-se {
+  width: 10px;
+  height: 10px;
+}
+.window-edge-resize-nw { top: 0; left: 0; }
+.window-edge-resize-ne { top: 0; right: 0; }
+.window-edge-resize-sw { bottom: 0; left: 0; }
+.window-edge-resize-se { bottom: 0; right: 0; }
+html.serpent-window-square.serpent-window-maximized .window-edge-resize-layer,
+html.serpent-window-square .window-edge-resize-layer.is-disabled {
+  display: none;
 }

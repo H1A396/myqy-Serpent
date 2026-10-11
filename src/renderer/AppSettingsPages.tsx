@@ -9,6 +9,7 @@ import {
 import type { AiUiPreferences } from "./ai-ui-preferences";
 import type { CanvasCaptionAlign, CanvasPreferences } from "./canvas-preferences";
 import { useElevation } from "./ElevationProvider";
+import { useRadius } from "./RadiusProvider";
 import { useInspectorCardFeel } from "./InspectorCardFeelProvider";
 import {
   loadImportConflictPreferences,
@@ -48,6 +49,11 @@ import {
   SHADOW_LEVEL_MIN,
   clampShadowLevel,
 } from "./shadow-preferences";
+import {
+  RADIUS_LEVEL_MAX,
+  RADIUS_LEVEL_MIN,
+  clampRadiusLevel,
+} from "./radius-preferences";
 import { useMenuAcrylic } from "./MenuAcrylicProvider";
 import {
   MENU_ACRYLIC_LEVEL_MAX,
@@ -65,6 +71,7 @@ import {
 import { ThemeColorSettings } from "./theme/ThemeColorSettings";
 
 const SHADOW_LEVEL_TICKS = [0, 1, 2, 3] as const;
+const RADIUS_LEVEL_TICKS = [0, 1, 2, 3] as const;
 const MENU_ACRYLIC_LEVEL_TICKS = [0, 1, 2, 3] as const;
 const FONT_SIZE_LABEL_KEYS: Record<FontSizePreference, string> = {
   compact: "settings.fontSizeCompact",
@@ -374,6 +381,7 @@ export function AppearanceSettingsPage(): ReactNode {
   const t = useT();
   const { preferences: fontSizePrefs, setPreference: setFontSizePreference } = useFontSize();
   const { preferences: shadowPrefs, setLevel: setShadowLevel } = useElevation();
+  const { preferences: radiusPrefs, setLevel: setRadiusLevel } = useRadius();
   const { preferences: menuAcrylicPrefs, setLevel: setMenuAcrylicLevel } =
     useMenuAcrylic();
   const { enabled: inspectorCardFeelEnabled, toggle: toggleInspectorCardFeel } =
@@ -447,11 +455,12 @@ export function AppearanceSettingsPage(): ReactNode {
         <BackgroundSettings />
       </SettingsDisclosure>
       <div className="app-settings-card-divider" />
-      <div className="app-settings-row-copy">
-        <strong>{t("settings.elevationSection")}</strong>
-        <span>{t("settings.elevationHint")}</span>
-      </div>
-      <div className="app-settings-elevation-scale">
+      <div className="app-settings-row app-settings-row-stack">
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.elevationSection")}</strong>
+          <span>{t("settings.elevationHint")}</span>
+        </div>
+        <div className="app-settings-elevation-scale">
         <div className="app-settings-elevation-rail">
           <Slider
             aria-label={t("settings.elevationSection")}
@@ -486,13 +495,58 @@ export function AppearanceSettingsPage(): ReactNode {
           <span>{t("settings.elevationOff")}</span>
           <span>{t("settings.elevationStrong")}</span>
         </div>
+        </div>
       </div>
       <div className="app-settings-card-divider" />
-      <div className="app-settings-row-copy">
-        <strong>{t("settings.menuAcrylicSection")}</strong>
-        <span>{t("settings.menuAcrylicHint")}</span>
+      <div className="app-settings-row app-settings-row-stack">
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.cornerRadiusSection")}</strong>
+          <span>{t("settings.cornerRadiusHint")}</span>
+        </div>
+        <div className="app-settings-elevation-scale">
+          <div className="app-settings-elevation-rail">
+            <Slider
+              aria-label={t("settings.cornerRadiusSection")}
+              className="app-settings-elevation-slider"
+              max={RADIUS_LEVEL_MAX}
+              min={RADIUS_LEVEL_MIN}
+              onValueChange={(value) => setRadiusLevel(clampRadiusLevel(value))}
+              step={1}
+              value={radiusPrefs.level}
+            />
+            <div aria-hidden="true" className="app-settings-elevation-ticks">
+              {RADIUS_LEVEL_TICKS.map((tick) => (
+                <button
+                  className={
+                    radiusPrefs.level === tick
+                      ? "app-settings-elevation-tick is-active"
+                      : "app-settings-elevation-tick"
+                  }
+                  key={tick}
+                  onClick={() => setRadiusLevel(tick)}
+                  type="button"
+                >
+                  <span className="app-settings-elevation-tick-mark" />
+                  <span className="app-settings-elevation-tick-label">
+                    {tick}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div aria-hidden="true" className="app-settings-elevation-ends">
+            <span>{t("settings.cornerRadiusSharp")}</span>
+            <span>{t("settings.cornerRadiusSoft")}</span>
+          </div>
+        </div>
       </div>
-      <div className="app-settings-elevation-scale">
+      <div className="app-settings-card-divider" />
+      <div className="app-settings-row app-settings-row-stack">
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.menuAcrylicSection")}</strong>
+          <span>{t("settings.menuAcrylicHint")}</span>
+        </div>
+        <div className="app-settings-elevation-scale">
         <div className="app-settings-elevation-rail">
           <Slider
             aria-label={t("settings.menuAcrylicSection")}
@@ -522,6 +576,7 @@ export function AppearanceSettingsPage(): ReactNode {
               </button>
             ))}
           </div>
+        </div>
         </div>
       </div>
       <div className="app-settings-card-divider" />

@@ -521,6 +521,7 @@ import type {
 } from "../shared/protocol/responses";
 import { AssetPreviewModal, type AssetPreviewModalHandle } from "./AssetPreviewModal";
 import { TextAssetPreviewTile } from "./TextAssetPreviewTile";
+import { WindowEdgeResizeHandles } from "./WindowEdgeResizeHandles";
 import { WindowsWindowControls } from "./WindowsWindowControls";
 import { useViewerChromeIdle } from "./use-viewer-chrome-idle";
 import { useViewerVolume } from "./use-viewer-volume";
@@ -13202,7 +13203,10 @@ function AppInner() {
           />
         </div>
         {IS_WINDOWS_PLATFORM ? (
-          <WindowsWindowControls shell={shellApi} />
+          <>
+            <WindowsWindowControls shell={shellApi} />
+            <WindowEdgeResizeHandles shell={shellApi} />
+          </>
         ) : null}
       </header>
       <NavigationSidebar
