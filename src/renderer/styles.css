@@ -49,9 +49,9 @@
      nav rows, tool buttons, cards and menus. */
   --hover: var(--ui-surface-hover, rgb(255 255 255 / 5.5%));
   --active: var(--ui-surface-pressed, rgb(255 255 255 / 9%));
-  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 12%, transparent));
-  --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 55%, white));
-  --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 42%, transparent);
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 18%, transparent));
+  --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 62%, white));
+  --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 55%, transparent);
   --rating-star: #d9b54b;
   --appearance-color-blue: #6ea8dc;
   --appearance-color-indigo: #8b9be8;
@@ -178,10 +178,10 @@
   --warning: var(--ui-status-warning, #b45309);
   --hover: var(--ui-surface-hover, rgb(0 0 0 / 5.5%));
   --active: var(--ui-surface-pressed, rgb(0 0 0 / 9%));
-  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 10%, #ffffff));
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 16%, #ffffff));
   /* Was hardcoded #1d4ed8 — that froze soft labels to blue after accent change. */
-  --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 68%, black));
-  --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 38%, transparent);
+  --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 72%, black));
+  --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 50%, transparent);
   --rating-star: #ecc83a;
   --appearance-color-blue: #2f6fad;
   --appearance-color-indigo: #4c5fd0;
@@ -14450,11 +14450,11 @@ select.ai-config-input.ai-config-languages {
   gap: var(--ui-space-3);
 }
 
-/* === Serpent ui-minimal (calm DAM shell) ===
-   Minimal modern digital-asset-manager chrome: quiet space, restrained
-   accent, thin hairlines, muted sidebar, flat/near-flat cards, strong
-   typography without decoration, calm title bar. Eagle / Figma / Notion
-   desktop calm — not neon, not glassmorphism overload.
+/* === Serpent ui-minimal + accent restore (calm DAM shell) ===
+   Keep minimal calm shell; restore stronger highlight/accent on
+   selection, active nav, focus rings, primary buttons, selected cards.
+   Quiet space, thin hairlines, muted sidebar chrome, flat cards.
+   Eagle / Figma / Notion calm — not neon, not glassmorphism overload.
    Windows-style Linux/Windows frameless shell kept. No macOS chrome
    layout. No caption line-height / masonry band geometry. Library-
    settings / sync-binding dialog excluded. */
@@ -14510,8 +14510,8 @@ select.ai-config-input.ai-config-languages {
 }
 
 .search-control-wrap:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--divider));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--divider));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 /* --- Main menu: compact flat surface --- */
@@ -14544,15 +14544,15 @@ select.ai-config-input.ai-config-languages {
 
 .main-menu-trigger:hover:not(:disabled),
 .main-menu-trigger[aria-expanded="true"]:not(:disabled) {
-  background: var(--hover);
-  color: var(--text);
-  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .main-menu-section.is-active,
 .main-menu-item.is-active {
-  background: color-mix(in srgb, var(--text) 8%, var(--hover));
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
 }
 
 .main-menu-item-shortcut {
@@ -14605,9 +14605,9 @@ select.ai-config-input.ai-config-languages {
 }
 
 .nav-row.is-active {
-  /* Quiet fill only — no accent edge/outline (REQ-NAV-005). */
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-  color: var(--text);
+  /* Soft accent wash only — no accent edge/outline (REQ-NAV-005). */
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
   font-weight: 600;
 }
 
@@ -14617,7 +14617,7 @@ select.ai-config-input.ai-config-languages {
 }
 
 .nav-row.is-active .nav-count {
-  color: color-mix(in srgb, var(--secondary) 70%, transparent);
+  color: color-mix(in srgb, var(--accent-soft-fg) 72%, transparent);
 }
 
 .nav-empty {
@@ -14677,11 +14677,11 @@ select.ai-config-input.ai-config-languages {
 }
 
 .asset-card.is-selected {
-  background: color-mix(in srgb, var(--accent) 7%, var(--raised));
+  background: color-mix(in srgb, var(--accent) 12%, var(--raised));
   border-color: transparent;
   box-shadow:
     0 0 0 2px var(--accent),
-    0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .asset-card:focus-visible {
@@ -14689,14 +14689,14 @@ select.ai-config-input.ai-config-languages {
   border-color: transparent;
   box-shadow:
     0 0 0 2px var(--accent),
-    0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+    0 0 0 5px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 :root:not([data-elevation="0"]) .asset-card.is-selected,
 :root:not([data-elevation="0"]) .asset-card:focus-visible {
   box-shadow:
     0 0 0 2px var(--accent),
-    0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+    0 0 0 5px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .asset-preview {
@@ -14735,16 +14735,16 @@ select.ai-config-input.ai-config-languages {
 }
 
 .dimension-filter-btn.is-active {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--divider));
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
 }
 
 .tool-button[aria-pressed="true"]:not(:disabled) {
   border-radius: var(--ui-radius-control);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-  color: var(--text);
-  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 /* --- Inspector: quiet labels, flat fields --- */
@@ -14775,8 +14775,8 @@ select.ai-config-input.ai-config-languages {
 }
 
 .inspector-content .text-field:focus {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--divider));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--divider));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .inspector-empty p {
@@ -14820,8 +14820,8 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-nav-item.is-active {
   border-color: transparent;
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
   font-weight: 600;
   box-shadow: none;
 }
@@ -14850,9 +14850,9 @@ select.ai-config-input.ai-config-languages {
 .empty-orbit {
   width: 56px;
   height: 56px;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--divider));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 48%, var(--divider));
   box-shadow:
-    0 0 0 10px color-mix(in srgb, var(--accent) 6%, transparent);
+    0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .empty-library h1,
@@ -14875,16 +14875,42 @@ select.ai-config-input.ai-config-languages {
   box-shadow: none;
 }
 
-/* --- Focus rings --- */
+/* --- Focus rings + primary accent --- */
 .tool-button:focus-visible,
 .main-menu-trigger:focus-visible,
 .app-settings-entry:focus-visible,
 .dimension-filter-btn:focus-visible {
-  outline: 2px solid var(--accent-ring);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .nav-row:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent);
   outline: none;
+}
+
+.primary-button {
+  border-color: color-mix(in srgb, var(--accent) 88%, white);
+  background: var(--accent);
+  color: var(--ui-content-on-accent, #ffffff);
+  box-shadow: none;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--ui-action-accent-hover, color-mix(in srgb, var(--accent) 86%, white));
+  border-color: color-mix(in srgb, var(--accent) 80%, white);
+}
+
+.main-menu-section.is-active,
+.main-menu-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+}
+
+.main-menu-trigger:hover:not(:disabled),
+.main-menu-trigger[aria-expanded="true"]:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
