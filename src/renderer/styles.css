@@ -15183,3 +15183,155 @@ html.serpent-window-square.serpent-window-maximized .window-edge-resize-layer,
 html.serpent-window-square .window-edge-resize-layer.is-disabled {
   display: none;
 }
+
+
+/* === Serpent ui-tabs-viewer: calm image / video / model viewer chrome ===
+   Quieter floating bars, softer contrast, tighter spacing. No library-
+   settings / semantic-settings. */
+:root {
+  --viewer-chrome-bg: color-mix(in srgb, var(--raised) 90%, transparent);
+  --viewer-chrome-border: var(--divider-soft);
+  --viewer-chrome-shadow: 0 6px 20px rgb(0 0 0 / 10%), 0 1px 3px rgb(0 0 0 / 5%);
+  --viewer-chrome-radius: var(--ui-radius-overlay);
+}
+
+[data-theme="light"] {
+  --viewer-chrome-bg: color-mix(in srgb, var(--raised) 94%, transparent);
+  --viewer-chrome-shadow: 0 8px 22px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.preview-video-controls,
+.preview-zoom-controls,
+.preview-speed-control,
+.preview-fullscreen-chip,
+.preview-exr-plane-selector,
+.preview-plugin-actions,
+.model-viewer-toolbar,
+.plugin-viewer-overlay-toggle {
+  border-color: var(--viewer-chrome-border);
+  border-radius: var(--viewer-chrome-radius);
+  background: var(--viewer-chrome-bg);
+  box-shadow: var(--viewer-chrome-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.preview-video-controls {
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  gap: 12px;
+  padding: 8px 14px;
+}
+
+.preview-zoom-controls {
+  bottom: 16px;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.preview-speed-control {
+  right: 16px;
+  bottom: 56px;
+  gap: 8px;
+  padding: 6px 10px;
+  color: var(--secondary);
+  font-size: calc(11px * var(--ui-font-scale));
+}
+
+.preview-fullscreen-chip {
+  right: 16px;
+  bottom: 16px;
+  padding: 6px 10px;
+  color: var(--secondary);
+}
+
+.preview-fullscreen-chip:hover {
+  background: color-mix(in srgb, var(--raised) 96%, var(--hover));
+  color: var(--text);
+}
+
+.preview-exr-plane-selector {
+  top: 14px;
+  left: 14px;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.preview-plugin-actions {
+  top: 14px;
+  left: 14px;
+  gap: 6px;
+  padding: 5px;
+}
+
+.preview-video-playpause,
+.preview-video-fit,
+.preview-video-fullscreen {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ui-radius-control);
+  color: var(--secondary);
+}
+
+.preview-video-playpause:hover,
+.preview-video-fit:hover,
+.preview-video-fullscreen:hover,
+.preview-video-rate:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.preview-zoom-controls button {
+  width: 28px;
+  height: 26px;
+  border-radius: var(--ui-radius-control);
+  color: var(--secondary);
+}
+
+.preview-zoom-controls button:hover,
+.preview-zoom-controls button:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.preview-zoom-controls .preview-zoom-label {
+  color: var(--tertiary);
+  font-size: calc(11px * var(--ui-font-scale));
+}
+
+.preview-nav {
+  width: 44px;
+  height: 56px;
+  border-radius: var(--ui-radius-surface);
+  opacity: 0.45;
+}
+
+.preview-nav:hover:not(:disabled),
+.preview-nav:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--raised) 55%, transparent);
+  opacity: 1;
+}
+
+.preview-nav.is-prev {
+  left: 8px;
+}
+
+.preview-nav.is-next {
+  right: 8px;
+}
+
+.model-viewer-toolbar {
+  /* inherits shared chrome tokens above when class is present */
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.pdf-viewer-toolbar {
+  border-color: var(--viewer-chrome-border);
+  border-radius: var(--viewer-chrome-radius);
+  background: var(--viewer-chrome-bg);
+  box-shadow: var(--viewer-chrome-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
