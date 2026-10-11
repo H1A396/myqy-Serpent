@@ -179,6 +179,7 @@ export function CanvasToolbarControls({
             />
           );
         })}
+        <span className="tool-separator" />
         {(() => {
           const align = resolveItem(ctx, "canvas.captionAlign.cycle");
           return (
