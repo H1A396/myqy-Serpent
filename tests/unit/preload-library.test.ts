@@ -47,3 +47,45 @@ test('library.create maps a failed transport result through failure()', async ()
   });
   expect(failure).toHaveBeenCalledWith(failed);
 });
+
+test('library.embeddingSearch preserves raw per-asset scores from transport', async () => {
+  const response = {
+    ok: true as const,
+    type: 'embedding.search' as const,
+    phase: 'ready' as const,
+    done: 2,
+    total: 2,
+    failedCount: 0,
+    assetIds: ['zero', 'negative'],
+    scores: [
+      { assetId: 'zero', score: 0 },
+      { assetId: 'negative', score: -0.25 },
+    ],
+  };
+  vi.mocked(request).mockResolvedValue(response as never);
+
+  await expect(library.embeddingSearch({
+    libraryId: 'lib-1',
+    modelId: 'embeddinggemma-2-compact',
+    query: 'reflection',
+  })).resolves.toEqual({
+    ok: true,
+    value: {
+      phase: 'ready',
+      done: 2,
+      total: 2,
+      failedCount: 0,
+      assetIds: ['zero', 'negative'],
+      scores: [
+        { assetId: 'zero', score: 0 },
+        { assetId: 'negative', score: -0.25 },
+      ],
+    },
+  });
+  expect(request).toHaveBeenCalledWith({
+    type: 'embedding.search.request',
+    libraryId: 'lib-1',
+    modelId: 'embeddinggemma-2-compact',
+    query: 'reflection',
+  });
+});

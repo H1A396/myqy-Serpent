@@ -27,6 +27,10 @@ import {
   useContextMenu,
   type ContextMenuDescriptor,
 } from "./context-menu";
+import { isDamagedEmbeddingAsset } from "../shared/embedding/profile";
+import { similarImageSupported } from "./find-similar";
+import { isSemanticSearchModelId } from "../shared/embedding/profile";
+import { LOCAL_GEMMA_MODALITIES, similarMenuBlock, type EmbeddingModality } from "../shared/embedding/modalities";
 import { Icon, type IconName } from "./Icons";
 import { TagPickerEntry, TagPickerMenu } from "./TagPickerMenu";
 import { CollectionPickerMenu } from "./CollectionPickerMenu";
@@ -372,6 +376,13 @@ interface AssetContextMenuProps {
   onDissolveImageSequences: (sequenceIds: string[]) => void;
   onRevealInFolder: (assetId: string) => void;
   onShowInLibraryFolder: (assetId: string) => void;
+  semanticSearchEnabled: boolean;
+  semanticModelSupportsSimilar?: boolean;
+  embeddingSelectionId?: string | null;
+  embeddingModalities?: readonly EmbeddingModality[] | null;
+  /** Local Gemma install is ready; find-similar can fall back while HTTP is bound. */
+  localSimilarModelReady?: boolean;
+  onFindSimilar: (assetId: string) => void;
   onCopyFilePath: (assetId: string) => void;
   /** OS file clipboard copy (Finder/Explorer interoperable). */
   onCopyAssetFiles: (assetIds: string[]) => void;
@@ -458,6 +469,12 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
     onViewAsset,
     onRevealInFolder,
     onShowInLibraryFolder,
+    semanticSearchEnabled,
+    semanticModelSupportsSimilar = true,
+    embeddingSelectionId = null,
+    embeddingModalities = null,
+    localSimilarModelReady = false,
+    onFindSimilar,
     onCopyFilePath,
     onCopyAssetFiles,
     pasteTargetFolderId,
@@ -2009,6 +2026,19 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
             // 0015-B: 静态项的标题/快捷键/可见性/禁用原因由注册表 resolveMenu
             // 求值；此处把 descriptor 与 props 组装成 AssetCommandContext。
             // 动态行（外部目录、合集、标签）与汇总/提示块保持内联不变。
+            const similarBlock = singleAsset && embeddingSelectionId
+              ? similarMenuBlock({
+                mediaType: singleAsset.mediaType,
+                implementation: isSemanticSearchModelId(embeddingSelectionId) ? "gemma" : "http",
+                declared: isSemanticSearchModelId(embeddingSelectionId)
+                  ? LOCAL_GEMMA_MODALITIES
+                  : (embeddingModalities ?? ["text"]),
+                localSimilarReady: localSimilarModelReady,
+              })
+              : null;
+            const sourceSupported = singleAsset && !similarBlock && (embeddingSelectionId || semanticModelSupportsSimilar)
+              ? similarImageSupported(singleAsset)
+              : false;
             const commandContext: AssetCommandContext = {
               surface: "asset-single",
               locale,
@@ -2023,11 +2053,18 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
               activeCollectionId,
               aiCanAnalyze: canAnalyze,
               pasteTargetFolderId: resolvedPasteTarget,
+              semanticSearchEnabled,
+              similarImageSupported: sourceSupported,
+              similarBlockedReason: similarBlock,
+              similarSourceDamaged: singleAsset
+                ? isDamagedEmbeddingAsset(singleAsset) && !sourceSupported
+                : false,
               actions: {
                 view: onViewAsset,
                 openExternal: onOpenExternal,
                 revealInFolder: onRevealInFolder,
                 showInLibraryFolder: onShowInLibraryFolder,
+                findSimilar: onFindSimilar,
                 copyFiles: onCopyAssetFiles,
                 pasteIntoFolder: onPasteIntoFolder,
                 copyFilePath: onCopyFilePath,
@@ -2065,6 +2102,7 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
             const showInLibraryFolderItem = resolvedById.get(
               "asset.show-in-library-folder",
             );
+            const findSimilarItem = resolvedById.get("asset.find-similar");
             const removeFromCurrentCollectionItem = resolvedById.get(
               "asset.remove-from-current-collection",
             );
@@ -2200,6 +2238,15 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                       onAction={() =>
                         runAssetCommand("asset.show-in-library-folder")
                       }
+                    />
+                  )}
+                  {findSimilarItem && (
+                    <ContextMenuItem
+                      icon={<Icon name="scan-qr-code" size={14} />}
+                      label={findSimilarItem.label}
+                      disabled={findSimilarItem.disabled}
+                      disabledReason={findSimilarItem.disabledReason ?? undefined}
+                      onAction={() => runAssetCommand("asset.find-similar")}
                     />
                   )}
                   <PluginMenuItems

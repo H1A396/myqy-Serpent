@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { EMBEDDING_HTTP_ADAPTERS } from '../embedding/http-service';
+
 import { aiSearchPlanSchema, assetMetadataResultSchema, extractedMetadataResultSchema, assetSummarySchema, browseLayoutEntrySchema, collectionSummarySchema, folderBrowseEntrySchema, gitignorePreviewSchema, ignoredPathSchema, linkedFolderDirectoryMutationSchema, linkedFolderRuleSchema, linkedFolderSummarySchema, managedFolderSummarySchema, portableRelativePathSchema, smartCollectionSummarySchema, tagCooccurrenceGraphSchema, tagSummarySchema, trashedFolderSummarySchema } from '../asset-types';
 import { entityAppearanceSchema, entityAppearanceTargetSchema } from '../entity-appearance';
 import { libraryNavigationSummarySchema } from '../library-navigation';
@@ -2547,6 +2549,149 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
     ok: z.literal(true),
     type: z.literal('ai.pending-assets'),
     assetIds: z.array(nonBlankString),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.models.listed'),
+    models: z.array(z.strictObject({
+      id: nonBlankString.max(255),
+      name: nonBlankString.max(80),
+      tier: z.enum(['Q4_K_XL', 'Q8_0', 'BF16']),
+      profileKey: nonBlankString,
+      modelDirectory: nonBlankString.max(1024),
+      runtimePath: nonBlankString.max(1024),
+      declaredChannels: z.array(z.enum(['text', 'image'])),
+      verifiedChannels: z.array(z.enum(['text', 'image'])),
+      isDefault: z.boolean(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.saved'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.deleted'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.model.default-set'),
+    id: nonBlankString.max(255),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.services.listed'),
+    services: z.array(z.strictObject({
+      id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+      name: nonBlankString.max(80),
+      description: z.string().max(200),
+      adapter: z.enum(EMBEDDING_HTTP_ADAPTERS),
+      destination: z.enum(['loopback', 'lan', 'internet']),
+      baseUrl: nonBlankString.max(300),
+      modelName: nonBlankString.max(120),
+      textStatus: z.enum(['unsupported', 'declared', 'verified', 'failed']),
+      probeFailure: z.enum(['network', 'auth', 'format', 'dimensions', 'https']).nullable(),
+      dimensions: z.number().int().positive().max(8192).nullable(),
+      modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4),
+      grantedLibraryIds: z.array(nonBlankString.max(255)).max(100),
+      hasCredential: z.boolean(),
+      profileKey: z.string().nullable(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.saved'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.deleted'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.probed'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+    textStatus: z.enum(['verified', 'failed']),
+    dimensions: z.number().int().positive().nullable(),
+    probeFailure: z.enum(['network', 'auth', 'format', 'dimensions', 'https']).nullable(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.service.granted'),
+    id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.binding'),
+    libraryId: nonBlankString.max(255),
+    selectionId: z.union([
+      z.null(),
+      z.string().regex(/^(?:embeddinggemma-2-(?:compact|balanced|quality)|svc_[a-z0-9]{8,40})$/),
+    ]),
+    enabled: z.boolean(),
+    inherit: z.boolean(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.install.status'),
+    runtimeInstalled: z.boolean(),
+    runtimeDownloadable: z.boolean(),
+    models: z.array(z.strictObject({
+      modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
+      installed: z.boolean(),
+    })),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.index.status'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.search'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+    assetIds: z.array(nonBlankString).max(100_000),
+    scores: z.array(z.strictObject({
+      assetId: nonBlankString,
+      score: z.number().finite(),
+    })).max(100_000).optional(),
+  }).superRefine((result, context) => {
+    if (!result.scores) return;
+    const rankedIds = new Set(result.assetIds);
+    const seen = new Set<string>();
+    result.scores.forEach(({ assetId }, index) => {
+      if (!rankedIds.has(assetId) || seen.has(assetId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["scores", index, "assetId"],
+          message: "Scores must identify unique ranked assets.",
+        });
+      }
+      seen.add(assetId);
+    });
+  }),
+  z.strictObject({
+    ok: z.literal(true),
+    type: z.literal('embedding.similar'),
+    phase: z.enum(['unavailable', 'starting', 'indexing', 'ready', 'failed']),
+    done: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    hold: z.literal('grant').optional(),
+    status: z.enum(['ready', 'preparing', 'unsupported', 'unavailable']),
+    sourceAssetId: nonBlankString,
+    assetIds: z.array(nonBlankString).max(100_000),
   }),
   ...assetOperationSuccessSchemas,
 ]);

@@ -11,6 +11,20 @@ import {
   getPluginJobDisplayProgress,
 } from "./plugin-job-display";
 import type { MediaJobStatus, AiJobStatus, PluginJobStatus } from "../shared/library-api";
+import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
+import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
+import { embeddingServiceTextOnly, type EmbeddingModality } from "../shared/embedding/modalities";
+import { embeddingIndexCopyKey, embeddingIndexJobsVisible } from "./semantic-index-copy";
+
+function embeddingModelLabel(
+  modelId: string,
+  t: ReturnType<typeof useT>,
+): string {
+  if (modelId === "embeddinggemma-2-compact") return t("settings.semanticSearch.modelCompact");
+  if (modelId === "embeddinggemma-2-quality") return t("settings.semanticSearch.modelQuality");
+  if (modelId === "embeddinggemma-2-balanced") return t("settings.semanticSearch.modelBalanced");
+  return t("settings.semanticSearch.customModel");
+}
 
 function MediaJobAssetLabel({
   assetName,
@@ -34,6 +48,7 @@ export interface MediaJobsDialogProps {
   mediaJobs: MediaJobStatus | null;
   mediaJobsLoading: boolean;
   aiJobs: AiJobStatus | null;
+  embeddingIndex?: { modelId: string; snapshot: EmbeddingIndexSnapshot; modalities?: readonly EmbeddingModality[] } | null;
   pluginJobs: PluginJobStatus | null;
   onClose: () => void;
   onControlMediaJobs: (
@@ -56,6 +71,7 @@ export function MediaJobsDialog({
   mediaJobs,
   mediaJobsLoading,
   aiJobs,
+  embeddingIndex,
   pluginJobs,
   onClose,
   onControlMediaJobs,
@@ -217,6 +233,43 @@ export function MediaJobsDialog({
                 </div>
               ) : null}
             </div>
+            {embeddingIndex && embeddingIndexJobsVisible(embeddingIndex.snapshot) ? (
+              <section className="media-jobs-embedding-section">
+                <h3 className="media-jobs-section-title">
+                  {t("dialog.mediaJobs.embeddingSection")}
+                </h3>
+                <p className="field-help">
+                  {embeddingModelLabel(embeddingIndex.modelId, t)}
+                  {" · "}
+                  {t(embeddingIndexCopyKey(embeddingIndex.snapshot, {
+                    textOnly: isEmbeddingServiceSelectionId(embeddingIndex.modelId)
+                      && embeddingServiceTextOnly(embeddingIndex.modalities),
+                  }), {
+                    done: embeddingIndex.snapshot.done,
+                    total: embeddingIndex.snapshot.total,
+                    failed: embeddingIndex.snapshot.failedCount,
+                  })}
+                </p>
+                <div className="task-progress-track">
+                  {embeddingIndex.snapshot.phase === "starting" || embeddingIndex.snapshot.total <= 0 ? (
+                    <div className="task-progress-indeterminate" />
+                  ) : (
+                    <div
+                      className="task-progress-fill"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(
+                            1,
+                            embeddingIndex.snapshot.done / embeddingIndex.snapshot.total,
+                          ),
+                        ) * 100}%`,
+                      }}
+                    />
+                  )}
+                </div>
+              </section>
+            ) : null}
             {aiJobs && (
               <section
                 style={{

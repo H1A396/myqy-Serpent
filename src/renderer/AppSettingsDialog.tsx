@@ -11,6 +11,8 @@ import {
 import { McpSettingsPage } from "./McpSettingsPage";
 import { PluginSettingsPage } from "./PluginSettingsPage";
 import { PluginCommunityPage } from "./PluginCommunityPage";
+import { SemanticSearchSettings } from "./SemanticSearchSettings";
+import type { EmbeddingCatalogApi } from "./SemanticSearchSettings";
 import { SyncSettingsPage, type SyncServerSettingsCallbacks } from "./SyncSettingsPage";
 import {
   PluginSettingsDetailPage,
@@ -58,6 +60,7 @@ export interface AppSettingsDialogProps {
   libraryId?: string;
   mcpApi?: SerpentMcpSettingsApi;
   syncServerCallbacks: SyncServerSettingsCallbacks;
+  embeddingServicesApi?: EmbeddingCatalogApi;
   showCardSyncStatus: boolean;
   onShowCardSyncStatusChange: (checked: boolean) => void;
   showMissingLinkedFiles: boolean;
@@ -100,6 +103,7 @@ export function AppSettingsDialog({
   pluginApi,
   pluginContributionRefreshKey,
   libraryId,
+  embeddingServicesApi,
   mcpApi,
   syncServerCallbacks,
   showCardSyncStatus,
@@ -288,6 +292,12 @@ export function AppSettingsDialog({
                 aiUiPrefs={aiUiPrefs}
                 aiConfigPanel={aiConfigPanel}
                 onToggleShowAiBadges={onToggleShowAiBadges}
+              />
+            ) : null}
+            {!showingPluginSettings && activeCategory === "semantic-search" ? (
+              <SemanticSearchSettings
+                libraryId={libraryId}
+                servicesApi={embeddingServicesApi}
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "mcp" ? <McpSettingsPage api={mcpApi} onOpenAppLog={onOpenAppLog} /> : null}
