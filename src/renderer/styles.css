@@ -2381,8 +2381,10 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   transform: rotate(90deg);
 }
 
-.nav-row:hover:not(:disabled) {
-  background: var(--hover);
+.nav-row:hover:not(:disabled):not(.is-active) {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* BUG-DND-001: row children (icon, label, count) are passive paint, never
@@ -14612,14 +14614,16 @@ select.ai-config-input.ai-config-languages {
 }
 
 .nav-row:hover:not(:disabled):not(.is-active) {
-  background: transparent;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
   border-color: transparent;
+  box-shadow: none;
   color: var(--text);
 }
 
 .nav-row.is-active:hover:not(:disabled) {
   background: var(--accent-soft);
   border-color: transparent;
+  box-shadow: none;
   color: var(--accent-soft-fg);
 }
 
@@ -14952,10 +14956,12 @@ select.ai-config-input.ai-config-languages {
 }
 
 
-/* --- Hover: no borders/outlines; nav idle hover wash removed (read as outline) --- */
+/* --- Hover: soft wash only on nav (no border/outline/shadow) --- */
 .nav-row:hover:not(:disabled):not(.is-active) {
-  background: transparent;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
   border-color: transparent;
+  box-shadow: none;
+  outline: none;
   color: var(--text);
 }
 
@@ -15117,26 +15123,34 @@ select.ai-config-input.ai-config-languages {
 }
 
 
-/* Nav rows: never paint a hover/active outline; idle hover has no wash pill. */
-.nav-row,
-.nav-row:hover:not(:disabled),
-.nav-row:hover:not(:disabled):not(.is-active),
-.nav-row.is-active,
-.nav-row:focus-visible {
-  border-color: transparent;
+/* Nav rows — final cascade: soft idle wash, accent-soft active, never a border. */
+.nav-row {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  box-shadow: none;
   outline: none;
 }
 
 .nav-row:hover:not(:disabled):not(.is-active) {
-  background: transparent;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--text);
 }
 
-.nav-row.is-active {
+.nav-row.is-active,
+.nav-row.is-active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: transparent;
   box-shadow: none;
+  color: var(--accent-soft-fg);
 }
 
 .nav-row:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: transparent;
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 /* Linux frameless: client edge/corner resize hit targets (no WM frame). */
