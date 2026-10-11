@@ -7200,6 +7200,125 @@ body.serpent-modal-open .app-shell {
   }
 }
 
+/* Semantic search settings: compact Sync/MCP-style install cards. */
+.semantic-search-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.semantic-settings-toolbar {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.semantic-settings-toolbar .app-settings-row-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.semantic-settings-segment {
+  flex: 0 0 auto;
+  margin-top: 0;
+  align-self: center;
+}
+
+.semantic-model-list {
+  display: grid;
+  gap: 8px;
+}
+
+.semantic-model-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--raised) 55%, var(--pane));
+}
+
+.semantic-model-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.semantic-model-card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.semantic-model-card-title-row strong {
+  color: var(--text);
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 590;
+  line-height: 1.35;
+}
+
+.semantic-model-card-copy > span {
+  color: var(--secondary);
+  font-size: calc(11px * var(--ui-font-scale));
+  line-height: 1.45;
+}
+
+.semantic-model-card-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.semantic-model-card .sync-status-indicator {
+  max-width: 100%;
+}
+
+.semantic-model-card .sync-status-indicator > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.semantic-custom-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.semantic-service-form {
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--raised) 55%, var(--pane));
+}
+
+@media (max-width: 560px) {
+  .semantic-settings-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .semantic-settings-segment {
+    align-self: stretch;
+  }
+
+  .semantic-model-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .semantic-model-card-action {
+    justify-content: flex-end;
+  }
+}
+
 /* Serpent-xffq: 同步连接/同步状态指示（复用 AI 连接指示的视觉语言）。 */
 .sync-status-indicator {
   display: inline-flex;

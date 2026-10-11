@@ -32,10 +32,23 @@ type InstallSnapshot = {
   models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
 };
 
+type ModelInstallState = "ready" | "missing" | "missing-runtime" | "runtime-unavailable" | "unknown";
+
 export type EmbeddingCatalogApi = EmbeddingServiceSettingsApi & {
   embeddingInstallStatus: () => Promise<{ ok: boolean; value?: InstallSnapshot; error?: PublicError }>;
   embeddingInstall: (input: { modelId: SemanticSearchModelId }) => Promise<{ ok: boolean; value?: InstallSnapshot; error?: PublicError }>;
 };
+
+function resolveModelState(
+  installed: boolean,
+  install: InstallSnapshot | null,
+): ModelInstallState {
+  if (!install) return "unknown";
+  if (!installed) return "missing";
+  if (install.runtimeInstalled) return "ready";
+  if (!install.runtimeDownloadable) return "runtime-unavailable";
+  return "missing-runtime";
+}
 
 export function SemanticSearchSettings({
   libraryId,
@@ -90,75 +103,118 @@ export function SemanticSearchSettings({
     }
   }
 
-  const runtimeReady = install?.runtimeInstalled === true;
-
   return (
-    <SettingsCard>
-      <div className="app-settings-row app-settings-row-stack">
+    <SettingsCard className="semantic-search-card">
+      <div className="app-settings-action-row semantic-settings-toolbar">
         <div className="app-settings-row-copy">
           <strong>{t("settings.semanticSearch.modelTitle")}</strong>
           <span>{t("settings.semanticSearch.libraryChooses")}</span>
         </div>
-        <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.modelTitle")}>
-          <button aria-checked={mode === "local"} className="app-settings-option" onClick={() => setMode("local")} role="radio" type="button">
+        <div
+          className="app-settings-option-group semantic-settings-segment"
+          role="radiogroup"
+          aria-label={t("settings.semanticSearch.modelTitle")}
+        >
+          <button
+            aria-checked={mode === "local"}
+            className="app-settings-option"
+            onClick={() => setMode("local")}
+            role="radio"
+            type="button"
+          >
             {t("settings.semanticSearch.modeLocal")}
           </button>
-          <button aria-checked={mode === "custom"} className="app-settings-option" onClick={() => setMode("custom")} role="radio" type="button">
+          <button
+            aria-checked={mode === "custom"}
+            className="app-settings-option"
+            onClick={() => setMode("custom")}
+            role="radio"
+            type="button"
+          >
             {t("settings.semanticSearch.modeCustom")}
           </button>
         </div>
       </div>
+
       {mode === "local" ? (
         <>
-          <div className="app-settings-card-divider" />
-          {SEMANTIC_SEARCH_MODELS.map((model) => {
-            const installed = install?.models.some((entry) => entry.modelId === model.id && entry.installed) ?? false;
-            const working = installingId === model.id;
-            return (
-              <div className="app-settings-row app-settings-row-stack" key={model.id}>
-                <div className="app-settings-row-copy">
-                  <strong>{t(MODEL_LABEL_KEYS[model.id])}</strong>
-                  <span>{t(MODEL_HINT_KEYS[model.id])}</span>
-                  <span>
-                    {installed && runtimeReady
-                      ? t("settings.semanticSearch.installReady")
-                      : installed && install && !install.runtimeDownloadable && !runtimeReady
-                        ? t("settings.semanticSearch.installRuntimeUnavailable")
-                        : installed
-                          ? t("settings.semanticSearch.installMissingRuntime")
-                          : null}
-                  </span>
+          <div className="semantic-model-list" role="list">
+            {SEMANTIC_SEARCH_MODELS.map((model) => {
+              const installed = install?.models.some((entry) => entry.modelId === model.id && entry.installed) ?? false;
+              const working = installingId === model.id;
+              const state = resolveModelState(installed, install);
+              const statusLabel = state === "ready"
+                ? t("settings.semanticSearch.installReady")
+                : state === "missing-runtime"
+                  ? t("settings.semanticSearch.installNeedsRuntime")
+                  : state === "runtime-unavailable"
+                    ? t("settings.semanticSearch.installUnavailable")
+                    : state === "missing"
+                      ? t("settings.semanticSearch.installNotInstalled")
+                      : null;
+              const statusDetail = state === "missing-runtime"
+                ? t("settings.semanticSearch.installMissingRuntime")
+                : state === "runtime-unavailable"
+                  ? t("settings.semanticSearch.installRuntimeUnavailable")
+                  : null;
+              const statusTone = state === "ready"
+                ? "connected"
+                : state === "missing-runtime"
+                  ? "checking"
+                  : state === "runtime-unavailable"
+                    ? "failed"
+                    : "idle";
+              const actionLabel = working
+                ? t("settings.semanticSearch.installWorking")
+                : state === "ready"
+                  ? t("settings.semanticSearch.installReinstall")
+                  : t("settings.semanticSearch.installAction");
+              return (
+                <div className="semantic-model-card" key={model.id} role="listitem">
+                  <div className="semantic-model-card-copy">
+                    <div className="semantic-model-card-title-row">
+                      <strong>{t(MODEL_LABEL_KEYS[model.id])}</strong>
+                      {statusLabel ? (
+                        <span className="sync-status-indicator" data-state={statusTone}>
+                          <span className="sync-status-dot" data-state={statusTone} />
+                          <span>{statusLabel}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <span>{t(MODEL_HINT_KEYS[model.id])}</span>
+                    {statusDetail ? <span>{statusDetail}</span> : null}
+                  </div>
+                  <div className="semantic-model-card-action">
+                    <button
+                      className={state === "ready" ? "secondary-button" : "primary-button"}
+                      disabled={installingId !== null || state === "runtime-unavailable"}
+                      onClick={() => { void installModel(model.id); }}
+                      type="button"
+                    >
+                      {actionLabel}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  className="app-settings-option"
-                  disabled={installingId !== null || (installed && runtimeReady)}
-                  onClick={() => { void installModel(model.id); }}
-                  type="button"
-                >
-                  {working
-                    ? t("settings.semanticSearch.installWorking")
-                    : installed && runtimeReady
-                      ? t("settings.semanticSearch.installReady")
-                      : t("settings.semanticSearch.installAction")}
-                </button>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
           {installError ? <p className="settings-error-message">{installError}</p> : null}
         </>
       ) : servicesApi ? (
-        <>
-          <div className="app-settings-card-divider" />
-          <EmbeddingServiceSettings api={servicesApi} libraryId={libraryId} />
-        </>
+        <EmbeddingServiceSettings api={servicesApi} libraryId={libraryId} />
       ) : null}
+
       <div className="app-settings-card-divider" />
-      <div className="app-settings-row app-settings-row-stack">
+      <div className="app-settings-action-row semantic-settings-toolbar">
         <div className="app-settings-row-copy">
           <strong>{t("settings.semanticSearch.pageSizeTitle")}</strong>
           <span>{t("settings.semanticSearch.pageSizeHint")}</span>
         </div>
-        <div aria-label={t("settings.semanticSearch.pageSizeTitle")} className="app-settings-option-group" role="radiogroup">
+        <div
+          aria-label={t("settings.semanticSearch.pageSizeTitle")}
+          className="app-settings-option-group semantic-settings-segment"
+          role="radiogroup"
+        >
           {SEMANTIC_SEARCH_PAGE_SIZES.map((pageSize) => (
             <button
               aria-checked={prefs.pageSize === pageSize}

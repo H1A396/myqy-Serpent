@@ -145,47 +145,53 @@ export function EmbeddingServiceSettings({
   }
 
   return (
-    <div className="app-settings-row app-settings-row-stack">
-      <div className="app-settings-row-copy">
-        <strong>{t("settings.semanticSearch.servicesTitle")}</strong>
-        <span>{t("settings.semanticSearch.servicesHint")}</span>
+    <div className="semantic-custom-panel">
+      <div className="app-settings-action-row semantic-settings-toolbar">
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.semanticSearch.servicesTitle")}</strong>
+          <span>{t("settings.semanticSearch.servicesHint")}</span>
+        </div>
+        <button
+          className="primary-button"
+          onClick={() => {
+            if (open && !editingId) {
+              setOpen(false);
+              return;
+            }
+            resetForm();
+            setOpen(true);
+          }}
+          type="button"
+        >
+          {t("settings.semanticSearch.addService")}
+        </button>
       </div>
-      <span>{t("settings.semanticSearch.serviceSimilarLimit")}</span>
-      {services.map((service) => (
-        <ServiceStatus
-          api={api}
-          key={service.id}
-          libraryId={libraryId}
-          onChanged={async () => {
-            await refresh();
-            notifyEmbeddingCatalogChanged();
-          }}
-          onDelete={() => {
-            void api.embeddingDeleteService({ id: service.id }).then(async () => {
-              await refresh();
-              notifyEmbeddingCatalogChanged();
-            });
-          }}
-          onEdit={() => beginEdit(service)}
-          service={service}
-        />
-      ))}
-      <button
-        className="app-settings-option"
-        onClick={() => {
-          if (open && !editingId) {
-            setOpen(false);
-            return;
-          }
-          resetForm();
-          setOpen(true);
-        }}
-        type="button"
-      >
-        {t("settings.semanticSearch.addService")}
-      </button>
+      <p className="app-settings-help-note">{t("settings.semanticSearch.serviceSimilarLimit")}</p>
+      {services.length > 0 ? (
+        <div className="semantic-model-list" role="list">
+          {services.map((service) => (
+            <ServiceStatus
+              api={api}
+              key={service.id}
+              libraryId={libraryId}
+              onChanged={async () => {
+                await refresh();
+                notifyEmbeddingCatalogChanged();
+              }}
+              onDelete={() => {
+                void api.embeddingDeleteService({ id: service.id }).then(async () => {
+                  await refresh();
+                  notifyEmbeddingCatalogChanged();
+                });
+              }}
+              onEdit={() => beginEdit(service)}
+              service={service}
+            />
+          ))}
+        </div>
+      ) : null}
       {open ? (
-        <div className="editor-field ai-config-field">
+        <div className="semantic-service-form editor-field ai-config-field">
           <span className="micro-label">{t("settings.semanticSearch.adapterTitle")}</span>
           <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.adapterTitle")}>
             {ADAPTERS.map((item) => (
@@ -250,7 +256,7 @@ export function EmbeddingServiceSettings({
           <label className="micro-label" htmlFor="embedding-service-key">{t("settings.semanticSearch.serviceKey")}</label>
           <input className="text-field ai-config-input" id="embedding-service-key" maxLength={2048} onChange={(event) => setApiKey(event.target.value)} spellCheck={false} type="password" value={apiKey} />
           <p className="ai-config-hint">{issue ? t(`settings.semanticSearch.serviceIssue.${issue}`) : t("settings.semanticSearch.serviceFormHint")}</p>
-          <button className="app-settings-option" disabled={busy} onClick={() => { void save(); }} type="button">
+          <button className="primary-button" disabled={busy} onClick={() => { void save(); }} type="button">
             {t("settings.semanticSearch.serviceSave")}
           </button>
         </div>
@@ -281,29 +287,41 @@ function ServiceStatus({
     : service.textStatus === "failed"
       ? "settings.semanticSearch.serviceFailed"
       : "settings.semanticSearch.serviceUnverified";
+  const statusTone = service.textStatus === "verified"
+    ? "connected"
+    : service.textStatus === "failed"
+      ? "failed"
+      : "idle";
   return (
-    <div className="app-settings-row-copy">
-      <strong>{service.name}</strong>
-      <span>{service.modelName}</span>
-      <span>{t(statusKey)}{service.dimensions ? ` · ${service.dimensions}` : ""}</span>
-      <span>{service.destination === "loopback" ? t("settings.semanticSearch.serviceLocalNote") : t("settings.semanticSearch.serviceRemoteNote")}</span>
-      {service.destination === "lan" ? <span>{t("settings.semanticSearch.serviceLanNote")}</span> : null}
-      <span className="app-settings-option-group">
-        <button className="app-settings-option" onClick={onEdit} type="button">
+    <div className="semantic-model-card" role="listitem">
+      <div className="semantic-model-card-copy">
+        <div className="semantic-model-card-title-row">
+          <strong>{service.name}</strong>
+          <span className="sync-status-indicator" data-state={statusTone}>
+            <span className="sync-status-dot" data-state={statusTone} />
+            <span>{t(statusKey)}{service.dimensions ? ` · ${service.dimensions}` : ""}</span>
+          </span>
+        </div>
+        <span>{service.modelName}</span>
+        <span>{service.destination === "loopback" ? t("settings.semanticSearch.serviceLocalNote") : t("settings.semanticSearch.serviceRemoteNote")}</span>
+        {service.destination === "lan" ? <span>{t("settings.semanticSearch.serviceLanNote")}</span> : null}
+      </div>
+      <div className="semantic-model-card-action app-settings-option-group">
+        <button className="secondary-button" onClick={onEdit} type="button">
           {t("settings.semanticSearch.serviceEdit")}
         </button>
-        <button className="app-settings-option" onClick={() => { void api.embeddingProbeService({ id: service.id }).then(onChanged); }} type="button">
+        <button className="secondary-button" onClick={() => { void api.embeddingProbeService({ id: service.id }).then(onChanged); }} type="button">
           {t("settings.semanticSearch.serviceTest")}
         </button>
         {!granted && libraryId ? (
-          <button className="app-settings-option" onClick={() => { void api.embeddingGrantService({ id: service.id, libraryId }).then(onChanged); }} type="button">
+          <button className="secondary-button" onClick={() => { void api.embeddingGrantService({ id: service.id, libraryId }).then(onChanged); }} type="button">
             {t("settings.semanticSearch.serviceGrant")}
           </button>
         ) : null}
-        <button className="app-settings-option" onClick={onDelete} type="button">
+        <button className="secondary-button" onClick={onDelete} type="button">
           {t("settings.semanticSearch.serviceDelete")}
         </button>
-      </span>
+      </div>
     </div>
   );
 }
