@@ -336,6 +336,7 @@ export const en = {
     showFileName: "File name",
     showFileSize: "File size",
     showModifiedDate: "Date modified",
+    cycleCaptionAlign: "Cycle card text alignment",
     showDimensions: "Resolution",
     showBadgeType: "Type badge (GIF / video)",
     showBadgeDuration: "Duration badge (bottom-left)",

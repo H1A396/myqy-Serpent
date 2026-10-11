@@ -72,7 +72,10 @@ export type IconName =
   | "equal-approximately"
   | "type"
   | "text-size"
-  | "wrap-text";
+  | "wrap-text"
+  | "align-left"
+  | "align-center"
+  | "align-right";
 
 const iconPaths: Record<IconName, ReactNode> = {
   activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
@@ -537,6 +540,27 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M3 12h15a3 3 0 1 1 0 6h-4" />
       <path d="m16 16-2 2 2 2" />
       <path d="M3 18h7" />
+    </>
+  ),
+  "align-left": (
+    <>
+      <path d="M21 6H3" />
+      <path d="M15 12H3" />
+      <path d="M17 18H3" />
+    </>
+  ),
+  "align-center": (
+    <>
+      <path d="M21 6H3" />
+      <path d="M17 12H7" />
+      <path d="M19 18H5" />
+    </>
+  ),
+  "align-right": (
+    <>
+      <path d="M21 6H3" />
+      <path d="M21 12H9" />
+      <path d="M21 18H7" />
     </>
   ),
 };

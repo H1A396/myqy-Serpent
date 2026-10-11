@@ -535,6 +535,7 @@ import { createPluginMenuContributionContext } from "./plugin-contribution-conte
 import { InspectorPanel } from "./InspectorPanel";
 import {
   assetCaptionAlignClass,
+  nextCanvasCaptionAlign,
   CARD_SIZE_MAX,
   CARD_SIZE_MIN,
   loadCanvasPreferences,
@@ -13575,6 +13576,12 @@ function AppInner() {
                     setCanvasPrefs((p) => ({
                       ...p,
                       fields: { ...p.fields, [field]: !p.fields[field] },
+                    }));
+                  },
+                  cycleCaptionAlign: () => {
+                    setCanvasPrefs((p) => ({
+                      ...p,
+                      captionAlign: nextCanvasCaptionAlign(p.captionAlign),
                     }));
                   },
                   openAiSettings: () => {

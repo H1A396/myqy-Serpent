@@ -323,6 +323,7 @@ export const zhCN = {
     showFileName: "文件名",
     showFileSize: "文件大小",
     showModifiedDate: "修改日期",
+    cycleCaptionAlign: "切换卡片文字对齐",
     showDimensions: "分辨率",
     showBadgeType: "类型角标（GIF / 视频）",
     showBadgeDuration: "时长角标（左下）",
