@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { EmbeddingIndexSnapshot, SemanticSearchModelId } from "../shared/embedding/profile";
 import { SEMANTIC_SEARCH_MODELS } from "../shared/embedding/profile";
 import { embeddingBindingIssue } from "../shared/embedding/library-binding";
+import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
 import type { EmbeddingHttpServiceSummary } from "../shared/library-api";
 import { notifyEmbeddingCatalogChanged } from "./embedding-catalog-events";
 import { useT } from "./i18n";
@@ -129,7 +130,9 @@ export function LibraryEmbeddingSettings({
           {issue === "configure" ? <p className="app-settings-help-note">{t("settings.librarySemantic.configure")}</p> : null}
           {issue === "ready" && index ? (
             <span>
-              {t(embeddingIndexCopyKey(index), {
+              {t(embeddingIndexCopyKey(index, {
+                textOnly: isEmbeddingServiceSelectionId(selectionId || savedId || ""),
+              }), {
                 done: index.done,
                 total: index.total,
                 failed: index.failedCount,

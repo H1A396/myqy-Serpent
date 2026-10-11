@@ -503,6 +503,7 @@ import {
 } from "./semantic-search-preferences";
 import { semanticSearchNotice } from "./semantic-index-copy";
 import { semanticBrowseRegistration } from "./semantic-browse";
+import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
 import { semanticBackgroundWorkActive, semanticToolbarReady } from "./semantic-work";
 import { subscribeEmbeddingCatalog, subscribeEmbeddingInstallActivity } from "./embedding-catalog-events";
 import {
@@ -8767,7 +8768,11 @@ function AppInner() {
       if (!request.isCurrent()) return;
       if (!ranked.ok) throw new LibraryOperationError(ranked.error);
       if (ranked.value.assetIds.length === 0) {
-        const notice = semanticSearchNotice({ ...ranked.value, matched: 0 });
+        const notice = semanticSearchNotice({
+          ...ranked.value,
+          matched: 0,
+          textOnly: isEmbeddingServiceSelectionId(modelId),
+        });
         setNotice(t(notice.key, notice.params));
         if (ranked.value.phase === "ready") {
           showSemanticResults([], [], pageSize);
@@ -13451,7 +13456,7 @@ function AppInner() {
             role="search"
           >
             <div
-              className={`search-control-wrap${searchValue.trim() ? " has-value" : ""}`}
+              className={`search-control-wrap${searchValue.trim() ? " has-value" : ""}${semanticSearchActive ? " is-semantic" : ""}`}
             >
               <Icon name="search" size={15} />
               <input
@@ -13553,7 +13558,17 @@ function AppInner() {
                 aria-label={t("toolbar.semanticSearch")}
                 aria-pressed={semanticSearchActive}
                 className={`search-semantic-toggle${semanticSearchActive ? " is-active" : ""}`}
-                data-hover-tip={embeddingSearchReady ? t("toolbar.semanticSearchHint") : t("toolbar.semanticSearchNeedsSetup")}
+                data-hover-tip={
+                  !embeddingSearchReady
+                    ? t("toolbar.semanticSearchNeedsSetup")
+                    : embeddingIndex.phase === "starting" || embeddingIndex.phase === "indexing"
+                      ? t("toolbar.semanticSearchIndexing")
+                      : t(
+                        embeddingService
+                          ? "toolbar.semanticSearchHintText"
+                          : "toolbar.semanticSearchHint",
+                      )
+                }
                 disabled={!library}
                 onClick={() => {
                   if (!embeddingSearchReady) return;

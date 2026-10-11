@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { semanticBackgroundWorkActive, semanticToolbarReady } from "../../src/renderer/semantic-work";
+import { embeddingIndexCopyKey, embeddingIndexJobsVisible } from "../../src/renderer/semantic-index-copy";
 import { semanticBrowseRegistration } from "../../src/renderer/semantic-browse";
 import { similarMenuBlock } from "../../src/shared/embedding/modalities";
 
@@ -68,5 +69,26 @@ describe("semantic readiness", () => {
       implementation: "gemma",
       declared: ["image", "video", "audio", "text"],
     })).toBeNull();
+  });
+});
+
+describe("semantic index jobs copy", () => {
+  it("keeps picture wording for local models and text wording for custom services", () => {
+    expect(embeddingIndexCopyKey({ phase: "indexing", done: 1, total: 3, failedCount: 0 }))
+      .toBe("dialog.mediaJobs.embeddingProgress");
+    expect(embeddingIndexCopyKey(
+      { phase: "indexing", done: 1, total: 3, failedCount: 0 },
+      { textOnly: true },
+    )).toBe("dialog.mediaJobs.embeddingProgressText");
+    expect(embeddingIndexCopyKey(
+      { phase: "ready", done: 0, total: 0, failedCount: 0 },
+      { textOnly: true },
+    )).toBe("dialog.mediaJobs.embeddingReadyEmptyText");
+  });
+
+  it("hides the jobs panel semantic section once the index is ready", () => {
+    expect(embeddingIndexJobsVisible({ phase: "starting", done: 0, total: 0, failedCount: 0 })).toBe(true);
+    expect(embeddingIndexJobsVisible({ phase: "indexing", done: 1, total: 3, failedCount: 0 })).toBe(true);
+    expect(embeddingIndexJobsVisible({ phase: "ready", done: 3, total: 3, failedCount: 0 })).toBe(false);
   });
 });

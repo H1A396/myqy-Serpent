@@ -1618,6 +1618,12 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   border-color: var(--divider);
 }
 
+.search-control-wrap.is-semantic {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--divider));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-soft) 80%, transparent);
+}
+
+.search-control-wrap.is-semantic:focus-within,
 .search-control-wrap:focus-within {
   border-color: color-mix(in srgb, var(--accent) 62%, var(--divider));
   box-shadow: 0 0 0 3px var(--accent-soft);

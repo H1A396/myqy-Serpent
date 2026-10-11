@@ -12,7 +12,8 @@ import {
 } from "./plugin-job-display";
 import type { MediaJobStatus, AiJobStatus, PluginJobStatus } from "../shared/library-api";
 import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
-import { embeddingIndexCopyKey } from "./semantic-index-copy";
+import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
+import { embeddingIndexCopyKey, embeddingIndexJobsVisible } from "./semantic-index-copy";
 
 function embeddingModelLabel(
   modelId: string,
@@ -231,7 +232,7 @@ export function MediaJobsDialog({
                 </div>
               ) : null}
             </div>
-            {embeddingIndex ? (
+            {embeddingIndex && embeddingIndexJobsVisible(embeddingIndex.snapshot) ? (
               <section className="media-jobs-embedding-section">
                 <h3 className="media-jobs-section-title">
                   {t("dialog.mediaJobs.embeddingSection")}
@@ -239,12 +240,32 @@ export function MediaJobsDialog({
                 <p className="field-help">
                   {embeddingModelLabel(embeddingIndex.modelId, t)}
                   {" · "}
-                  {t(embeddingIndexCopyKey(embeddingIndex.snapshot), {
+                  {t(embeddingIndexCopyKey(embeddingIndex.snapshot, {
+                    textOnly: isEmbeddingServiceSelectionId(embeddingIndex.modelId),
+                  }), {
                     done: embeddingIndex.snapshot.done,
                     total: embeddingIndex.snapshot.total,
                     failed: embeddingIndex.snapshot.failedCount,
                   })}
                 </p>
+                <div className="task-progress-track">
+                  {embeddingIndex.snapshot.phase === "starting" || embeddingIndex.snapshot.total <= 0 ? (
+                    <div className="task-progress-indeterminate" />
+                  ) : (
+                    <div
+                      className="task-progress-fill"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(
+                            1,
+                            embeddingIndex.snapshot.done / embeddingIndex.snapshot.total,
+                          ),
+                        ) * 100}%`,
+                      }}
+                    />
+                  )}
+                </div>
               </section>
             ) : null}
             {aiJobs && (

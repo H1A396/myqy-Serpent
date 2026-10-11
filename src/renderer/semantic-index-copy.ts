@@ -1,17 +1,36 @@
 import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
 import type { AssetSummary } from "../shared/asset-types";
 
-export function embeddingIndexCopyKey(snapshot: EmbeddingIndexSnapshot): string {
+export type EmbeddingIndexCopyOptions = {
+  /** Custom HTTP services encode library text, not still pictures. */
+  textOnly?: boolean;
+};
+
+export function embeddingIndexCopyKey(
+  snapshot: EmbeddingIndexSnapshot,
+  options?: EmbeddingIndexCopyOptions,
+): string {
+  const textOnly = options?.textOnly === true;
   if (snapshot.hold === "grant") return "dialog.mediaJobs.embeddingGrant";
   switch (snapshot.phase) {
     case "starting":
-      return "dialog.mediaJobs.embeddingStarting";
+      return textOnly
+        ? "dialog.mediaJobs.embeddingStartingText"
+        : "dialog.mediaJobs.embeddingStarting";
     case "indexing":
-      return "dialog.mediaJobs.embeddingProgress";
+      return textOnly
+        ? "dialog.mediaJobs.embeddingProgressText"
+        : "dialog.mediaJobs.embeddingProgress";
     case "ready":
-      if (snapshot.total === 0) return "dialog.mediaJobs.embeddingReadyEmpty";
+      if (snapshot.total === 0) {
+        return textOnly
+          ? "dialog.mediaJobs.embeddingReadyEmptyText"
+          : "dialog.mediaJobs.embeddingReadyEmpty";
+      }
       return snapshot.failedCount > 0
-        ? "dialog.mediaJobs.embeddingReadyPartial"
+        ? (textOnly
+          ? "dialog.mediaJobs.embeddingReadyPartialText"
+          : "dialog.mediaJobs.embeddingReadyPartial")
         : "dialog.mediaJobs.embeddingReady";
     case "failed":
       return "dialog.mediaJobs.embeddingFailed";
@@ -20,19 +39,25 @@ export function embeddingIndexCopyKey(snapshot: EmbeddingIndexSnapshot): string 
   }
 }
 
+/** Jobs panel shows semantic work only while it is still running. */
+export function embeddingIndexJobsVisible(snapshot: EmbeddingIndexSnapshot): boolean {
+  return snapshot.phase === "starting" || snapshot.phase === "indexing";
+}
+
 export function semanticSearchNotice(input: {
   phase: EmbeddingIndexSnapshot["phase"];
   done: number;
   total: number;
   matched: number;
   hold?: "grant";
+  textOnly?: boolean;
 }): { key: string; params: Record<string, number> } {
   if (input.hold === "grant") {
     return { key: "toast.semanticSearchGrant", params: {} };
   }
   if (input.matched > 0 && input.phase !== "ready") {
     return {
-      key: "toast.semanticSearchPartial",
+      key: input.textOnly ? "toast.semanticSearchPartialText" : "toast.semanticSearchPartial",
       params: { total: input.matched, done: input.done, libraryTotal: input.total },
     };
   }
@@ -40,10 +65,13 @@ export function semanticSearchNotice(input: {
     return { key: "toast.semanticSearchDone", params: { total: input.matched } };
   }
   if (input.phase === "starting" || input.done === 0) {
-    return { key: "toast.semanticSearchWaiting", params: {} };
+    return {
+      key: input.textOnly ? "toast.semanticSearchWaitingText" : "toast.semanticSearchWaiting",
+      params: {},
+    };
   }
   return {
-    key: "toast.semanticSearchEmpty",
+    key: input.textOnly ? "toast.semanticSearchEmptyText" : "toast.semanticSearchEmpty",
     params: { done: input.done, total: input.total },
   };
 }

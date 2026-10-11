@@ -95,10 +95,13 @@ export async function tryHandleEmbeddingModelRequest(
     case "embedding.install.start.request":
       return installModel(request.modelId, runtime);
     case "embedding.index.status.request":
+      // run:false is a snapshot only — never stop/wipe an index that may still be useful.
       if (!request.run) {
-        runtime.stopGemmaIndex?.();
-        runtime.stopHttpIndex?.();
-        return unavailableIndex();
+        if (isEmbeddingServiceSelectionId(request.modelId)) {
+          return runtime.embeddingHttpIndex?.handleStatus(request) ?? unavailableIndex();
+        }
+        if (!isSemanticSearchModelId(request.modelId)) return unavailableIndex();
+        return runtime.embeddingIndex?.handleStatus({ ...request, modelId: request.modelId }) ?? unavailableIndex();
       }
       if (isEmbeddingServiceSelectionId(request.modelId)) {
         runtime.stopGemmaIndex?.();

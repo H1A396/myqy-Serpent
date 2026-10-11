@@ -121,4 +121,57 @@ describe("embedding model catalog", () => {
     expect(removed).toMatchObject({ ok: true, type: "embedding.model.deleted" });
     expect(parseEmbeddingModelCatalog(stored).models).toEqual([]);
   });
+
+  it("returns an index snapshot for run:false without stopping either index", async () => {
+    const stops: string[] = [];
+    const httpStatus = {
+      ok: true as const,
+      type: "embedding.index.status" as const,
+      phase: "ready" as const,
+      done: 3,
+      total: 3,
+      failedCount: 0,
+    };
+    const gemmaStatus = {
+      ok: true as const,
+      type: "embedding.index.status" as const,
+      phase: "indexing" as const,
+      done: 1,
+      total: 4,
+      failedCount: 0,
+    };
+    const runtime = {
+      readCatalog: () => null,
+      writeCatalog: () => undefined,
+      userDataPath: () => "user-data",
+      homePath: () => "home",
+      stopGemmaIndex: () => { stops.push("gemma"); },
+      stopHttpIndex: () => { stops.push("http"); },
+      embeddingHttpIndex: {
+        handleStatus: () => httpStatus,
+      },
+      embeddingIndex: {
+        handleStatus: () => gemmaStatus,
+      },
+    };
+    const http = await tryHandleEmbeddingModelRequest({
+      type: "embedding.index.status.request",
+      libraryId: "lib-1",
+      modelId: "svc_textonly1",
+      run: false,
+      restart: false,
+    }, runtime as never);
+    expect(http).toEqual(httpStatus);
+    expect(stops).toEqual([]);
+
+    const gemma = await tryHandleEmbeddingModelRequest({
+      type: "embedding.index.status.request",
+      libraryId: "lib-1",
+      modelId: "embeddinggemma-2-compact",
+      run: false,
+      restart: false,
+    }, runtime as never);
+    expect(gemma).toEqual(gemmaStatus);
+    expect(stops).toEqual([]);
+  });
 });
