@@ -12967,6 +12967,7 @@ function AppInner() {
       />
     ) : null}
     <main
+      data-shell-layout="islands"
       className={`app-shell${leftOpen ? "" : " left-collapsed"}${rightOpen ? "" : " right-collapsed"}${panelResizing ? " is-resizing" : ""}`}
       style={panelResizeShellStyle as React.CSSProperties}
     >

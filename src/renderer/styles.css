@@ -15401,60 +15401,124 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-weight: 600;
 }
 
-/* ==== ui-concept-a: Islands — floating panels, canvas edge-to-edge ==== */
-.app-shell {
-  --island-gap: 10px;
-  grid-template-rows: 48px minmax(0, 1fr);
-  background:
-    radial-gradient(1200px 600px at 20% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
-    var(--canvas);
+/* ==== Shell layout: Islands ===============================================
+   Sidebar, workspace and inspector float as rounded islands on a tinted
+   backdrop. Scoped to [data-shell-layout="islands"] (set on .app-shell in
+   App.tsx) so specificity beats the legacy pane rules without !important.
+   All geometry/colour comes from the --island-* tokens below. */
+:root {
+  --island-gap: 8px;
+  --island-radius: 18px;            /* surface tier */
+  --island-inner-radius: 12px;      /* cards / hero, nested tier */
+  --island-control-radius: 10px;    /* rows / chips */
+  --island-backdrop: color-mix(in srgb, var(--accent) 5%, var(--ui-surface-pane));
+  --island-backdrop-glow: color-mix(in srgb, var(--accent) 12%, transparent);
+  --island-surface: var(--ui-surface-raised-subtle);
+  --island-canvas: var(--ui-surface-raised);
+  --island-border: rgb(20 24 36 / 7%);
+  --island-shadow: 0 1px 2px rgb(20 24 36 / 5%), 0 8px 24px -6px rgb(20 24 36 / 10%);
+  --island-bar: color-mix(in srgb, var(--island-canvas) 82%, transparent);
+  --island-card-shadow: 0 1px 2px rgb(20 24 36 / 6%), 0 0 0 1px rgb(20 24 36 / 5%);
+  --island-card-shadow-hover: 0 4px 14px -4px rgb(20 24 36 / 16%), 0 0 0 1px rgb(20 24 36 / 7%);
 }
-.app-toolbar {
-  background: transparent !important;
-  border-bottom: 0 !important;
-  box-shadow: none !important;
+:root[data-theme="dark"] {
+  --island-backdrop: color-mix(in srgb, var(--accent) 4%, color-mix(in srgb, var(--ui-surface-canvas) 62%, black));
+  --island-backdrop-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+  --island-surface: var(--ui-surface-pane);
+  --island-canvas: color-mix(in srgb, var(--ui-surface-pane) 70%, var(--ui-surface-raised));
+  --island-border: rgb(255 255 255 / 8%);
+  --island-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset, 0 10px 30px -8px rgb(0 0 0 / 55%);
+  --island-card-shadow: 0 0 0 1px rgb(255 255 255 / 5%);
+  --island-card-shadow-hover: 0 0 0 1px rgb(255 255 255 / 10%), 0 6px 18px -6px rgb(0 0 0 / 60%);
 }
-.navigation-pane,
-.inspector-pane {
+
+.app-shell[data-shell-layout="islands"] {
+  background-color: var(--island-backdrop);
+  background-image:
+    radial-gradient(900px 480px at 12% -12%, var(--island-backdrop-glow), transparent 65%),
+    var(--ui-backdrop-image, none);
+}
+
+/* Title bar merges into the backdrop; active tab reads as a tab of the canvas island. */
+.app-shell[data-shell-layout="islands"] > .app-toolbar {
+  border-bottom-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
+  background: var(--island-canvas);
+}
+
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
   margin: 0 var(--island-gap) var(--island-gap);
-  border: 1px solid color-mix(in srgb, var(--divider) 70%, transparent) !important;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--raised) 86%, transparent) !important;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 10px 30px rgb(15 20 35 / 8%), 0 1px 0 rgb(255 255 255 / 40%) inset;
+  border: 1px solid var(--island-border);
+  border-radius: var(--island-radius);
+  box-shadow: var(--island-shadow);
   overflow: hidden;
 }
-.navigation-pane { margin-right: 0; }
-.inspector-pane { margin-left: 0; }
-.workspace {
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane {
+  background: var(--island-surface);
+}
+.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
+.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
+.app-shell[data-shell-layout="islands"] > .workspace {
   position: relative;
-  margin: 0 var(--island-gap) var(--island-gap);
-  border-radius: 18px;
+  background: var(--island-canvas);
+}
+/* Collapsed panes: drop the island so a 0px column stays truly empty, and
+   let the workspace take the freed gutter. */
+.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
+.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
+  margin: 0;
+  border-width: 0;
+  box-shadow: none;
+}
+
+/* Floating bar: workspace toolbar + filters share one translucent header. */
+.app-shell[data-shell-layout="islands"] .workspace-bar,
+.app-shell[data-shell-layout="islands"] .workspace-discovery {
+  border-bottom-color: transparent;
+  background: var(--island-bar);
+  backdrop-filter: blur(16px) saturate(1.1);
+}
+.app-shell[data-shell-layout="islands"] .workspace-bar { padding-top: 4px; }
+.app-shell[data-shell-layout="islands"] .workspace-discovery {
+  border-bottom: 1px solid var(--island-border);
+}
+
+/* Cards inside the island: borderless, hairline ring, nested radius. */
+.app-shell[data-shell-layout="islands"] .asset-card {
+  border-color: transparent;
+  border-radius: var(--island-inner-radius);
+  box-shadow: var(--island-card-shadow);
+  transition: box-shadow 140ms ease;
+}
+.app-shell[data-shell-layout="islands"] .asset-card:hover { box-shadow: var(--island-card-shadow-hover); }
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview {
+  border-radius: var(--island-inner-radius) var(--island-inner-radius) 0 0;
+}
+
+/* Sidebar rows: active row is a lifted chip, accent only on the glyph. */
+.app-shell[data-shell-layout="islands"] .nav-row { border-radius: var(--island-control-radius); }
+.app-shell[data-shell-layout="islands"] .nav-row.is-active {
+  background: var(--island-canvas);
+  color: var(--text);
+  box-shadow: var(--island-card-shadow);
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph { color: var(--accent); }
+
+/* Inspector island details */
+.app-shell[data-shell-layout="islands"] .inspector-hero-preview {
+  border-radius: var(--island-inner-radius);
   overflow: hidden;
-  background: var(--pane);
-  border: 1px solid color-mix(in srgb, var(--divider) 60%, transparent);
+  box-shadow: var(--island-card-shadow);
 }
-/* Toolbar + filters float as a translucent strip over the canvas */
-.workspace-bar,
-.workspace-discovery {
-  background: color-mix(in srgb, var(--pane) 78%, transparent) !important;
-  backdrop-filter: blur(14px);
-  border-bottom: 0 !important;
-}
-.workspace-discovery { border-bottom: 1px solid var(--divider-soft) !important; }
-.workspace-canvas { padding-top: 6px; }
-.asset-card {
-  border-radius: 14px !important;
-  border-color: transparent !important;
-  box-shadow: 0 1px 2px rgb(15 20 35 / 6%);
-}
-.asset-preview { border-radius: 14px 14px 0 0 !important; }
-.nav-row { border-radius: 10px; }
-.nav-row.is-active {
-  background: var(--canvas) !important;
-  box-shadow: 0 1px 3px rgb(15 20 35 / 10%);
-  color: var(--text) !important;
-}
-.nav-row.is-active .icon { color: var(--accent); }
-.inspector-hero-preview { border-radius: 14px !important; overflow: hidden; }
-.panel-resizer { opacity: 0; }
+.app-shell[data-shell-layout="islands"] .inspector-tech-bar { border-top-color: var(--island-border); }
+
+/* Resizers live in the gutters; only show on hover/drag. */
+.app-shell[data-shell-layout="islands"] .panel-resizer { opacity: 0; transition: opacity 120ms; }
+.app-shell[data-shell-layout="islands"] .panel-resizer:hover,
+.app-shell[data-shell-layout="islands"].is-resizing .panel-resizer { opacity: 1; }
