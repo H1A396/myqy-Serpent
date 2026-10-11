@@ -34,11 +34,11 @@
   --pane: var(--ui-surface-pane, #2c2e31);
   --raised: var(--ui-surface-raised, #35383b);
   --raised-2: var(--ui-surface-raised-subtle, #3a3d40);
-  --divider: var(--ui-border-divider, #44474a);
-  --divider-soft: var(--ui-border-subtle, #393c3f);
+  --divider: var(--ui-border-divider, #52565a);
+  --divider-soft: var(--ui-border-subtle, #43474b);
   --text: var(--ui-content-primary, #f1f2ef);
-  --secondary: var(--ui-content-secondary, #a9ada9);
-  --tertiary: var(--ui-content-tertiary, #777c79);
+  --secondary: var(--ui-content-secondary, #b7bbb7);
+  --tertiary: var(--ui-content-tertiary, #8b908c);
   /* REQ-THEME-004 / Serpent-gnus: only --accent is a leaf color. soft / ring /
      dark / soft-fg must derive via color-mix so user accent prefs retheme every
      accent surface. Continuous controls (sliders) stay on --secondary. */
@@ -47,8 +47,8 @@
   --warning: var(--ui-status-warning, #d99a3e);
   /* Surface state tokens: quiet, content-first hover/active shades shared by
      nav rows, tool buttons, cards and menus. */
-  --hover: var(--ui-surface-hover, rgb(255 255 255 / 4.5%));
-  --active: var(--ui-surface-pressed, rgb(255 255 255 / 8%));
+  --hover: var(--ui-surface-hover, rgb(255 255 255 / 7%));
+  --active: var(--ui-surface-pressed, rgb(255 255 255 / 12%));
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 14%, transparent));
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 55%, white));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 42%, transparent);
@@ -168,16 +168,16 @@
   --pane: var(--ui-surface-pane, #f4f5f3);
   --raised: var(--ui-surface-raised, #f2f4f0);
   --raised-2: var(--ui-surface-raised-subtle, #f8f9f7);
-  --divider: var(--ui-border-divider, #c9cdc8);
-  --divider-soft: var(--ui-border-subtle, #d8dcd6);
+  --divider: var(--ui-border-divider, #b4bab3);
+  --divider-soft: var(--ui-border-subtle, #c9cec7);
   --text: var(--ui-content-primary, #1c1e1c);
-  --secondary: var(--ui-content-secondary, #5a5f5a);
-  --tertiary: var(--ui-content-tertiary, #8a8f8a);
+  --secondary: var(--ui-content-secondary, #454a45);
+  --tertiary: var(--ui-content-tertiary, #6a706a);
   --accent: #3b82f6;
   --accent-dark: color-mix(in srgb, var(--accent) 78%, black);
   --warning: var(--ui-status-warning, #b45309);
-  --hover: var(--ui-surface-hover, rgb(0 0 0 / 4.5%));
-  --active: var(--ui-surface-pressed, rgb(0 0 0 / 8%));
+  --hover: var(--ui-surface-hover, rgb(0 0 0 / 6.5%));
+  --active: var(--ui-surface-pressed, rgb(0 0 0 / 11%));
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 18%, #ffffff));
   /* Was hardcoded #1d4ed8 — that froze soft labels to blue after accent change. */
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 68%, black));
@@ -212,8 +212,8 @@
   /* Light: softer elev base alphas; still scaled by --elev-* (Serpent-zcyg).
      Toolbar softer/shorter than panes/cards (casts onto browse header too). */
   --shadow-toolbar:
-    0 calc(1px * var(--elev-size)) calc(4px * var(--elev-size))
-    rgb(0 0 0 / calc(0.02 * var(--elev-intensity)));
+    0 calc(1px * var(--elev-size)) calc(6px * var(--elev-size))
+    rgb(0 0 0 / calc(0.05 * var(--elev-intensity)));
   --shadow-pane-east:
     calc(4px * var(--elev-size)) 0 calc(14px * var(--elev-size))
     rgb(0 0 0 / calc(0.08 * var(--elev-intensity)));
@@ -14448,4 +14448,322 @@ select.ai-config-input.ai-config-languages {
   align-items: center;
   justify-content: space-between;
   gap: var(--ui-space-3);
+}
+
+/* === Serpent ui-polish-v2 (stronger hierarchy) ===
+   Fewer, higher-contrast chrome moves for the Windows-style shell
+   (Linux + Windows). Shared shell / nav / library grid / empty / app-settings
+   chrome only. Do not touch caption line-heights (masonry band geometry).
+   Library-settings / sync-binding dialog is excluded from settings overrides. */
+
+/* --- Title bar: distinct chrome strip --- */
+.app-toolbar {
+  border-bottom-color: var(--divider);
+  background: color-mix(in srgb, var(--raised) 72%, var(--pane));
+}
+
+.windows-caption-button {
+  color: color-mix(in srgb, var(--text) 68%, var(--secondary));
+}
+
+.windows-caption-button:hover {
+  color: var(--text);
+}
+
+.windows-window-controls::before {
+  height: 18px;
+  background: color-mix(in srgb, var(--divider) 92%, transparent);
+}
+
+/* --- Main menu: opaque surface + clearer selection --- */
+.main-menu-surface {
+  min-width: 176px;
+  width: 176px;
+  padding: 6px;
+  background: var(--menu-surface-background);
+  border-color: var(--divider);
+  box-shadow: var(--shadow-menu);
+}
+
+.main-menu-submenu {
+  padding: 6px;
+  background: var(--menu-surface-background);
+  border-color: var(--divider);
+}
+
+.main-menu-section,
+.main-menu-item {
+  min-height: 32px;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: calc(13px * var(--ui-font-scale));
+}
+
+.main-menu-trigger:hover:not(:disabled),
+.main-menu-trigger[aria-expanded="true"]:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, var(--hover));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.main-menu-section.is-active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--menu-item-hover-background));
+}
+
+.main-menu-item-shortcut {
+  color: var(--secondary);
+}
+
+/* --- Sidebar: type weight + active fill (no accent edge — REQ-NAV-005) --- */
+.navigation-scroll {
+  padding: 8px 7px 16px;
+}
+
+.nav-section {
+  margin-top: 16px;
+}
+
+.nav-section-heading {
+  height: 24px;
+  margin-bottom: 4px;
+  color: var(--secondary);
+  font-size: calc(10.5px * var(--ui-font-scale));
+  letter-spacing: 0.08em;
+}
+
+.nav-row {
+  /* Keep row height on --shell-control-height; only ink / weight change. */
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--text) 22%, var(--secondary));
+  font-size: calc(12.5px * var(--ui-font-scale));
+  font-weight: 500;
+}
+
+.nav-row:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.nav-row.is-active {
+  background: color-mix(in srgb, var(--text) 11%, var(--hover));
+  color: var(--text);
+  font-weight: 600;
+}
+
+.nav-empty {
+  margin: 4px 6px 2px 28px;
+  padding: 9px 11px;
+  border: 1px dashed color-mix(in srgb, var(--divider) 70%, var(--secondary));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 55%, var(--pane));
+  color: var(--secondary);
+  font-size: calc(11.5px * var(--ui-font-scale));
+  line-height: 1.4;
+}
+
+.tiny-action {
+  width: 22px;
+  height: 22px;
+  color: var(--secondary);
+}
+
+.tiny-action:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* --- Cards: readable surfaces; selection ring stays outward (REQ-SELECT-003) --- */
+.asset-card {
+  border: 1px solid color-mix(in srgb, var(--divider) 78%, transparent);
+  border-radius: 10px;
+  background: var(--raised-2);
+}
+
+.asset-card:hover {
+  background: color-mix(in srgb, var(--hover) 50%, var(--raised-2));
+  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
+}
+
+.asset-card.is-selected {
+  background: color-mix(in srgb, var(--accent) 12%, var(--raised-2));
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.asset-card:focus-visible {
+  outline: none;
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+:root:not([data-elevation="0"]) .asset-card.is-selected,
+:root:not([data-elevation="0"]) .asset-card:focus-visible {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 2px var(--accent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.asset-preview {
+  border-radius: 9px 9px 0 0;
+  background: color-mix(in srgb, var(--canvas) 50%, var(--pane));
+}
+
+.asset-caption {
+  border-top: 1px solid color-mix(in srgb, var(--divider) 60%, transparent);
+}
+
+.asset-caption strong {
+  font-weight: 600;
+}
+
+.asset-caption span {
+  color: var(--secondary);
+}
+
+.asset-grid {
+  gap: 16px;
+  padding: 16px 16px 52px;
+}
+
+/* --- Filter chips: idle edge readable --- */
+.dimension-filter-btn {
+  border-radius: 7px;
+  font-weight: 520;
+}
+
+.dimension-filter-btn:hover:not(:disabled):not(.is-active),
+.dimension-filter-btn.is-open:not(:disabled):not(.is-active) {
+  border-color: color-mix(in srgb, var(--divider) 55%, var(--text));
+}
+
+.discovery-filters > summary {
+  border-radius: 7px;
+  font-weight: 520;
+}
+
+.discovery-filters > summary:hover {
+  border-color: color-mix(in srgb, var(--divider) 50%, var(--text));
+}
+
+/* --- Inspector: secondary labels + field chrome --- */
+.inspector-content {
+  padding: 12px 13px 18px;
+}
+
+.inspector-section h2 {
+  margin: 0 0 8px;
+  color: var(--secondary);
+  font-size: calc(10.5px * var(--ui-font-scale));
+}
+
+.inspector-content .micro-label {
+  color: var(--secondary);
+  font-size: calc(10px * var(--ui-font-scale));
+  letter-spacing: 0.08em;
+}
+
+.inspector-content .text-field {
+  border-color: color-mix(in srgb, var(--divider) 88%, var(--text));
+  background: color-mix(in srgb, var(--canvas) 65%, var(--pane));
+}
+
+.inspector-content .text-field:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--divider));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.inspector-empty p {
+  color: var(--secondary);
+}
+
+/* --- App settings chrome only (exclude library-settings / sync-binding dialog) --- */
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-nav {
+  padding: 12px 9px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--raised) 82%, var(--accent-soft)) 0%,
+      var(--raised) 100%
+    );
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-nav-item {
+  min-height: 32px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: calc(12.5px * var(--ui-font-scale));
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-nav-item.is-active {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--divider));
+  background: color-mix(in srgb, var(--accent) 18%, var(--raised));
+  color: var(--text);
+  font-weight: 600;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-content {
+  gap: 12px;
+  padding: 20px 24px 26px;
+  background: color-mix(in srgb, var(--canvas) 42%, var(--pane));
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-page-heading h3 {
+  font-size: calc(20px * var(--ui-font-scale));
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+
+.app-settings-dialog:not(.library-settings-dialog) .app-settings-card {
+  padding: 15px 16px;
+  border-color: var(--divider);
+  border-radius: 11px;
+  background: var(--raised-2);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+/* --- Browse empty / welcome orbit --- */
+.empty-orbit {
+  width: 64px;
+  height: 64px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 34%, var(--divider));
+  box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.empty-library h1,
+.empty-copy h1 {
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+
+.empty-library p,
+.empty-copy > p {
+  color: var(--secondary);
+}
+
+.empty-state,
+.library-state {
+  border-color: var(--divider);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--raised-2) 70%, var(--pane));
+}
+
+/* --- Focus rings on shell chrome --- */
+.tool-button:focus-visible,
+.main-menu-trigger:focus-visible,
+.app-settings-entry:focus-visible,
+.dimension-filter-btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+.nav-row:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  outline: none;
 }

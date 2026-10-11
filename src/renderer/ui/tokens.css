@@ -65,23 +65,23 @@
   --ui-surface-raised-subtle: #3a3d40;
   --ui-surface-overlay: color-mix(in srgb, var(--ui-surface-raised) 96%, transparent);
   --ui-surface-scrim: rgb(0 0 0 / 46%);
-  --ui-surface-hover: rgb(255 255 255 / 4.5%);
-  --ui-surface-pressed: rgb(255 255 255 / 8%);
+  --ui-surface-hover: rgb(255 255 255 / 7%);
+  --ui-surface-pressed: rgb(255 255 255 / 12%);
   --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 14%, transparent);
   --ui-surface-disabled: color-mix(in srgb, var(--ui-surface-raised) 58%, var(--ui-surface-canvas));
 
   /* Content / icon ink */
   --ui-content-primary: #f1f2ef;
-  --ui-content-secondary: #a9ada9;
-  --ui-content-tertiary: #777c79;
+  --ui-content-secondary: #b7bbb7;
+  --ui-content-tertiary: #8b908c;
   --ui-content-disabled: color-mix(in srgb, var(--ui-content-tertiary) 62%, transparent);
   --ui-content-inverse: #111314;
   --ui-content-on-accent: #ffffff;
   --ui-content-accent: color-mix(in srgb, var(--ui-action-accent) 55%, white);
 
   /* Border / focus */
-  --ui-border-divider: #44474a;
-  --ui-border-subtle: #393c3f;
+  --ui-border-divider: #52565a;
+  --ui-border-subtle: #43474b;
   --ui-border-control: color-mix(in srgb, var(--ui-border-divider) 92%, transparent);
   --ui-border-focus: color-mix(in srgb, var(--ui-action-accent) 72%, transparent);
   --ui-border-selection: var(--ui-action-accent);
@@ -205,23 +205,23 @@
   --ui-surface-raised-subtle: #f8f9f7;
   --ui-surface-overlay: color-mix(in srgb, var(--ui-surface-raised) 96%, transparent);
   --ui-surface-scrim: rgb(0 0 0 / 28%);
-  --ui-surface-hover: rgb(0 0 0 / 4.5%);
-  --ui-surface-pressed: rgb(0 0 0 / 8%);
+  --ui-surface-hover: rgb(0 0 0 / 6.5%);
+  --ui-surface-pressed: rgb(0 0 0 / 11%);
   --ui-surface-selected: color-mix(in srgb, var(--ui-action-accent) 18%, #ffffff);
   --ui-surface-disabled: color-mix(in srgb, var(--ui-surface-raised) 58%, var(--ui-surface-canvas));
 
   /* Content / icon ink */
   --ui-content-primary: #1c1e1c;
-  --ui-content-secondary: #5a5f5a;
-  --ui-content-tertiary: #8a8f8a;
+  --ui-content-secondary: #454a45;
+  --ui-content-tertiary: #6a706a;
   --ui-content-disabled: color-mix(in srgb, var(--ui-content-tertiary) 64%, transparent);
   --ui-content-inverse: #ffffff;
   --ui-content-on-accent: #ffffff;
   --ui-content-accent: color-mix(in srgb, var(--ui-action-accent) 68%, black);
 
   /* Border / focus */
-  --ui-border-divider: #c9cdc8;
-  --ui-border-subtle: #d8dcd6;
+  --ui-border-divider: #b4bab3;
+  --ui-border-subtle: #c9cec7;
   --ui-border-control: color-mix(in srgb, var(--ui-border-divider) 92%, transparent);
   --ui-border-focus: color-mix(in srgb, var(--ui-action-accent) 58%, transparent);
   --ui-border-selection: var(--ui-action-accent);
