@@ -15401,30 +15401,33 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-weight: 600;
 }
 
-/* ==== Shell layout: Islands ===============================================
-   Layout-only: sidebar, workspace and inspector float as rounded islands on a
-   backdrop. Pane/canvas colours, cards, tabs, toolbars and overlays keep their
-   normal styling. Scoped to [data-shell-layout="islands"] (App.tsx). */
+/* ==== Shell layout: Islands + Apple HIG materials =========================
+   Floating rounded islands (layout) evolved toward Finder/Photos/Info-panel
+   materials (clarity, deference, depth). Scoped to [data-shell-layout="islands"].
+   Import/drop overlays and card borders keep their on-dev look. */
 :root {
-  --island-gap: 8px;
-  /* Follow the user's radius setting (dialog tier ≈ 18px at default). */
-  --island-radius: var(--ui-radius-dialog, 18px);
-  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 94%, var(--ui-content-primary));
-  --island-border: rgb(20 24 36 / 6%);
-  --island-shadow: 0 1px 2px rgb(20 24 36 / 4%);
+  --island-gap: 10px;
+  --island-radius: max(12px, var(--ui-radius-dialog, 14px));
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 88%, var(--ui-surface-raised));
+  --island-border: rgb(0 0 0 / 6%);
+  --island-shadow: 0 0.5px 0 rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 4%);
+  --island-select: color-mix(in srgb, var(--accent) 12%, transparent);
+  --island-hairline: rgb(0 0 0 / 6%);
+  --island-group-gap: 18px;
 }
 :root[data-theme="dark"] {
-  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 82%, black);
-  --island-border: rgb(255 255 255 / 6%);
-  --island-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 88%, black);
+  --island-border: rgb(255 255 255 / 7%);
+  --island-shadow: 0 0.5px 0 rgb(255 255 255 / 4%), 0 1px 3px rgb(0 0 0 / 28%);
+  --island-select: color-mix(in srgb, var(--accent) 22%, transparent);
+  --island-hairline: rgb(255 255 255 / 8%);
 }
 
 .app-shell[data-shell-layout="islands"] {
   background-color: var(--island-backdrop);
 }
 
-/* Required for the layout: the title bar must not paint a pane-coloured strip
-   over the backdrop between islands. */
+/* Title bar stays transparent so the backdrop shows between islands. */
 .app-shell[data-shell-layout="islands"] > .app-toolbar {
   border-bottom-color: transparent;
   background: transparent;
@@ -15443,7 +15446,6 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
 .app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
 
-/* Collapsed panes drop the island so a 0px column stays empty. */
 .app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
 .app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
   margin: 0;
@@ -15451,18 +15453,58 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* Islands carry their own border; the legacy 1px top seam would double it. */
 .app-shell[data-shell-layout="islands"] > .navigation-pane::before,
 .app-shell[data-shell-layout="islands"] > .inspector-pane::before {
   content: none;
 }
 
-/* ---- Islands aesthetic polish (still layout-scoped) ----------------------
-   Quiet density/typography only. Does NOT restyle cards, active nav chips,
-   inspector hero rings, import/drop overlays, or active-tab colour. */
+/* Sidebar — Finder/Photos: soft fill selection, medium section titles. */
+.app-shell[data-shell-layout="islands"] .navigation-scroll {
+  padding: 10px 10px 14px;
+}
+.app-shell[data-shell-layout="islands"] .nav-section {
+  margin-top: var(--island-group-gap);
+}
+.app-shell[data-shell-layout="islands"] .nav-section-heading {
+  height: 22px;
+  margin: 0 0 3px;
+  padding: 0 8px 0 10px;
+  color: var(--tertiary);
+  font-size: calc(11px * var(--ui-font-scale));
+  font-weight: 590;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app-shell[data-shell-layout="islands"] .nav-row {
+  min-height: 28px;
+  border-radius: 8px;
+  border-color: transparent;
+  box-shadow: none;
+  font-size: calc(12.5px * var(--ui-font-scale));
+  font-weight: 450;
+}
+.app-shell[data-shell-layout="islands"] .nav-row:hover:not(:disabled):not(.is-active) {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active {
+  background: var(--island-select);
+  color: var(--text);
+  box-shadow: none;
+  border-color: transparent;
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph,
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .icon {
+  color: var(--accent);
+}
+.app-shell[data-shell-layout="islands"] .nav-empty {
+  margin: 2px 0 6px;
+  padding: 2px 8px 2px 50px;
+  color: var(--tertiary);
+  font-size: calc(11px * var(--ui-font-scale));
+}
 
-/* Empty states: soft squircle on the surface radius tier; no glow halo,
-   no dashed frames. Headline quieter so the void reads calm. */
+/* Empty states — quiet squircle; no glow / dashed frames. */
 .app-shell[data-shell-layout="islands"] .empty-orbit {
   width: 48px;
   height: 48px;
@@ -15477,7 +15519,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   margin: 0 0 6px;
   font-size: calc(17px * var(--ui-font-scale));
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 .app-shell[data-shell-layout="islands"] .empty-library p {
   max-width: 340px;
@@ -15500,66 +15542,72 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: var(--tertiary);
 }
 
-/* Sidebar: empty hints align with item labels (past the glyph column);
-   section headings quieter so they read as structure, not chrome. */
-.app-shell[data-shell-layout="islands"] .nav-empty {
-  /* Align with .nav-row-label of first-level folders:
-     disclosure spacer 16 + row gap 2 + row pad-left 7 + glyph 17 + gap 8 = 50. */
-  margin: 2px 0 6px;
-  padding: 2px 8px 2px 50px;
+/* Gallery — Photos air: more vertical breathing; SF caption hierarchy.
+   Card border/shadow stays on-dev. */
+.app-shell[data-shell-layout="islands"] .justified-row {
+  margin-bottom: 16px !important;
+}
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
+  padding: 9px 11px 11px;
+  gap: 3px;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption strong {
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 510;
+  letter-spacing: -0.01em;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > span {
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
 }
-.app-shell[data-shell-layout="islands"] .nav-section {
-  margin-top: 18px;
+.app-shell[data-shell-layout="islands"] .workspace-discovery {
+  gap: 8px;
+  padding: 8px 14px 10px;
+  border-bottom-color: var(--island-hairline);
 }
-.app-shell[data-shell-layout="islands"] .nav-section-heading {
-  height: 22px;
-  margin-bottom: 2px;
-  padding: 0 8px 0 10px;
-  color: var(--tertiary);
-  font-size: calc(10px * var(--ui-font-scale));
-  font-weight: 600;
-  letter-spacing: 0.04em;
+.app-shell[data-shell-layout="islands"] .workspace-bar {
+  border-bottom-color: transparent;
 }
 
-/* Inspector labels: one calm voice for tags/description/author (CJK gains
-   nothing from tracked uppercase). Tech rows share the same left edge. */
+/* Inspector — Info panel groups with hairline separators. */
+.app-shell[data-shell-layout="islands"] .inspector-content {
+  padding: 14px 16px 20px;
+}
 .app-shell[data-shell-layout="islands"] .inspector-section-label,
 .app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
   color: var(--tertiary);
   font-family: var(--font-ui);
   font-size: calc(11px * var(--ui-font-scale));
   font-weight: 560;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   text-transform: none;
 }
 .app-shell[data-shell-layout="islands"] .inspector-content .editor-field {
-  margin-top: 16px;
+  margin-top: 14px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-quick-row {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .inspector-quick-row + .editor-field {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--island-hairline);
 }
 .app-shell[data-shell-layout="islands"] .inspector-tech-bar {
   margin-top: 16px;
-  padding: 12px 2px 4px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--island-hairline);
   gap: 8px 10px;
 }
-.app-shell[data-shell-layout="islands"] .inspector-raw-tech-label {
-  color: var(--tertiary);
-}
+.app-shell[data-shell-layout="islands"] .inspector-raw-tech-label { color: var(--tertiary); }
 .app-shell[data-shell-layout="islands"] .inspector-raw-tech-value {
   color: var(--secondary);
   font-variant-numeric: tabular-nums;
 }
-
-/* Card caption: slightly airier bottom band so meta sits calmly under the
-   preview — no border/shadow/radius changes on the card itself. */
-.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
-.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
-  padding: 10px 12px 12px;
-  gap: 4px;
-}
-
-/* Discovery strip density: one quiet rhythm with the island chrome. */
-.app-shell[data-shell-layout="islands"] .workspace-discovery {
-  gap: 8px;
-  padding: 8px 14px 10px;
+.app-shell[data-shell-layout="islands"] .inspector-hero-preview {
+  border-radius: 10px;
+  overflow: hidden;
 }
