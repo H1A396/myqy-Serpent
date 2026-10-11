@@ -56,6 +56,7 @@ import {
   isBenignThumbnailErrorCode,
 } from "../shared/thumbnail-support";
 import { AssetCardMedia } from "./AssetCardMedia";
+import { FindSimilarBanner } from "./FindSimilarBanner";
 import { useAssetCardHoverPreview } from "./use-asset-card-hover-preview";
 import { SyncCardStatusBadge } from "./SyncCardStatusBadge";
 import { useSyncCardStatuses } from "./use-sync-card-status";
@@ -494,10 +495,33 @@ import type { LibraryNavigationSummary } from "../shared/library-navigation";
 import { LIBRARY_ROOT_FOLDER_ID, isLibraryRootFolderId } from "../shared/library-root-folder";
 import { DEFAULT_COLOR_SIMILARITY } from "../shared/color-filter-presets";
 import { loadColorFilterPreferences } from "./color-filter-preferences";
+import {
+  loadSemanticSearchPreferences,
+  saveSemanticSearchPreferences,
+  subscribeSemanticSearchPreferences,
+  type SemanticSearchPageSize,
+} from "./semantic-search-preferences";
+import { semanticSearchNotice } from "./semantic-index-copy";
+import { mergeKeywordAndSemanticRanks, semanticBrowseRegistration } from "./semantic-browse";
+import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
+import { embeddingServiceTextOnly } from "../shared/embedding/modalities";
+import {
+  resolveLocalSimilarModelId,
+  semanticBackgroundWorkActive,
+  semanticToolbarReady,
+} from "./semantic-work";
+import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-binding";
+import { subscribeEmbeddingCatalog, subscribeEmbeddingInstallActivity } from "./embedding-catalog-events";
+import {
+  resolveFindSimilar,
+  type FindSimilarSource,
+} from "./find-similar";
+import { type EmbeddingIndexSnapshot, type SemanticSearchModelId } from "../shared/embedding/profile";
 import { hasMeaningfulSmartCollectionCondition } from "../shared/smart-collection-query";
 import { compactFormatFilterTokens } from "../shared/text-media";
 import type {
   SerpentLibraryApi,
+  EmbeddingHttpServiceSummary,
   LibraryApiResult,
   ImportValidatedResult,
   MediaJobStatus,
@@ -576,6 +600,7 @@ import {
 } from "./library-transfer-progress";
 import {
   BROWSE_PAGE_SIZE,
+  fetchFirstRankedBrowsePage,
   registerBrowseSearchPage,
   registerBrowseSmartCollectionPage,
   useBrowsePagination,
@@ -849,6 +874,8 @@ function AppInner() {
     targetFolderId: string;
   }>({ folderId: "", name: "", targetFolderId: "" });
   const [assets, setAssets] = useState<AssetSummary[]>([]);
+  const [findSimilarSource, setFindSimilarSource] = useState<FindSimilarSource | null>(null);
+  const findSimilarTokenRef = useRef(0);
   const assetsRef = useRef<AssetSummary[]>([]);
   useEffect(() => {
     assetsRef.current = assets;
@@ -1900,6 +1927,21 @@ function AppInner() {
       );
     },
   });
+  const beginBrowsePageClearingSimilar = useCallback(
+    (...args: Parameters<typeof beginBrowsePage>) => {
+      const definition = args[0];
+      setFindSimilarSource((current) =>
+        current
+        && definition.kind === "search"
+        && definition.similaritySourceAssetId === current.assetId
+        && definition.libraryId === current.libraryId
+          ? current
+          : null,
+      );
+      return beginBrowsePage(...args);
+    },
+    [beginBrowsePage],
+  );
   useEffect(() => {
     activateRenderSnapshotLibrary(library?.libraryId ?? null);
   }, [activateRenderSnapshotLibrary, library?.libraryId]);
@@ -2621,6 +2663,155 @@ function AppInner() {
   const [pluginJobs, setPluginJobs] = useState<PluginJobStatus | null>(null);
   const [hiddenPluginJobActivityId, setHiddenPluginJobActivityId] = useState<string | null>(null);
   const [mediaJobsLoading, setMediaJobsLoading] = useState(false);
+  const [semanticSearchPrefs, setSemanticSearchPrefs] = useState(() => loadSemanticSearchPreferences());
+  const [embeddingIndex, setEmbeddingIndex] = useState<EmbeddingIndexSnapshot>({
+    phase: "unavailable",
+    done: 0,
+    total: 0,
+    failedCount: 0,
+  });
+  const [embeddingBinding, setEmbeddingBinding] = useState<{ selectionId: string | null; enabled: boolean; inherit: boolean } | null>(null);
+  const [embeddingForLibraryId, setEmbeddingForLibraryId] = useState<string | null>(null);
+  const [embeddingInstall, setEmbeddingInstall] = useState<{
+    runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  } | null>(null);
+  const [embeddingServices, setEmbeddingServices] = useState<EmbeddingHttpServiceSummary[]>([]);
+  const [embeddingInstalling, setEmbeddingInstalling] = useState(false);
+  const embeddingRestartRef = useRef(true);
+  const lastStartedSelectionRef = useRef<string | null>(null);
+  const embeddingSelectionRef = useRef<string | null>(null);
+  useEffect(() => subscribeSemanticSearchPreferences(() => {
+    setSemanticSearchPrefs(loadSemanticSearchPreferences());
+  }), []);
+  useEffect(() => subscribeEmbeddingInstallActivity(setEmbeddingInstalling), []);
+  const openLibraryId = library?.libraryId ?? null;
+  useEffect(() => {
+    if (!api || !openLibraryId) return;
+    let cancelled = false;
+    const load = async () => {
+      const [binding, status, services] = await Promise.all([
+        api.embeddingGetBinding({ libraryId: openLibraryId }),
+        api.embeddingInstallStatus(),
+        api.embeddingListServices(),
+      ]);
+      if (cancelled) return;
+      if (binding.ok) setEmbeddingBinding(binding.value);
+      if (status.ok) setEmbeddingInstall(status.value);
+      if (services.ok && services.value) setEmbeddingServices(services.value);
+      setEmbeddingForLibraryId(openLibraryId);
+      const prefs = loadSemanticSearchPreferences();
+      const libraryBinding = binding.ok
+        ? (binding.value.inherit ? undefined : { selectionId: binding.value.selectionId, enabled: binding.value.enabled })
+        : undefined;
+      const selectionId = resolveEffectiveEmbeddingSelection({
+        globalEnabled: prefs.enabled,
+        defaultModelId: prefs.modelId,
+        libraryBinding,
+      });
+      const service = services.ok && services.value
+        ? services.value.find((item) => item.id === selectionId) ?? null
+        : null;
+      const ready = semanticToolbarReady({
+        selectionId,
+        runtimeInstalled: status.ok ? status.value.runtimeInstalled : false,
+        models: status.ok ? status.value.models : [],
+        service,
+      });
+      const bound = Boolean(selectionId) && (
+        service
+          ? service.textStatus === "verified" && service.dimensions != null
+          : ready
+      );
+      if (!bound) setFindSimilarSource(null);
+    };
+    void load();
+    const unsubscribe = subscribeEmbeddingCatalog(() => { void load(); });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [api, openLibraryId]);
+  const activeEmbeddingBinding = embeddingForLibraryId === openLibraryId ? embeddingBinding : null;
+  const embeddingSelectionId = resolveEffectiveEmbeddingSelection({
+    globalEnabled: semanticSearchPrefs.enabled,
+    defaultModelId: semanticSearchPrefs.modelId,
+    libraryBinding: activeEmbeddingBinding == null || activeEmbeddingBinding.inherit
+      ? undefined
+      : { selectionId: activeEmbeddingBinding.selectionId, enabled: activeEmbeddingBinding.enabled },
+  });
+  const embeddingService = embeddingServices.find((service) => service.id === embeddingSelectionId) ?? null;
+  const embeddingSearchReady = semanticToolbarReady({
+    selectionId: embeddingSelectionId,
+    runtimeInstalled: embeddingInstall?.runtimeInstalled ?? false,
+    models: embeddingInstall?.models ?? [],
+    service: embeddingService,
+  });
+  const embeddingBound = Boolean(embeddingSelectionId) && (
+    embeddingService
+      ? embeddingService.textStatus === "verified" && embeddingService.dimensions != null
+      : embeddingSearchReady
+  );
+  const localSimilarModelId = resolveLocalSimilarModelId({
+    runtimeInstalled: embeddingInstall?.runtimeInstalled ?? false,
+    models: embeddingInstall?.models ?? [],
+    preferredModelId: semanticSearchPrefs.modelId,
+  });
+  embeddingSelectionRef.current = embeddingSearchReady ? embeddingSelectionId : null;
+  useEffect(() => {
+    embeddingRestartRef.current = true;
+  }, [embeddingSelectionId, library?.libraryId]);
+  useEffect(() => {
+    if (!api || !library) return;
+    if (!embeddingSearchReady || !embeddingSelectionId) {
+      const previous = lastStartedSelectionRef.current;
+      lastStartedSelectionRef.current = null;
+      if (!previous) return;
+      void api.embeddingIndexStatus({
+        libraryId: library.libraryId,
+        modelId: previous,
+        run: false,
+        restart: false,
+      }).then((result) => {
+        if (result.ok) setEmbeddingIndex(result.value);
+      });
+      return;
+    }
+    lastStartedSelectionRef.current = embeddingSelectionId;
+    let cancelled = false;
+    const tick = () => {
+      const restart = embeddingRestartRef.current;
+      embeddingRestartRef.current = false;
+      void api.embeddingIndexStatus({
+        libraryId: library.libraryId,
+        modelId: embeddingSelectionId,
+        run: true,
+        restart,
+      }).then((result) => {
+        if (cancelled || !result.ok) return;
+        setEmbeddingIndex(result.value);
+      });
+    };
+    tick();
+    const timer = window.setInterval(
+      tick,
+      embeddingIndex.phase === "ready" || embeddingIndex.phase === "failed" || embeddingIndex.phase === "unavailable"
+        ? 5_000
+        : 1_500,
+    );
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    api,
+    library,
+    embeddingSearchReady,
+    embeddingSelectionId,
+    embeddingIndex.phase,
+  ]);
+  const semanticSearchActive = embeddingSearchReady && semanticSearchPrefs.searchMode === "semantic";
   const pluginJobsActive = hasActivePluginJobs(pluginJobs);
   const pluginJobActivityCandidate = selectPluginJobActivity(pluginJobs);
   const pluginJobActivity =
@@ -2636,8 +2827,12 @@ function AppInner() {
     const mediaActive =
       (mediaJobs?.queued ?? 0) + (mediaJobs?.running ?? 0) > 0;
     const aiActive = (aiJobs?.queued ?? 0) + (aiJobs?.running ?? 0) > 0;
-    return mediaActive || aiActive || pluginJobsActive;
-  }, [aiAnalyzing, aiJobs, mediaJobs, pluginJobsActive]);
+    return mediaActive || aiActive || pluginJobsActive || semanticBackgroundWorkActive({
+      installing: embeddingInstalling,
+      enabled: embeddingSearchReady,
+      phase: embeddingIndex.phase,
+    });
+  }, [aiAnalyzing, aiJobs, embeddingIndex.phase, embeddingInstalling, embeddingSearchReady, mediaJobs, pluginJobsActive]);
   const openMediaJobs = useCallback(() => {
     setMediaJobsLoading(true);
     setMediaJobsOpen(true);
@@ -4460,7 +4655,7 @@ function AppInner() {
       );
       // Serpent-ws4k: register the paginated query so the scroll sentinel can
       // append the next page with the exact same scope/sort/filters.
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: activeLibrary.libraryId,
         query: opts?.discovery?.search ?? null,
         filters: opts?.discovery?.filters,
@@ -4519,7 +4714,7 @@ function AppInner() {
     },
     [
       api,
-      beginBrowsePage,
+      beginBrowsePageClearingSimilar,
       ensureLibraryView,
       isCurrentLibraryView,
       locale,
@@ -4546,7 +4741,7 @@ function AppInner() {
     setActiveSmartCollectionId,
     setAssets,
     setSearchTotal,
-    beginBrowsePage,
+    beginBrowsePage: beginBrowsePageClearingSimilar,
     setSelectedAssetId,
     setSelectedAssetIds,
     setAssetSelectionAnchor,
@@ -5142,6 +5337,7 @@ function AppInner() {
   }
 
   function beginWorkspaceNavigation(): () => boolean {
+    findSimilarTokenRef.current += 1;
     const token = (workspaceTabTransitionRef.current += 1);
     workspaceHistoryReplayEpochRef.current += 1;
     return () => workspaceTabTransitionRef.current === token;
@@ -5150,6 +5346,7 @@ function AppInner() {
   function beginWorkspaceNavigationRequest(
     historyMode: WorkspaceNavigationHistoryMode,
   ): WorkspaceNavigationRequest {
+    findSimilarTokenRef.current += 1;
     const token = beginWorkspaceTabNavigation(historyMode);
     const request: WorkspaceNavigationRequest = {
       token,
@@ -5168,6 +5365,7 @@ function AppInner() {
   }
 
   function applyWorkspaceLocationFlags(location: WorkspaceNavLocation): void {
+    if (location.kind === "similar") return;
     setShowTrash(location.kind === "trash");
     setShowTagManagement(location.kind === "tag-management");
     setActivePluginSidebarViewId(
@@ -5581,6 +5779,9 @@ function AppInner() {
         return;
       case "plugin-sidebar":
         await enterPluginSidebarView(location.viewId, request);
+        return;
+      case "similar":
+        await runFindSimilar(location.assetId, request);
         return;
     }
   }
@@ -6523,7 +6724,7 @@ function AppInner() {
       setSearchOffset(0);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -6607,7 +6808,7 @@ function AppInner() {
       setSearchOffset(0);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -7207,7 +7408,7 @@ function AppInner() {
       resetDiscoveryIfNavigationReplacesLive(request);
       api.setActiveContext(targetLibraryId);
       applySearchResult(result.value);
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         scope: { kind: "collection", collectionId, recursive },
@@ -8506,7 +8707,7 @@ function AppInner() {
     applySearchResult(result.value);
     // Serpent-ws4k: subsequent pages must reuse the same query/scope/sort.
     if (activeSmartCollectionId) {
-      registerBrowseSmartCollectionPage(beginBrowsePage, {
+      registerBrowseSmartCollectionPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         collectionId: activeSmartCollectionId,
         sessionId: result.value.sessionId,
@@ -8517,7 +8718,7 @@ function AppInner() {
       });
       setUiState("ready");
     } else {
-      registerBrowseSearchPage(beginBrowsePage, {
+      registerBrowseSearchPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         query: definition.search ?? null,
         filters: definition.filters,
@@ -8545,12 +8746,236 @@ function AppInner() {
     return result.value;
   }
 
+  function showSemanticResults(
+    items: AssetSummary[],
+    rankedAssetIds: readonly string[],
+    rankedPageSize: SemanticSearchPageSize,
+    source?: FindSimilarSource,
+  ) {
+    if (!library) return;
+    setShowTrash(false);
+    setShowTagManagement(false);
+    setActivePluginSidebarViewId(null);
+    setActiveSmartCollectionId(null);
+    if (!pendingRevealRef.current) clearAssetSelection({ preserveFolders: true });
+    const definition = currentQueryDefinition();
+    registerBrowseSearchPage(beginBrowsePageClearingSimilar, semanticBrowseRegistration({
+      libraryId: library.libraryId,
+      query: definition.search ?? null,
+      filters: definition.filters,
+      scope: currentSearchScope(definition.search !== undefined),
+      sort: definition.sort,
+      showIgnored: showIgnoredItems,
+      rankedAssetIds,
+      rankedPageSize,
+      items,
+      ...(source ? { similaritySourceAssetId: source.assetId } : {}),
+    }));
+    if (source) setFindSimilarSource(source);
+  }
+
+  async function runSemanticSearch(query: string, silent?: boolean) {
+    if (!api || !library) return;
+    if (silent && (previewAssetRef.current || previewRestoringRef.current)) return;
+    const modelId = embeddingSelectionRef.current;
+    if (!modelId) return;
+    const searchPreferences = loadSemanticSearchPreferences();
+    const pageSize = searchPreferences.pageSize;
+    const definition = currentQueryDefinition();
+    const searchScope = currentSearchScope(definition.search !== undefined);
+    const request = silent
+      ? { isCurrent: () => true }
+      : beginWorkspaceNavigationRequest("none");
+    try {
+      if (!silent) await closeAssetPreview(false);
+      if (!request.isCurrent()) return;
+      const [ranked, keyword] = await Promise.all([
+        api.embeddingSearch({
+          libraryId: library.libraryId,
+          modelId,
+          query,
+        }),
+        api.searchAssets({
+          libraryId: library.libraryId,
+          query: definition.search ?? null,
+          filters: definition.filters,
+          scope: searchScope,
+          idsOnly: true,
+          showIgnored: showIgnoredItems,
+        }),
+      ]);
+      if (!request.isCurrent()) return;
+      if (!ranked.ok) throw new LibraryOperationError(ranked.error);
+      const keywordAssetIds = keyword.ok ? (keyword.value.assetIds ?? []) : [];
+      const rankedAssetIds = mergeKeywordAndSemanticRanks({
+        keywordAssetIds,
+        semanticAssetIds: ranked.value.assetIds,
+      });
+      if (rankedAssetIds.length === 0) {
+        const notice = semanticSearchNotice({
+          ...ranked.value,
+          matched: 0,
+          textOnly: isEmbeddingServiceSelectionId(modelId) && embeddingServiceTextOnly(embeddingService?.modalities),
+        });
+        setNotice(t(notice.key, notice.params));
+        if (ranked.value.phase === "ready") {
+          showSemanticResults([], [], pageSize);
+        }
+        return;
+      }
+      const firstPage = await fetchFirstRankedBrowsePage({
+        api,
+        libraryId: library.libraryId,
+        rankedAssetIds,
+        pageSize,
+        shouldContinue: () => request.isCurrent(),
+      });
+      if (!request.isCurrent() || !firstPage) return;
+      if (!firstPage.ok) throw new LibraryOperationError(firstPage.error);
+      showSemanticResults(
+        firstPage.value.items,
+        firstPage.value.rankedAssetIds,
+        pageSize,
+      );
+      setNotice(null);
+    } catch (caught) {
+      if (request.isCurrent()) {
+        setError(toMessage(caught, t("toast.searchFailed"), locale));
+        if (!silent) setWorkspaceNavigationPending(false);
+      }
+    } finally {
+      if (request.isCurrent()) setUiState("ready");
+    }
+  }
+
+  async function describeSimilarSource(assetId: string): Promise<FindSimilarSource | null> {
+    if (!api || !library) return null;
+    const known = assetsRef.current.find((asset) => asset.assetId === assetId);
+    const listed = known
+      ? null
+      : await api.listAssets({
+          libraryId: library.libraryId,
+          recursive: true,
+          assetIds: [assetId],
+        });
+    if (listed && !listed.ok) throw new LibraryOperationError(listed.error);
+    const asset = known ?? listed?.value[0];
+    const coverUrl = asset
+      ? resolveAssetCardCoverUrl({
+          libraryId: library.libraryId,
+          assetId: asset.assetId,
+          mediaType: asset.mediaType,
+          availability: asset.availability,
+          deletedAt: asset.deletedAt,
+          thumbnailStatus: asset.thumbnailStatus,
+          thumbnailArtifactId: asset.thumbnailArtifactId,
+        }).url
+      : null;
+    return {
+      libraryId: library.libraryId,
+      workspaceTabId: workspaceTabsState.activeTabId,
+      assetId,
+      displayName: asset?.displayName ?? "",
+      coverUrl,
+    };
+  }
+
+  async function runFindSimilar(
+    assetId: string,
+    navigation?: WorkspaceNavigationRequest,
+  ) {
+    if (!api || !library) return;
+    const modelId = embeddingSelectionRef.current;
+    if (!modelId) return;
+    const preferences = loadSemanticSearchPreferences();
+    const token = ++findSimilarTokenRef.current;
+    const polling = () =>
+      findSimilarTokenRef.current === token && (navigation?.isCurrent() ?? true);
+    let page;
+    try {
+      page = await resolveFindSimilar({
+        query: async () => {
+          const result = await api.embeddingSimilar({
+            libraryId: library.libraryId,
+            modelId,
+            assetId,
+          });
+          if (!result.ok) throw new LibraryOperationError(result.error);
+          return { status: result.value.status, assetIds: result.value.assetIds };
+        },
+        shouldContinue: polling,
+        delay: (milliseconds) => new Promise((resolve) => {
+          window.setTimeout(resolve, milliseconds);
+        }),
+        onPreparing: () => setNotice(t("settings.semanticSearch.similarPreparing")),
+      });
+    } catch (caught) {
+      if (polling()) setError(toMessage(caught, t("toast.searchFailed"), locale));
+      return;
+    }
+    if (!page || !polling()) return;
+    if (page.status === "unsupported") {
+      setNotice(t("settings.semanticSearch.similarUnsupported"));
+      return;
+    }
+    if (page.status === "unavailable") {
+      setNotice(t("settings.semanticSearch.similarUnavailable"));
+      return;
+    }
+    const request = navigation ?? beginWorkspaceNavigationRequest("push");
+    if (!request.isCurrent()) return;
+    try {
+      if (!navigation) await closeAssetPreview(false);
+      if (!request.isCurrent()) return;
+      const source = await describeSimilarSource(assetId);
+      if (!request.isCurrent() || !source) return;
+      if (page.assetIds.length === 0) {
+        showSemanticResults([], [], preferences.pageSize, source);
+        setNotice(t("settings.semanticSearch.similarEmpty"));
+      } else {
+        const firstPage = await fetchFirstRankedBrowsePage({
+          api,
+          libraryId: library.libraryId,
+          rankedAssetIds: page.assetIds,
+          pageSize: preferences.pageSize,
+          shouldContinue: () => request.isCurrent(),
+        });
+        if (!request.isCurrent() || !firstPage) return;
+        if (!firstPage.ok) throw new LibraryOperationError(firstPage.error);
+        showSemanticResults(
+          firstPage.value.items,
+          firstPage.value.rankedAssetIds,
+          preferences.pageSize,
+          source,
+        );
+        setNotice(null);
+      }
+      if (!navigation) {
+        recordNavigation({ kind: "similar", assetId }, request);
+        finishWorkspaceNavigation(request);
+      }
+    } catch (caught) {
+      if (request.isCurrent()) {
+        setError(toMessage(caught, t("toast.searchFailed"), locale));
+        if (!navigation) setWorkspaceNavigationPending(false);
+      }
+    } finally {
+      if (request.isCurrent()) setUiState("ready");
+    }
+  }
+
   async function runSearch(
     event?: FormEvent,
     opts?: { silent?: boolean },
   ) {
     event?.preventDefault();
     if (!api || !library) return;
+    const semanticQuery = searchValue.trim();
+    const semantic = loadSemanticSearchPreferences();
+    if (semantic.searchMode === "semantic" && embeddingSelectionRef.current && semanticQuery) {
+      await runSemanticSearch(semanticQuery, opts?.silent);
+      return;
+    }
     if (opts?.silent && (previewAssetRef.current || previewRestoringRef.current)) {
       return;
     }
@@ -8742,7 +9167,7 @@ function AppInner() {
         ),
       );
       applySearchResult(result.value);
-      registerBrowseSmartCollectionPage(beginBrowsePage, {
+      registerBrowseSmartCollectionPage(beginBrowsePageClearingSimilar, {
         libraryId: targetLibraryId,
         collectionId,
         sessionId: result.value.sessionId,
@@ -9605,6 +10030,7 @@ function AppInner() {
     setFolders([]);
     setLinkedFolders([]);
     setAssets([]);
+    setFindSimilarSource(null);
     setBrowseLayout([]);
     setVirtualBrowseLayout(null);
     setLayoutThumbnailArtifacts({ libraryId: "", ids: new Map() });
@@ -9699,6 +10125,7 @@ function AppInner() {
       // to rm the library root, then wait one paint so handles actually close.
       flushSync(() => {
         setAssets([]);
+        setFindSimilarSource(null);
         setSelectedAssetIds([]);
         setSelectedAssetId(undefined);
         setHoveredAssetId(null);
@@ -13044,7 +13471,9 @@ function AppInner() {
               tabs={workspaceTabPresentations}
               onAdd={() => void addWorkspaceTab()}
               onClose={(tabId) => void closeWorkspaceTab(tabId)}
-              onSelect={(tabId) => void selectWorkspaceTab(tabId)}
+              onSelect={(tabId) => {
+                void selectWorkspaceTab(tabId);
+              }}
               onReorder={(tabId, toIndex) => moveWorkspaceTab(tabId, toIndex)}
               onContextMenu={(tabId, position) => {
                 const tab = workspaceTabPresentations.find(
@@ -13071,7 +13500,7 @@ function AppInner() {
             role="search"
           >
             <div
-              className={`search-control-wrap${searchValue.trim() ? " has-value" : ""}`}
+              className={`search-control-wrap${searchValue.trim() ? " has-value" : ""}${semanticSearchActive ? " is-semantic" : ""}`}
             >
               <Icon name="search" size={15} />
               <input
@@ -13168,6 +13597,40 @@ function AppInner() {
                   }}
                 />
               )}
+              <button
+                aria-disabled={!library || !embeddingSearchReady}
+                aria-label={t("toolbar.semanticSearch")}
+                aria-pressed={semanticSearchActive}
+                className={`search-semantic-toggle${semanticSearchActive ? " is-active" : ""}`}
+                data-hover-tip={
+                  !embeddingSearchReady
+                    ? t("toolbar.semanticSearchNeedsSetup")
+                    : embeddingIndex.phase === "starting" || embeddingIndex.phase === "indexing"
+                      ? t("toolbar.semanticSearchIndexing")
+                      : t(
+                        embeddingService
+                          ? "toolbar.semanticSearchHintText"
+                          : "toolbar.semanticSearchHint",
+                      )
+                }
+                disabled={!library}
+                onClick={() => {
+                  if (!embeddingSearchReady) return;
+                  const current = loadSemanticSearchPreferences();
+                  const active = current.searchMode === "semantic";
+                  saveSemanticSearchPreferences({
+                    version: 1,
+                    enabled: current.enabled,
+                    modelId: current.modelId,
+                    searchMode: active ? "keyword" : "semantic",
+                    pageSize: current.pageSize,
+                  });
+                  if (searchValue.trim()) void runSearch();
+                }}
+                type="button"
+              >
+                <Icon name="smart" size={13} />
+              </button>
               <button
                 aria-label={t("toolbar.searchSyntax")}
                 className="search-syntax-help"
@@ -13853,6 +14316,16 @@ function AppInner() {
                 document.body,
               )
             : null}
+        {findSimilarSource
+          && findSimilarSource.libraryId === library?.libraryId
+          && findSimilarSource.workspaceTabId === workspaceTabsState.activeTabId
+          && !previewAsset ? (
+            <FindSimilarBanner
+              coverUrl={findSimilarSource.coverUrl}
+              displayName={findSimilarSource.displayName}
+              onBack={() => void goWorkspaceBack()}
+            />
+          ) : null}
         <div
           className={`workspace-canvas${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}${externalDropActive ? " is-external-drop" : ""}`}
           onDragEnter={handleExternalDragEnter}
@@ -15129,6 +15602,7 @@ function AppInner() {
             fields: { ...current.fields, badgeSync: checked },
           }));
         }}
+        embeddingServicesApi={api ?? undefined}
         syncServerCallbacks={{
           async syncListServers() {
             if (!api) return { ok: false, message: t("common.unavailable") };
@@ -15239,6 +15713,33 @@ function AppInner() {
           },
         }}
         syncProgress={syncProgress}
+        embeddingIndex={embeddingBound ? embeddingIndex : null}
+        embeddingCallbacks={{
+          async listServices() {
+            if (!api) return { ok: false };
+            const result = await api.embeddingListServices();
+            if (!result.ok || !result.value) return { ok: false };
+            return { ok: true, value: result.value };
+          },
+          async installStatus() {
+            if (!api) return { ok: false };
+            const result = await api.embeddingInstallStatus();
+            if (!result.ok) return { ok: false };
+            return { ok: true, value: result.value };
+          },
+          async getBinding(input) {
+            if (!api) return { ok: false };
+            const result = await api.embeddingGetBinding(input);
+            if (!result.ok) return { ok: false };
+            return { ok: true, value: result.value };
+          },
+          async saveBinding(input) {
+            if (!api) return { ok: false };
+            const result = await api.embeddingSaveBinding(input);
+            if (!result.ok) return { ok: false };
+            return { ok: true };
+          },
+        }}
       />
       <OpenSyncLibraryDialog
         callbacks={{
@@ -15539,6 +16040,7 @@ function AppInner() {
         mediaJobs={mediaJobs}
         mediaJobsLoading={mediaJobsLoading}
         aiJobs={aiJobs}
+        embeddingIndex={embeddingSearchReady && embeddingSelectionId ? { modelId: embeddingSelectionId, snapshot: embeddingIndex, modalities: embeddingService?.modalities } : null}
         pluginJobs={pluginJobs}
         onClose={() => setMediaJobsOpen(false)}
         onControlMediaJobs={(action, jobIds) => void controlMediaJobs(action, jobIds)}
@@ -15764,6 +16266,13 @@ function AppInner() {
         onRevealInFolder={(assetId) => { void handleRevealInFolder(assetId); }}
         onShowInLibraryFolder={(assetId) => {
           void showAssetInContainingFolder(assetId);
+        }}
+        semanticSearchEnabled={embeddingBound}
+        embeddingSelectionId={embeddingSelectionId}
+        embeddingModalities={embeddingService?.modalities ?? null}
+        localSimilarModelReady={Boolean(localSimilarModelId)}
+        onFindSimilar={(assetId) => {
+          void runFindSimilar(assetId);
         }}
         onCopyFilePath={(assetId) => { void handleCopyFilePath(assetId); }}
         onCopyAssetFiles={(assetIds) => {

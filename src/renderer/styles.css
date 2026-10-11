@@ -1632,6 +1632,12 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   border-color: var(--divider);
 }
 
+.search-control-wrap.is-semantic {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--divider));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-soft) 80%, transparent);
+}
+
+.search-control-wrap.is-semantic:focus-within,
 .search-control-wrap:focus-within {
   border-color: color-mix(in srgb, var(--accent) 62%, var(--divider));
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -1643,7 +1649,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   height: 100%;
   min-width: 0;
   max-width: none;
-  padding: 0 34px 0 7px;
+  padding: 0 56px 0 7px;
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -1651,7 +1657,57 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .search-control-wrap.has-value .search-control {
-  padding-right: 59px;
+  padding-right: 80px;
+}
+
+.search-semantic-toggle {
+  position: absolute;
+  top: 50%;
+  right: 28px;
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--divider-soft) 66%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--raised) 54%, transparent);
+  color: var(--tertiary);
+  cursor: pointer;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.search-control-wrap.has-value .search-semantic-toggle {
+  right: 52px;
+}
+
+.search-semantic-toggle:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--divider) 78%, transparent);
+  background: color-mix(in srgb, var(--raised-2) 74%, transparent);
+  color: var(--secondary);
+}
+
+.search-semantic-toggle.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+}
+
+.search-semantic-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.search-semantic-toggle:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.media-jobs-embedding-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .search-syntax-help {
@@ -1676,7 +1732,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .search-control-wrap.has-value .search-syntax-help {
-  right: 29px;
+  right: 28px;
 }
 
 .search-history-popover {
@@ -7187,6 +7243,375 @@ body.serpent-modal-open .app-shell {
   }
 }
 
+/* Semantic search settings: tabs + install card + separate batch group. */
+.semantic-search-layout {
+  display: grid;
+  gap: 12px;
+}
+
+.semantic-enable-card,
+.semantic-search-card,
+.semantic-batch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.semantic-search-card.is-dimmed {
+  opacity: 0.72;
+}
+
+.semantic-default-model-select {
+  min-width: 200px;
+  max-width: min(280px, 100%);
+}
+
+.semantic-settings-tabs {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 70%, var(--pane));
+}
+
+.semantic-settings-tab {
+  min-width: 72px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--secondary);
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.semantic-settings-tab:hover:not(.is-active) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--hover) 80%, transparent);
+}
+
+.semantic-settings-tab.is-active {
+  background: var(--pane);
+  color: var(--text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.semantic-settings-tabpanel {
+  display: grid;
+  gap: 10px;
+}
+
+.semantic-settings-toolbar {
+  align-items: center;
+  gap: 16px;
+}
+
+.semantic-settings-toolbar .app-settings-row-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.semantic-custom-header {
+  align-items: flex-start;
+}
+
+.semantic-custom-header .semantic-install-icon-button,
+.semantic-custom-header .primary-button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 1px;
+}
+
+.semantic-service-form .settings-error-message {
+  margin: 0;
+}
+
+.semantic-settings-segment {
+  flex: 0 0 auto;
+  margin-top: 0;
+  align-self: center;
+}
+
+.semantic-model-list {
+  display: grid;
+  gap: 8px;
+}
+
+.semantic-model-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 55%, var(--pane));
+}
+
+.semantic-model-card-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.semantic-model-card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.semantic-model-card-title-row strong {
+  color: var(--text);
+  font-size: calc(13px * var(--ui-font-scale));
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.semantic-model-card-copy > span {
+  color: var(--secondary);
+  font-size: calc(11px * var(--ui-font-scale));
+  line-height: 1.45;
+}
+
+.semantic-model-size {
+  color: var(--tertiary) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.semantic-model-card-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 0;
+}
+
+.semantic-install-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-fg, #fff);
+  cursor: pointer;
+}
+
+.semantic-install-icon-button:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.semantic-install-icon-button.is-secondary {
+  border-color: var(--divider);
+  background: transparent;
+  color: var(--text);
+}
+
+.semantic-install-icon-button.is-secondary:hover:not(:disabled) {
+  background: var(--hover);
+  filter: none;
+}
+
+.semantic-install-icon-button.is-danger {
+  border-color: color-mix(in srgb, var(--danger, #d14343) 35%, var(--divider));
+  background: transparent;
+  color: var(--danger, #d14343);
+}
+
+.semantic-install-icon-button.is-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #d14343) 12%, transparent);
+  filter: none;
+}
+
+.semantic-install-icon-button:disabled,
+.semantic-install-icon-button:disabled:hover {
+  opacity: 1;
+  cursor: default;
+  filter: none;
+  background: color-mix(in srgb, var(--raised) 82%, var(--pane));
+  color: color-mix(in srgb, var(--tertiary) 88%, var(--secondary));
+  border-color: color-mix(in srgb, var(--divider) 92%, transparent);
+  box-shadow: none;
+}
+
+.semantic-modality-row {
+  margin-top: 2px;
+  gap: 4px 16px;
+  justify-content: flex-start;
+}
+
+.semantic-service-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(11px * var(--ui-font-scale)) !important;
+  color: var(--tertiary) !important;
+}
+
+.semantic-install-progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--raised-2, var(--raised)) 70%, var(--pane));
+}
+
+.semantic-install-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text);
+  font-size: calc(11px * var(--ui-font-scale));
+  font-weight: 560;
+}
+
+.semantic-install-progress-bar {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.semantic-model-card .sync-status-indicator {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.semantic-service-status-label {
+  color: var(--text);
+  font-weight: 560;
+}
+
+.semantic-service-status-reason {
+  min-width: 0;
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* Library settings → Semantic search: match Sync / AI analysis polish. */
+.library-semantic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.library-semantic-card > .app-settings-row,
+.library-semantic-card > .library-settings-gitignore-actions,
+.library-semantic-card > .library-semantic-notice {
+  margin: 0;
+}
+
+.library-semantic-card > .app-settings-row-stack {
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
+.library-semantic-select {
+  width: min(100%, 420px);
+  max-width: 100%;
+}
+
+.library-semantic-status-row {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.library-semantic-status-row .app-settings-row-copy {
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+
+.library-semantic-status-row .app-settings-row-copy span {
+  line-height: 1.5;
+}
+
+.library-semantic-status-row .sync-status-indicator {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.library-semantic-notice {
+  margin-top: 10px;
+}
+
+.semantic-custom-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.semantic-service-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px 14px 13px;
+  border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 55%, var(--pane));
+}
+
+.semantic-service-form .ai-config-field {
+  margin: 0;
+}
+
+.semantic-service-form .ai-config-input::placeholder {
+  color: var(--tertiary);
+}
+
+.semantic-service-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+  .semantic-settings-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .semantic-settings-segment {
+    align-self: stretch;
+  }
+
+  .semantic-settings-tabs {
+    width: 100%;
+  }
+
+  .semantic-settings-tab {
+    flex: 1 1 0;
+  }
+
+  .semantic-model-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .semantic-model-card-action {
+    justify-content: flex-end;
+  }
+}
+
 /* Serpent-xffq: 同步连接/同步状态指示（复用 AI 连接指示的视觉语言）。 */
 .sync-status-indicator {
   display: inline-flex;
@@ -9371,6 +9796,17 @@ select.ai-config-input.ai-config-languages {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
+}
+
+.embedding-api-options {
+  flex-direction: column;
+}
+
+.embedding-api-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
 }
 
 .app-settings-row-inline {
@@ -11766,6 +12202,69 @@ select.ai-config-input.ai-config-languages {
   font-size: calc(9px * var(--ui-font-scale));
   line-height: 1.45;
   pointer-events: none;
+}
+
+.find-similar-banner {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin: 8px 12px 0;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--text);
+}
+
+.find-similar-banner-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: calc(12px * var(--ui-font-scale));
+  cursor: pointer;
+}
+
+.find-similar-banner-back:hover {
+  background: var(--menu-item-hover-background);
+}
+
+.find-similar-banner-thumb {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--raised-2);
+}
+
+.find-similar-banner-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.find-similar-banner-copy strong {
+  font-size: calc(13px * var(--ui-font-scale));
+  font-weight: 560;
+}
+
+.find-similar-banner-copy span {
+  overflow: hidden;
+  color: var(--secondary);
+  font-size: calc(12px * var(--ui-font-scale));
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Type chip (GIF / VIDEO / TEXT) bottom-right when extension is absent. */

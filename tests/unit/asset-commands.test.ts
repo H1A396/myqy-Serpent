@@ -29,6 +29,7 @@ function makeActions(calls: RecordedCall[]): AssetCommandActions {
     openExternal: record('openExternal'),
     revealInFolder: record('revealInFolder'),
     showInLibraryFolder: record('showInLibraryFolder'),
+    findSimilar: record('findSimilar'),
     copyFiles: record('copyFiles'),
     pasteIntoFolder: record('pasteIntoFolder'),
     copyFilePath: record('copyFilePath'),
@@ -62,6 +63,9 @@ function makeCtx(
     activeCollectionId: null,
     aiCanAnalyze: true,
     pasteTargetFolderId: 'folder-1',
+    semanticSearchEnabled: false,
+    similarImageSupported: false,
+    similarSourceDamaged: false,
     actions: makeActions(calls),
     ...overrides,
   };
@@ -199,6 +203,59 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
       'asset.restore',
       'asset.delete-permanent',
     ]);
+  });
+
+  it('语义搜索开启后，找相似紧跟所在文件夹；不支持的类型禁用', () => {
+    const enabled = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: true,
+    });
+    const ids = resolveIds(enabled.ctx);
+    expect(ids.indexOf('asset.find-similar')).toBe(
+      ids.indexOf('asset.show-in-library-folder') + 1,
+    );
+    expect(findItem(registry.resolveMenu(enabled.ctx), 'asset.find-similar').disabled).toBe(false);
+
+    const unsupported = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: false,
+    });
+    const item = findItem(registry.resolveMenu(unsupported.ctx), 'asset.find-similar');
+    expect(item.disabled).toBe(true);
+    expect(item.disabledReason).toBe('当前模型不支持此类资产');
+  });
+
+  it('自定义服务和未声明的模态使用各自的禁用说明', () => {
+    const service = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: false,
+      similarBlockedReason: 'service',
+    });
+    expect(findItem(registry.resolveMenu(service.ctx), 'asset.find-similar').disabledReason)
+      .toBe('请先安装本机模型，再按图查找相似资产');
+    const modality = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: false,
+      similarBlockedReason: 'modality',
+    });
+    expect(findItem(registry.resolveMenu(modality.ctx), 'asset.find-similar').disabledReason)
+      .toBe('当前模型未声明支持此类内容');
+  });
+
+  it('损坏的图片不能用来找相似', () => {
+    const { ctx } = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: true,
+      similarSourceDamaged: true,
+    });
+    const item = findItem(registry.resolveMenu(ctx), 'asset.find-similar');
+    expect(item.disabled).toBe(true);
+    expect(item.disabledReason).toBe('该文件已损坏，无法参与语义搜索');
+  });
+
+  it('回收站里不显示找相似', () => {
+    const { ctx } = makeCtx({ semanticSearchEnabled: true, assetDeleted: true });
+    expect(resolveIds(ctx)).not.toContain('asset.find-similar');
   });
 });
 
@@ -448,7 +505,7 @@ describe('run 委托到 actions 回调包', () => {
 });
 
 describe('注册表完整性', () => {
-  it('17 条定义全部注册且 id 唯一（createCommandRegistry 未抛错）', () => {
+  it('18 条定义全部注册且 id 唯一（createCommandRegistry 未抛错）', () => {
     expect(registry.list().map((def) => def.id)).toEqual([
       'asset.restore',
       'asset.delete-permanent',
@@ -456,6 +513,7 @@ describe('注册表完整性', () => {
       'asset.open-external',
       'asset.reveal-in-folder',
       'asset.show-in-library-folder',
+      'asset.find-similar',
       'asset.remove-from-current-collection',
       'asset.relink',
       'asset.move-to-folder',
