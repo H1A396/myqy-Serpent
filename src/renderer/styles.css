@@ -15407,7 +15407,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
    normal styling. Scoped to [data-shell-layout="islands"] (App.tsx). */
 :root {
   --island-gap: 8px;
-  --island-radius: 18px;
+  /* Follow the user's radius setting (dialog tier ≈ 18px at default). */
+  --island-radius: var(--ui-radius-dialog, 18px);
   --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 94%, var(--ui-content-primary));
   --island-border: rgb(20 24 36 / 6%);
   --island-shadow: 0 1px 2px rgb(20 24 36 / 4%);
@@ -15454,4 +15455,109 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] > .navigation-pane::before,
 .app-shell[data-shell-layout="islands"] > .inspector-pane::before {
   content: none;
+}
+
+/* ---- Islands aesthetic polish (still layout-scoped) ----------------------
+   Quiet density/typography only. Does NOT restyle cards, active nav chips,
+   inspector hero rings, import/drop overlays, or active-tab colour. */
+
+/* Empty states: soft squircle on the surface radius tier; no glow halo,
+   no dashed frames. Headline quieter so the void reads calm. */
+.app-shell[data-shell-layout="islands"] .empty-orbit {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  border: 1px solid var(--divider-soft);
+  border-radius: var(--ui-radius-surface, 14px);
+  background: color-mix(in srgb, var(--accent) 6%, var(--raised));
+  box-shadow: none;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+}
+.app-shell[data-shell-layout="islands"] .empty-library h1 {
+  margin: 0 0 6px;
+  font-size: calc(17px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.app-shell[data-shell-layout="islands"] .empty-library p {
+  max-width: 340px;
+  color: var(--tertiary);
+  font-size: calc(12px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .inspector-empty-frame {
+  border: 1px solid var(--divider-soft);
+  border-radius: var(--ui-radius-control, 10px);
+  background: var(--raised);
+}
+.app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
+.app-shell[data-shell-layout="islands"] .inspector-empty > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--divider-soft);
+  border-radius: var(--ui-radius-control, 10px);
+  background: var(--raised);
+  color: var(--tertiary);
+}
+
+/* Sidebar: empty hints align with item labels (past the glyph column);
+   section headings quieter so they read as structure, not chrome. */
+.app-shell[data-shell-layout="islands"] .nav-empty {
+  margin: 2px 8px 6px;
+  padding: 2px 0 2px 31px;
+  color: var(--tertiary);
+  font-size: calc(11px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .nav-section {
+  margin-top: 18px;
+}
+.app-shell[data-shell-layout="islands"] .nav-section-heading {
+  height: 22px;
+  margin-bottom: 2px;
+  padding: 0 8px 0 10px;
+  color: var(--tertiary);
+  font-size: calc(10px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Inspector labels: one calm voice for tags/description/author (CJK gains
+   nothing from tracked uppercase). Tech rows share the same left edge. */
+.app-shell[data-shell-layout="islands"] .inspector-section-label,
+.app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
+  color: var(--tertiary);
+  font-family: var(--font-ui);
+  font-size: calc(11px * var(--ui-font-scale));
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+.app-shell[data-shell-layout="islands"] .inspector-content .editor-field {
+  margin-top: 16px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-tech-bar {
+  margin-top: 16px;
+  padding: 12px 2px 4px;
+  gap: 8px 10px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-raw-tech-label {
+  color: var(--tertiary);
+}
+.app-shell[data-shell-layout="islands"] .inspector-raw-tech-value {
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card caption: slightly airier bottom band so meta sits calmly under the
+   preview — no border/shadow/radius changes on the card itself. */
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
+  padding: 10px 12px 12px;
+  gap: 4px;
+}
+
+/* Discovery strip density: one quiet rhythm with the island chrome. */
+.app-shell[data-shell-layout="islands"] .workspace-discovery {
+  gap: 8px;
+  padding: 8px 14px 10px;
 }
