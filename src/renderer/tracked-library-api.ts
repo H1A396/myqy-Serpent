@@ -96,6 +96,7 @@ const LIBRARY_WRITE_METHODS: ReadonlySet<keyof SerpentLibraryApi> = new Set([
   "embeddingDeleteModel",
   "embeddingSetDefaultModel",
   "embeddingInstall",
+  "embeddingSaveBinding",
   "syncSaveBinding",
   "syncOpenRemoteLibrary",
   "syncRun",

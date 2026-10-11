@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Icon } from "./Icons";
 import { useT } from "./i18n";
 
 export function FindSimilarBanner({
@@ -23,7 +24,8 @@ export function FindSimilarBanner({
         <strong>{t("settings.semanticSearch.similarBanner")}</strong>
         {displayName ? <span>{displayName}</span> : null}
       </span>
-      <button className="secondary-button" onClick={onBack} type="button">
+      <button className="find-similar-banner-back" onClick={onBack} type="button">
+        <Icon name="chevron-left" size={14} />
         {t("settings.semanticSearch.similarBack")}
       </button>
     </div>

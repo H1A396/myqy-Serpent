@@ -11780,10 +11780,31 @@ select.ai-config-input.ai-config-languages {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--divider);
+  margin: 8px 12px 0;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
   background: var(--raised);
   color: var(--text);
+}
+
+.find-similar-banner-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: calc(12px * var(--ui-font-scale));
+  cursor: pointer;
+}
+
+.find-similar-banner-back:hover {
+  background: var(--menu-item-hover-background);
 }
 
 .find-similar-banner-thumb {

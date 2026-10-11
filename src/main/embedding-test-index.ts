@@ -161,6 +161,7 @@ export class EmbeddingTestIndex {
     cacheDirectory: string;
     configDirectories: readonly string[];
     requestWorker: (command: WorkerCommand) => Promise<WorkerResult>;
+    installedLayout?: (modelId: SemanticSearchModelId) => LocalEmbeddingTestConfig | null;
   }) {}
 
   async close(): Promise<void> {
@@ -322,7 +323,9 @@ export class EmbeddingTestIndex {
       if (current.phase === "starting" || current.phase === "indexing" || current.phase === "ready") return;
       if (!request.restart) return;
     }
-    const config = readLocalEmbeddingTestConfig(this.options.configDirectories);
+    const config = readLocalEmbeddingTestConfig(this.options.configDirectories)
+      ?? this.options.installedLayout?.(request.modelId)
+      ?? null;
     if (!config || !localEmbeddingFilesReady(config, request.modelId)) {
       this.#generation += 1;
       void this.#closeSession();

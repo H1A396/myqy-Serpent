@@ -57,6 +57,8 @@ export interface AssetCommandContext extends CommandContext {
   readonly semanticSearchEnabled: boolean;
   /** Original still, or another asset that already has a thumbnail. */
   readonly similarImageSupported: boolean;
+  /** Why find-similar stays disabled after the asset itself can be encoded. */
+  readonly similarBlockedReason?: "service" | "modality" | null;
   /** Preview failed or the revision row is gone. Do not search with it. */
   readonly similarSourceDamaged: boolean;
   readonly actions: AssetCommandActions;
@@ -166,6 +168,8 @@ export const assetCommandDefinitions: readonly AssetCommandDefinition[] = [
     visible: (ctx) => ctx.semanticSearchEnabled && !ctx.assetDeleted,
     disabledReason: (ctx) => {
       if (ctx.similarSourceDamaged) return t(ctx, 'command.reason.similarDamaged');
+      if (ctx.similarBlockedReason === "service") return t(ctx, 'command.reason.similarService');
+      if (ctx.similarBlockedReason === "modality") return t(ctx, 'command.reason.similarModality');
       return ctx.similarImageSupported ? null : t(ctx, 'command.reason.similarUnsupported');
     },
     run: (ctx) => withPrimaryAsset(ctx, (id) => ctx.actions.findSimilar(id)),

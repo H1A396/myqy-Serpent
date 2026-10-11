@@ -2083,13 +2083,27 @@ export const library: SerpentLibraryApi = Object.freeze({
     const result = await request({ type: 'embedding.install.status.request' });
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.install.status') throw new Error('Unexpected embedding install status response.');
-    return { ok: true as const, value: { runtimeInstalled: result.runtimeInstalled, models: result.models } };
+    return {
+      ok: true as const,
+      value: {
+        runtimeInstalled: result.runtimeInstalled,
+        runtimeDownloadable: result.runtimeDownloadable,
+        models: result.models,
+      },
+    };
   },
   async embeddingInstall(input: { modelId: 'embeddinggemma-2-compact' | 'embeddinggemma-2-balanced' | 'embeddinggemma-2-quality' }) {
     const result = await request({ type: 'embedding.install.start.request', modelId: input.modelId });
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.install.status') throw new Error('Unexpected embedding install response.');
-    return { ok: true as const, value: { runtimeInstalled: result.runtimeInstalled, models: result.models } };
+    return {
+      ok: true as const,
+      value: {
+        runtimeInstalled: result.runtimeInstalled,
+        runtimeDownloadable: result.runtimeDownloadable,
+        models: result.models,
+      },
+    };
   },
   async embeddingIndexStatus(input: {
     libraryId: string;
@@ -2141,10 +2155,13 @@ export const library: SerpentLibraryApi = Object.freeze({
   async embeddingSaveService(input: {
     id?: string;
     name: string;
+    adapter?: 'openai-embeddings-v1' | 'dashscope-multimodal-v1';
     destination: 'loopback' | 'lan' | 'internet';
     baseUrl: string;
     modelName: string;
     apiKey?: string;
+    modalities?: Array<'image' | 'video' | 'audio' | 'text'>;
+    dimensions?: number | null;
   }) {
     const result = await request({ type: 'embedding.services.save.request', ...input });
     if (!result.ok) return failure(result);
@@ -2168,6 +2185,18 @@ export const library: SerpentLibraryApi = Object.freeze({
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.service.granted') throw new Error('Unexpected embedding service grant response.');
     return { ok: true as const, value: { id: result.id } };
+  },
+  async embeddingGetBinding({ libraryId }: { libraryId: string }) {
+    const result = await request({ type: 'embedding.binding.get.request', libraryId });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'embedding.binding') throw new Error('Unexpected embedding binding response.');
+    return { ok: true as const, value: { selectionId: result.selectionId, enabled: result.enabled } };
+  },
+  async embeddingSaveBinding(input: { libraryId: string; selectionId: string | null }) {
+    const result = await request({ type: 'embedding.binding.save.request', ...input });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'embedding.binding') throw new Error('Unexpected embedding binding save response.');
+    return { ok: true as const, value: { selectionId: result.selectionId, enabled: result.enabled } };
   },
   async embeddingSimilar(input: {
     libraryId: string;

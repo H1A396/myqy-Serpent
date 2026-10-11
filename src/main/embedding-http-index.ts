@@ -11,9 +11,11 @@ import {
 } from "./embedding-test-index";
 import {
   embeddingHttpProfileKey,
+  type EmbeddingHttpAdapter,
   type EmbeddingServiceDestination,
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
+import type { EmbeddingModality } from "../shared/embedding/modalities";
 import {
   embeddingSourcePlan,
   embeddingTextRevision,
@@ -33,12 +35,14 @@ type JobState = EmbeddingIndexSnapshot & {
 
 export type EmbeddingHttpServiceView = {
   id: string;
+  adapter: EmbeddingHttpAdapter;
   destination: EmbeddingServiceDestination;
   baseUrl: string;
   modelName: string;
   textStatus: EmbeddingTextStatus;
   dimensions: number | null;
   grantedLibraryIds: readonly string[];
+  modalities: readonly EmbeddingModality[];
 };
 
 export class EmbeddingHttpIndex {
@@ -91,7 +95,7 @@ export class EmbeddingHttpIndex {
     void this.#encode(generation, request.libraryId, request.modelId);
     const snapshot = this.#snapshot();
     const service = this.options.loadService(request.modelId);
-    if (!service || service.textStatus !== "verified" || !service.dimensions) {
+    if (!textServiceReady(service)) {
       this.#write(generation, { phase: "unavailable" });
       return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
     }
@@ -107,6 +111,8 @@ export class EmbeddingHttpIndex {
       const [vector] = await postEmbeddingHttp({
         baseUrl: service.baseUrl,
         modelName: service.modelName,
+        adapter: service.adapter,
+        dimensions: service.dimensions,
         inputs: [request.query],
         apiKey: this.options.readKey(service.id),
       });
@@ -127,6 +133,8 @@ export class EmbeddingHttpIndex {
   }
 
   handleSimilar(request: { libraryId: string; modelId: string; assetId: string }): RendererResult {
+    // Text search can use OpenAI-compatible and DashScope multimodal adapters.
+    // Encoding a library asset for find-similar is not implemented for either.
     return {
       ok: true,
       type: "embedding.similar",
@@ -158,7 +166,7 @@ export class EmbeddingHttpIndex {
   async #encode(generation: number, libraryId: string, serviceId: string): Promise<void> {
     if (this.#running) return;
     const service = this.options.loadService(serviceId);
-    if (!service || service.textStatus !== "verified" || !service.dimensions) {
+    if (!textServiceReady(service)) {
       this.#write(generation, { phase: "unavailable", hold: undefined });
       return;
     }
@@ -171,6 +179,7 @@ export class EmbeddingHttpIndex {
       const targets = await this.#listText(libraryId);
       if (this.#state?.generation !== generation) return;
       const profileKey = embeddingHttpProfileKey({
+        adapter: service.adapter,
         baseUrl: service.baseUrl,
         modelName: service.modelName,
         dimensions: service.dimensions,
@@ -196,6 +205,8 @@ export class EmbeddingHttpIndex {
           const [vector] = await postEmbeddingHttp({
             baseUrl: service.baseUrl,
             modelName: service.modelName,
+            adapter: service.adapter,
+            dimensions: service.dimensions,
             inputs: [document],
             apiKey: this.options.readKey(service.id),
           });
@@ -317,4 +328,15 @@ export class EmbeddingHttpIndex {
       rmSync(temporary, { force: true });
     }
   }
+}
+
+function textServiceReady(
+  service: EmbeddingHttpServiceView | null,
+): service is EmbeddingHttpServiceView & { dimensions: number } {
+  return Boolean(
+    service
+    && service.textStatus === "verified"
+    && service.dimensions
+    && service.modalities.includes("text"),
+  );
 }

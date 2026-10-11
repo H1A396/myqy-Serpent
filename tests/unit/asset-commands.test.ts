@@ -225,6 +225,23 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
     expect(item.disabledReason).toBe('当前模型不支持此类资产');
   });
 
+  it('自定义服务和未声明的模态使用各自的禁用说明', () => {
+    const service = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: false,
+      similarBlockedReason: 'service',
+    });
+    expect(findItem(registry.resolveMenu(service.ctx), 'asset.find-similar').disabledReason)
+      .toBe('自定义服务目前不能用来找相似');
+    const modality = makeCtx({
+      semanticSearchEnabled: true,
+      similarImageSupported: false,
+      similarBlockedReason: 'modality',
+    });
+    expect(findItem(registry.resolveMenu(modality.ctx), 'asset.find-similar').disabledReason)
+      .toBe('这个模型没有声明支持这类内容');
+  });
+
   it('损坏的图片不能用来找相似', () => {
     const { ctx } = makeCtx({
       semanticSearchEnabled: true,

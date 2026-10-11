@@ -78,6 +78,15 @@ import { tryHandleEmbeddingModelRequest } from "./library-request/embedding-mode
 import { EmbeddingTestIndex } from "./embedding-test-index";
 import { EmbeddingHttpIndex } from "./embedding-http-index";
 import {
+  embeddingSearchRoots,
+  inspectEmbeddingTree,
+  resolveInstalledEmbeddingLayout,
+} from "./embedding-install";
+import {
+  parseEmbeddingBindings,
+  type EmbeddingLibraryBinding,
+} from "./embedding-library-binding";
+import {
   parseEmbeddingServiceCatalog,
   type EmbeddingServiceCatalog,
 } from "./embedding-service-registry";
@@ -512,6 +521,10 @@ function embeddingIndex(): EmbeddingTestIndex {
       if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
       return workerClient.request(command);
     },
+    installedLayout: (modelId) => resolveInstalledEmbeddingLayout(inspectEmbeddingTree(embeddingSearchRoots({
+      userData: app.getPath("userData"),
+      home: app.getPath("home"),
+    })), modelId),
   });
   return embeddingTestIndex;
 }
@@ -1219,6 +1232,22 @@ function readEmbeddingServices(): unknown {
 
 function writeEmbeddingServices(catalog: EmbeddingServiceCatalog): void {
   writeFileSync(embeddingServicesPath(), JSON.stringify(catalog, null, 2), "utf-8");
+}
+
+function embeddingBindingsPath(): string {
+  return path.join(app.getPath("userData"), "embedding-library-bindings.json");
+}
+
+function readEmbeddingBindings(): Record<string, EmbeddingLibraryBinding> {
+  try {
+    return parseEmbeddingBindings(JSON.parse(readFileSync(embeddingBindingsPath(), "utf-8")) as unknown);
+  } catch {
+    return {};
+  }
+}
+
+function writeEmbeddingBindings(bindings: Record<string, EmbeddingLibraryBinding>): void {
+  writeFileSync(embeddingBindingsPath(), JSON.stringify(bindings, null, 2), "utf-8");
 }
 
 function embeddingServiceKeyPath(id: string): string {
@@ -2708,6 +2737,8 @@ async function commandFor(
     case "embedding.services.delete.request":
     case "embedding.services.probe.request":
     case "embedding.services.grant.request":
+    case "embedding.binding.get.request":
+    case "embedding.binding.save.request":
     case "embedding.install.status.request":
     case "embedding.install.start.request":
     case "embedding.index.status.request":
@@ -2868,6 +2899,8 @@ async function handleLibraryRequest(
       },
       userDataPath: () => app.getPath("userData"),
       homePath: () => app.getPath("home"),
+      readBindings: readEmbeddingBindings,
+      writeBindings: writeEmbeddingBindings,
       embeddingIndex: embeddingIndex(),
       embeddingHttpIndex: embeddingHttp(),
       stopGemmaIndex: () => { void embeddingTestIndex?.close(); },

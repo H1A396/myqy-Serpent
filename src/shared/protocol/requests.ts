@@ -1401,10 +1401,13 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('embedding.services.save.request'),
     id: z.string().regex(/^svc_[a-z0-9]{8,40}$/).optional(),
     name: nonBlankString.max(80),
+    adapter: z.enum(['openai-embeddings-v1', 'dashscope-multimodal-v1']).optional(),
     destination: z.enum(['loopback', 'lan', 'internet']),
     baseUrl: nonBlankString.max(300),
     modelName: nonBlankString.max(120),
     apiKey: z.string().max(2048).optional(),
+    modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4).optional(),
+    dimensions: z.number().int().min(1).max(8192).nullable().optional(),
   }),
   z.strictObject({
     type: z.literal('embedding.services.delete.request'),
@@ -1418,6 +1421,15 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('embedding.services.grant.request'),
     id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
     libraryId: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('embedding.binding.get.request'),
+    libraryId: identifierSchema,
+  }),
+  z.strictObject({
+    type: z.literal('embedding.binding.save.request'),
+    libraryId: identifierSchema,
+    selectionId: z.union([z.null(), embeddingSelectionIdSchema]),
   }),
   z.strictObject({
     type: z.literal('embedding.install.status.request'),

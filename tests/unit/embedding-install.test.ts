@@ -6,8 +6,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   embeddingDownloadUrl,
+  embeddingInstallBytes,
   inspectEmbeddingTree,
   installedSemanticModels,
+  pinnedLlamaRuntimeUrl,
+  resolveInstalledEmbeddingLayout,
+  runtimeArchiveEntryAllowed,
 } from "../../src/main/embedding-install";
 import { EMBEDDING_GEMMA2_MODEL_REVISION } from "../../src/shared/embedding/profile";
 
@@ -39,5 +43,27 @@ describe("embedding install lookup", () => {
     expect(embeddingDownloadUrl("embeddinggemma-2-UD-Q4_K_XL.gguf")).toBe(
       `https://huggingface.co/unsloth/embeddinggemma-2-GGUF/resolve/${EMBEDDING_GEMMA2_MODEL_REVISION}/embeddinggemma-2-UD-Q4_K_XL.gguf`,
     );
+    expect(pinnedLlamaRuntimeUrl("llama-b11457-bin-macos-arm64.tar.gz")).toMatch(/^https:\/\/github\.com\/ggml-org\/llama\.cpp\/releases\/download\/b11457\//);
+    expect(runtimeArchiveEntryAllowed("../llama-server")).toBe(false);
+    expect(runtimeArchiveEntryAllowed("build/bin/llama-server")).toBe(true);
+  });
+
+  it("reserves space for a missing runtime and resolves the installed compact layout", () => {
+    expect(embeddingInstallBytes({
+      modelId: "embeddinggemma-2-compact",
+      alreadyFound: new Set(["embeddinggemma-2-UD-Q4_K_XL.gguf", "mmproj-Q8_0.gguf"]),
+      runtimeFound: false,
+      platform: "darwin",
+      arch: "arm64",
+    })).toBeGreaterThan(0);
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-embedding-layout-"));
+    const models = path.join(root, "models");
+    mkdirSync(models, { recursive: true });
+    writeFileSync(path.join(models, "embeddinggemma-2-UD-Q4_K_XL.gguf"), "");
+    writeFileSync(path.join(models, "mmproj-Q8_0.gguf"), "");
+    writeFileSync(path.join(models, "llama-server"), "");
+    const inspection = inspectEmbeddingTree([{ path: root, restrictNames: false }]);
+    expect(resolveInstalledEmbeddingLayout(inspection, "embeddinggemma-2-compact", "darwin")?.modelDirectory).toBe(models);
+    expect(resolveInstalledEmbeddingLayout(inspection, "embeddinggemma-2-quality", "darwin")).toBeNull();
   });
 });

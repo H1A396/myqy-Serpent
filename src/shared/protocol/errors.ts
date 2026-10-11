@@ -129,7 +129,7 @@ export const PUBLIC_ERROR_MESSAGES = {
   EMBEDDING_MODEL_INVALID:
     'This semantic model could not be saved. Check the name, weight tier, model folder, and runtime path.',
   EMBEDDING_INSTALL_FAILED:
-    'Serpent could not install this semantic model. Check the network and try again.',
+    'Serpent could not install this semantic model. Check the network and free disk space, then try again.',
   EMBEDDING_SERVICE_INVALID:
     'This embedding service could not be saved. Check the name, address, and model name.',
 } as const;

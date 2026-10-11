@@ -2,21 +2,31 @@ import { randomUUID } from "node:crypto";
 
 import {
   embeddingHttpProfileKey,
+  isEmbeddingHttpAdapter,
   normalizeEmbeddingServiceUrl,
+  parseEmbeddingDimensions,
   validateEmbeddingServiceDraft,
+  type EmbeddingHttpAdapter,
   type EmbeddingServiceDestination,
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
+import {
+  explicitEmbeddingModalities,
+  normalizeEmbeddingModalities,
+  type EmbeddingModality,
+} from "../shared/embedding/modalities";
 
 export type EmbeddingServiceRecord = {
   id: string;
   name: string;
+  adapter: EmbeddingHttpAdapter;
   destination: EmbeddingServiceDestination;
   baseUrl: string;
   modelName: string;
   textStatus: EmbeddingTextStatus;
   dimensions: number | null;
   grantedLibraryIds: string[];
+  modalities: EmbeddingModality[];
 };
 
 export type EmbeddingServiceCatalog = {
@@ -53,7 +63,7 @@ export function parseEmbeddingServiceCatalog(input: unknown): EmbeddingServiceCa
   if (!Array.isArray(services)) return emptyEmbeddingServiceCatalog();
   return {
     version: 1,
-    services: services.filter(isServiceRecord),
+    services: services.filter(isServiceRecord).map(withServiceDefaults),
   };
 }
 
@@ -67,6 +77,7 @@ export function summarizeEmbeddingServices(
     hasCredential: credentials.has(service.id),
     profileKey: service.textStatus === "verified" && service.dimensions
       ? embeddingHttpProfileKey({
+        adapter: service.adapter,
         baseUrl: service.baseUrl,
         modelName: service.modelName,
         dimensions: service.dimensions,
@@ -81,31 +92,56 @@ export function saveEmbeddingService(
   input: {
     id?: string;
     name: string;
+    adapter?: EmbeddingHttpAdapter;
     destination: EmbeddingServiceDestination;
     baseUrl: string;
     modelName: string;
     apiKey?: string;
+    modalities?: readonly EmbeddingModality[];
+    dimensions?: number | null;
   },
 ): EmbeddingServiceCatalog {
-  const issue = validateEmbeddingServiceDraft(input);
+  const modalities = input.modalities === undefined
+    ? ["text" as const]
+    : explicitEmbeddingModalities(input.modalities);
+  const dimensions = input.dimensions === undefined || input.dimensions === null
+    ? input.dimensions ?? null
+    : parseEmbeddingDimensions(input.dimensions);
+  const adapter = input.adapter ?? "openai-embeddings-v1";
+  const issue = validateEmbeddingServiceDraft({
+    ...input,
+    ...(modalities ? { modalities } : { modalities: [] }),
+    dimensions: input.dimensions === undefined ? null : dimensions,
+  });
   const url = normalizeEmbeddingServiceUrl(input.baseUrl);
-  if (issue || !url) throw new EmbeddingServiceRegistryError("invalid");
+  if (issue || !url || !modalities || !isEmbeddingHttpAdapter(adapter)) {
+    throw new EmbeddingServiceRegistryError("invalid");
+  }
+  if (input.dimensions != null && dimensions === null) throw new EmbeddingServiceRegistryError("invalid");
   const id = input.id ?? createEmbeddingServiceId();
   if (!SERVICE_ID.test(id)) throw new EmbeddingServiceRegistryError("invalid");
   const existing = catalog.services.find((service) => service.id === id);
-  const sameTarget = existing
+  const modelName = input.modelName.trim();
+  const sameEndpoint = Boolean(existing
     && existing.baseUrl === url.baseUrl
-    && existing.modelName === input.modelName.trim()
-    && existing.destination === input.destination;
+    && existing.modelName === modelName
+    && existing.destination === input.destination
+    && existing.adapter === adapter);
+  const nextDimensions = input.dimensions === undefined
+    ? (sameEndpoint && existing ? existing.dimensions : null)
+    : dimensions;
+  const sameTarget = sameEndpoint && existing?.dimensions === nextDimensions;
   const next: EmbeddingServiceRecord = {
     id,
     name: input.name.trim(),
+    adapter,
     destination: input.destination,
     baseUrl: url.baseUrl,
-    modelName: input.modelName.trim(),
-    textStatus: sameTarget ? existing.textStatus : "declared",
-    dimensions: sameTarget ? existing.dimensions : null,
-    grantedLibraryIds: sameTarget ? [...existing.grantedLibraryIds] : [],
+    modelName,
+    textStatus: sameTarget && existing ? existing.textStatus : "declared",
+    dimensions: nextDimensions,
+    grantedLibraryIds: sameTarget && existing ? [...existing.grantedLibraryIds] : [],
+    modalities,
   };
   if (input.apiKey !== undefined) {
     const key = input.apiKey.trim();
@@ -156,7 +192,10 @@ export function markEmbeddingServiceProbe(
     version: 1,
     services: catalog.services.map((service) => {
       if (service.id !== id) return service;
-      if (!result.ok) return { ...service, textStatus: "failed", dimensions: null };
+      if (!result.ok) return { ...service, textStatus: "failed" };
+      if (service.dimensions != null && service.dimensions !== result.dimensions) {
+        return { ...service, textStatus: "failed" };
+      }
       return { ...service, textStatus: "verified", dimensions: result.dimensions };
     }),
   };
@@ -185,4 +224,13 @@ function isServiceRecord(value: unknown): value is EmbeddingServiceRecord {
     && (record.dimensions === null || (typeof record.dimensions === "number" && Number.isInteger(record.dimensions) && record.dimensions > 0))
     && Array.isArray(record.grantedLibraryIds)
     && record.grantedLibraryIds.every((id) => typeof id === "string");
+}
+
+function withServiceDefaults(record: EmbeddingServiceRecord): EmbeddingServiceRecord {
+  const adapter = isEmbeddingHttpAdapter(String(record.adapter)) ? record.adapter : "openai-embeddings-v1";
+  return {
+    ...record,
+    adapter,
+    modalities: normalizeEmbeddingModalities(record.modalities),
+  };
 }

@@ -1,5 +1,6 @@
 import type { EmbeddingGemmaTier, EmbeddingIndexSnapshot, EmbeddingModelSummary, SemanticSearchModelId } from './embedding/profile';
-import type { EmbeddingServiceDestination, EmbeddingTextStatus } from './embedding/http-service';
+import type { EmbeddingHttpAdapter, EmbeddingServiceDestination, EmbeddingTextStatus } from './embedding/http-service';
+import type { EmbeddingModality } from './embedding/modalities';
 import type { PublicError, PublicErrorReason } from './protocol/errors';
 import type { LibraryNavigationSummary } from './library-navigation';
 import type { MutationReceipt } from './performance-contract';
@@ -38,14 +39,21 @@ export interface SemanticSearchAssetScore {
 export interface EmbeddingHttpServiceSummary {
   id: string;
   name: string;
+  adapter: EmbeddingHttpAdapter;
   destination: EmbeddingServiceDestination;
   baseUrl: string;
   modelName: string;
   textStatus: EmbeddingTextStatus;
   dimensions: number | null;
+  modalities: EmbeddingModality[];
   grantedLibraryIds: string[];
   hasCredential: boolean;
   profileKey: string | null;
+}
+
+export interface EmbeddingLibraryBinding {
+  selectionId: string | null;
+  enabled: boolean;
 }
 
 import type {
@@ -772,10 +780,12 @@ export interface SerpentLibraryApi {
   embeddingSetDefaultModel(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingInstallStatus(): Promise<LibraryApiResult<{
     runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
     models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
   }>>;
   embeddingInstall(input: { modelId: SemanticSearchModelId }): Promise<LibraryApiResult<{
     runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
     models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
   }>>;
   embeddingIndexStatus(input: {
@@ -806,10 +816,13 @@ export interface SerpentLibraryApi {
   embeddingSaveService(input: {
     id?: string;
     name: string;
+    adapter?: EmbeddingHttpAdapter;
     destination: "loopback" | "lan" | "internet";
     baseUrl: string;
     modelName: string;
     apiKey?: string;
+    modalities?: EmbeddingModality[];
+    dimensions?: number | null;
   }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingDeleteService(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingProbeService(input: { id: string }): Promise<LibraryApiResult<{
@@ -818,6 +831,8 @@ export interface SerpentLibraryApi {
     dimensions: number | null;
   }>>;
   embeddingGrantService(input: { id: string; libraryId: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingGetBinding(input: { libraryId: string }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
+  embeddingSaveBinding(input: { libraryId: string; selectionId: string | null }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
   /** Serpent-xffq: 保存库绑定（服务器 + 可选同步文件夹名，默认库名；enabled=自动同步开关；pollIntervalMs=云端轮询间隔；showCardSyncStatus=卡片同步状态）。 */
   syncSaveBinding(input: { libraryId: string; serverId: string; directoryName?: string; enabled?: boolean; pollIntervalMs?: number; showCardSyncStatus?: boolean }): Promise<LibraryApiResult<void>>;
   /** Serpent-xffq: 读取库绑定。 */

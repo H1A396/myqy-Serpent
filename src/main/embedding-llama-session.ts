@@ -150,6 +150,7 @@ export async function startLlamaEmbeddingSession(input: {
     "--host", "127.0.0.1",
     "--port", String(port),
   ], {
+    cwd: path.dirname(input.executable),
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,

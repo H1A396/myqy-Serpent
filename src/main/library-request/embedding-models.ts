@@ -11,11 +11,18 @@ import {
   type EmbeddingModelCatalog,
 } from "../embedding-model-catalog";
 import {
-  downloadMissingTierFiles,
+  EmbeddingInstallError,
   embeddingSearchRoots,
   inspectEmbeddingTree,
+  installEmbeddingFiles,
   installedSemanticModels,
+  pinnedLlamaRuntimeAsset,
 } from "../embedding-install";
+import { probeFreeBytes } from "../disk-free-space";
+import {
+  writeEmbeddingBinding,
+  type EmbeddingLibraryBinding,
+} from "../embedding-library-binding";
 import {
   deleteEmbeddingService,
   EmbeddingServiceRegistryError,
@@ -28,7 +35,7 @@ import {
   type EmbeddingServiceCredentialStore,
 } from "../embedding-service-registry";
 import { probeEmbeddingHttp } from "../embedding-http";
-import { EmbeddingHttpIndex } from "../embedding-http-index";
+import type { EmbeddingHttpIndex } from "../embedding-http-index";
 import { isEmbeddingServiceSelectionId } from "../../shared/embedding/http-service";
 import { isSemanticSearchModelId, SEMANTIC_SEARCH_MODEL_IDS, type SemanticSearchModelId } from "../../shared/embedding/profile";
 import type { EmbeddingTestIndex } from "../embedding-test-index";
@@ -44,6 +51,8 @@ export type EmbeddingModelRuntime = {
   serviceCredentials?: EmbeddingServiceCredentialStore;
   userDataPath: () => string;
   homePath: () => string;
+  readBindings?: () => Record<string, EmbeddingLibraryBinding>;
+  writeBindings?: (bindings: Record<string, EmbeddingLibraryBinding>) => void;
   embeddingIndex?: EmbeddingTestIndex;
   embeddingHttpIndex?: EmbeddingHttpIndex;
   stopGemmaIndex?: () => void;
@@ -77,11 +86,20 @@ export async function tryHandleEmbeddingModelRequest(
       return probeService(request.id, runtime);
     case "embedding.services.grant.request":
       return grantService(request.id, request.libraryId, runtime);
+    case "embedding.binding.get.request":
+      return readBinding(request.libraryId, runtime);
+    case "embedding.binding.save.request":
+      return saveBinding(request.libraryId, request.selectionId, runtime);
     case "embedding.install.status.request":
       return installStatus(runtime);
     case "embedding.install.start.request":
       return installModel(request.modelId, runtime);
     case "embedding.index.status.request":
+      if (!request.run) {
+        runtime.stopGemmaIndex?.();
+        runtime.stopHttpIndex?.();
+        return unavailableIndex();
+      }
       if (isEmbeddingServiceSelectionId(request.modelId)) {
         runtime.stopGemmaIndex?.();
         return runtime.embeddingHttpIndex?.handleStatus(request) ?? unavailableIndex();
@@ -152,6 +170,7 @@ function installStatus(runtime: EmbeddingModelRuntime): RendererResult {
     ok: true,
     type: "embedding.install.status",
     runtimeInstalled: inspection.runtimeFound,
+    runtimeDownloadable: pinnedLlamaRuntimeAsset(process.platform, process.arch) !== null,
     models: SEMANTIC_SEARCH_MODEL_IDS.map((modelId) => ({
       modelId,
       installed: installed.has(modelId),
@@ -162,17 +181,28 @@ function installStatus(runtime: EmbeddingModelRuntime): RendererResult {
 async function installModel(modelId: SemanticSearchModelId, runtime: EmbeddingModelRuntime): Promise<RendererResult> {
   const current = installStatus(runtime);
   if (!current.ok || current.type !== "embedding.install.status") return current;
-  if (current.models.some((model) => model.modelId === modelId && model.installed)) return current;
+  const modelInstalled = current.models.some((model) => model.modelId === modelId && model.installed);
+  if (modelInstalled && current.runtimeInstalled) return current;
+  const destinationDir = path.join(runtime.userDataPath(), "embedding-models");
+  const inspection = inspectEmbeddingTree(embeddingSearchRoots({
+    userData: runtime.userDataPath(),
+    home: runtime.homePath(),
+  }));
   try {
-    await downloadMissingTierFiles(
+    const freeBytes = await probeFreeBytes(destinationDir);
+    await installEmbeddingFiles({
       modelId,
-      path.join(runtime.userDataPath(), "embedding-models"),
-      new Set(inspectEmbeddingTree(embeddingSearchRoots({
-        userData: runtime.userDataPath(),
-        home: runtime.homePath(),
-      })).files.keys()),
-    );
-  } catch {
+      destinationDir,
+      alreadyFound: new Set(inspection.files.keys()),
+      runtimeFound: inspection.runtimeFound,
+      platform: process.platform,
+      arch: process.arch,
+      freeBytes,
+    });
+  } catch (error) {
+    if (error instanceof EmbeddingInstallError && error.kind === "space") {
+      return { ok: false, error: createPublicError("DISK_FULL") };
+    }
     return { ok: false, error: createPublicError("EMBEDDING_INSTALL_FAILED") };
   }
   return installStatus(runtime);
@@ -307,6 +337,8 @@ async function probeService(id: string, runtime: EmbeddingModelRuntime): Promise
     const probed = await probeEmbeddingHttp({
       baseUrl: service.baseUrl,
       modelName: service.modelName,
+      adapter: service.adapter,
+      dimensions: service.dimensions,
       apiKey: runtime.serviceCredentials.read(id),
     });
     runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: true, dimensions: probed.dimensions }));
@@ -315,6 +347,40 @@ async function probeService(id: string, runtime: EmbeddingModelRuntime): Promise
     runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: false }));
     return { ok: true, type: "embedding.service.probed", id, textStatus: "failed", dimensions: null };
   }
+}
+
+function readBinding(libraryId: string, runtime: EmbeddingModelRuntime): RendererResult {
+  const binding = runtime.readBindings?.()[libraryId] ?? { selectionId: null, enabled: false };
+  return {
+    ok: true,
+    type: "embedding.binding",
+    libraryId,
+    selectionId: binding.selectionId,
+    enabled: binding.enabled,
+  };
+}
+
+function saveBinding(
+  libraryId: string,
+  selectionId: string | null,
+  runtime: EmbeddingModelRuntime,
+): RendererResult {
+  if (!runtime.readBindings || !runtime.writeBindings) {
+    return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
+  }
+  const next = writeEmbeddingBinding(runtime.readBindings(), libraryId, selectionId);
+  const saved = next[libraryId] ?? { selectionId: null, enabled: false };
+  if (selectionId && saved.selectionId !== selectionId) {
+    return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
+  }
+  runtime.writeBindings(next);
+  return {
+    ok: true,
+    type: "embedding.binding",
+    libraryId,
+    selectionId: saved.selectionId,
+    enabled: saved.enabled,
+  };
 }
 
 function grantService(id: string, libraryId: string, runtime: EmbeddingModelRuntime): RendererResult {

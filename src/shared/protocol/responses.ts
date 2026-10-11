@@ -2584,11 +2584,13 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
     services: z.array(z.strictObject({
       id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
       name: nonBlankString.max(80),
+      adapter: z.enum(['openai-embeddings-v1', 'dashscope-multimodal-v1']),
       destination: z.enum(['loopback', 'lan', 'internet']),
       baseUrl: nonBlankString.max(300),
       modelName: nonBlankString.max(120),
       textStatus: z.enum(['unsupported', 'declared', 'verified', 'failed']),
-      dimensions: z.number().int().positive().nullable(),
+      dimensions: z.number().int().positive().max(8192).nullable(),
+      modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4),
       grantedLibraryIds: z.array(nonBlankString.max(255)).max(100),
       hasCredential: z.boolean(),
       profileKey: z.string().nullable(),
@@ -2618,8 +2620,19 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({
     ok: z.literal(true),
+    type: z.literal('embedding.binding'),
+    libraryId: nonBlankString.max(255),
+    selectionId: z.union([
+      z.null(),
+      z.string().regex(/^(?:embeddinggemma-2-(?:compact|balanced|quality)|svc_[a-z0-9]{8,40})$/),
+    ]),
+    enabled: z.boolean(),
+  }),
+  z.strictObject({
+    ok: z.literal(true),
     type: z.literal('embedding.install.status'),
     runtimeInstalled: z.boolean(),
+    runtimeDownloadable: z.boolean(),
     models: z.array(z.strictObject({
       modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
       installed: z.boolean(),
