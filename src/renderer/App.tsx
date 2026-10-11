@@ -13612,6 +13612,7 @@ function AppInner() {
               selectedAssets={selectedVisibleAssets}
               context={pluginSurfaceContext}
             />
+            <span className="tool-separator" />
             <WorkspaceToolsOverflow
               items={[
                 {
