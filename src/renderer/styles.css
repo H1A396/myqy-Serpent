@@ -15402,48 +15402,32 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 
 /* ==== Shell layout: Islands ===============================================
-   Sidebar, workspace and inspector float as rounded islands on a tinted
-   backdrop. Scoped to [data-shell-layout="islands"] (set on .app-shell in
-   App.tsx) so specificity beats the legacy pane rules without !important.
-   All geometry/colour comes from the --island-* tokens below. */
+   Layout-only: sidebar, workspace and inspector float as rounded islands on a
+   backdrop. Pane/canvas colours, cards, tabs, toolbars and overlays keep their
+   normal styling. Scoped to [data-shell-layout="islands"] (App.tsx). */
 :root {
   --island-gap: 8px;
-  --island-radius: 18px;            /* surface tier */
-  --island-inner-radius: 12px;      /* cards / hero, nested tier */
-  --island-control-radius: 10px;    /* rows / chips */
-  --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 60%, var(--ui-surface-raised-subtle)));
-  --island-surface: var(--ui-surface-raised-subtle);
-  --island-canvas: var(--ui-surface-raised-subtle);
+  --island-radius: 18px;
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 94%, var(--ui-content-primary));
   --island-border: rgb(20 24 36 / 6%);
   --island-shadow: 0 1px 2px rgb(20 24 36 / 4%);
-  --island-bar: var(--island-canvas);
-  --island-card-shadow: 0 1px 2px rgb(20 24 36 / 6%), 0 0 0 1px rgb(20 24 36 / 5%);
-  --island-card-shadow-hover: 0 4px 14px -4px rgb(20 24 36 / 16%), 0 0 0 1px rgb(20 24 36 / 7%);
 }
 :root[data-theme="dark"] {
-  --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 75%, var(--ui-surface-pane)));
-  --island-surface: var(--ui-surface-pane);
-  --island-canvas: var(--ui-surface-pane);
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 82%, black);
   --island-border: rgb(255 255 255 / 6%);
   --island-shadow: 0 1px 2px rgb(0 0 0 / 20%);
-  --island-card-shadow: 0 0 0 1px rgb(255 255 255 / 5%);
-  --island-card-shadow-hover: 0 0 0 1px rgb(255 255 255 / 10%), 0 6px 18px -6px rgb(0 0 0 / 60%);
 }
 
 .app-shell[data-shell-layout="islands"] {
   background-color: var(--island-backdrop);
-  background-image: var(--ui-backdrop-image, none);
 }
 
-/* Title bar merges into the backdrop; active tab reads as a tab of the canvas island. */
+/* Required for the layout: the title bar must not paint a pane-coloured strip
+   over the backdrop between islands. */
 .app-shell[data-shell-layout="islands"] > .app-toolbar {
   border-bottom-color: transparent;
   background: transparent;
   box-shadow: none;
-}
-/* Rebind --canvas locally so face, tongue shadow and scoop feet all match the island. */
-.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
-  --canvas: var(--island-canvas);
 }
 
 .app-shell[data-shell-layout="islands"] > .navigation-pane,
@@ -15455,18 +15439,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: var(--island-shadow);
   overflow: hidden;
 }
-.app-shell[data-shell-layout="islands"] > .navigation-pane,
-.app-shell[data-shell-layout="islands"] > .inspector-pane {
-  background: var(--island-surface);
-}
 .app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
 .app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
-.app-shell[data-shell-layout="islands"] > .workspace {
-  position: relative;
-  background: var(--island-canvas);
-}
-/* Collapsed panes: drop the island so a 0px column stays truly empty, and
-   let the workspace take the freed gutter. */
+
+/* Collapsed panes drop the island so a 0px column stays empty. */
 .app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
 .app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
   margin: 0;
@@ -15474,54 +15450,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* Islands carry their own border; drop the legacy 1px top seam on side panes. */
+/* Islands carry their own border; the legacy 1px top seam would double it. */
 .app-shell[data-shell-layout="islands"] > .navigation-pane::before,
 .app-shell[data-shell-layout="islands"] > .inspector-pane::before {
   content: none;
 }
-
-/* Floating bar: workspace toolbar + filters share one translucent header. */
-.app-shell[data-shell-layout="islands"] .workspace-bar,
-.app-shell[data-shell-layout="islands"] .workspace-discovery {
-  border-bottom-color: transparent;
-  background: var(--island-bar);
-}
-.app-shell[data-shell-layout="islands"] .workspace-bar { padding-top: 4px; }
-.app-shell[data-shell-layout="islands"] .workspace-discovery {
-  border-bottom: 1px solid var(--island-border);
-}
-
-/* Cards inside the island: borderless, hairline ring, nested radius. */
-.app-shell[data-shell-layout="islands"] .asset-card {
-  border-color: transparent;
-  border-radius: var(--island-inner-radius);
-  background: color-mix(in srgb, var(--island-canvas) 55%, var(--ui-surface-raised));
-  box-shadow: var(--island-card-shadow);
-  transition: box-shadow 140ms ease;
-}
-.app-shell[data-shell-layout="islands"] .asset-card:hover { box-shadow: var(--island-card-shadow-hover); }
-.app-shell[data-shell-layout="islands"] .asset-card .asset-preview {
-  border-radius: var(--island-inner-radius) var(--island-inner-radius) 0 0;
-}
-
-/* Sidebar rows: active row is a lifted chip, accent only on the glyph. */
-.app-shell[data-shell-layout="islands"] .nav-row { border-radius: var(--island-control-radius); }
-.app-shell[data-shell-layout="islands"] .nav-row.is-active {
-  background: var(--island-canvas);
-  color: var(--text);
-  box-shadow: var(--island-card-shadow);
-}
-.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph { color: var(--accent); }
-
-/* Inspector island details */
-.app-shell[data-shell-layout="islands"] .inspector-hero-preview {
-  border-radius: var(--island-inner-radius);
-  overflow: hidden;
-  box-shadow: var(--island-card-shadow);
-}
-.app-shell[data-shell-layout="islands"] .inspector-tech-bar { border-top-color: var(--island-border); }
-
-/* Resizers live in the gutters; only show on hover/drag. */
-.app-shell[data-shell-layout="islands"] .panel-resizer { opacity: 0; transition: opacity 120ms; }
-.app-shell[data-shell-layout="islands"] .panel-resizer:hover,
-.app-shell[data-shell-layout="islands"].is-resizing .panel-resizer { opacity: 1; }
