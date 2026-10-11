@@ -15411,23 +15411,23 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --island-radius: 18px;            /* surface tier */
   --island-inner-radius: 12px;      /* cards / hero, nested tier */
   --island-control-radius: 10px;    /* rows / chips */
-  --island-backdrop: color-mix(in srgb, var(--accent) 5%, var(--ui-surface-pane));
-  --island-backdrop-glow: color-mix(in srgb, var(--accent) 12%, transparent);
+  --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 60%, var(--ui-surface-raised-subtle)));
+  --island-backdrop-glow: color-mix(in srgb, var(--accent) 5%, transparent);
   --island-surface: var(--ui-surface-raised-subtle);
-  --island-canvas: var(--ui-surface-raised);
-  --island-border: rgb(20 24 36 / 7%);
-  --island-shadow: 0 1px 2px rgb(20 24 36 / 5%), 0 8px 24px -6px rgb(20 24 36 / 10%);
+  --island-canvas: var(--ui-surface-raised-subtle);
+  --island-border: rgb(20 24 36 / 6%);
+  --island-shadow: 0 1px 2px rgb(20 24 36 / 5%), 0 6px 20px -8px rgb(20 24 36 / 8%);
   --island-bar: color-mix(in srgb, var(--island-canvas) 82%, transparent);
   --island-card-shadow: 0 1px 2px rgb(20 24 36 / 6%), 0 0 0 1px rgb(20 24 36 / 5%);
   --island-card-shadow-hover: 0 4px 14px -4px rgb(20 24 36 / 16%), 0 0 0 1px rgb(20 24 36 / 7%);
 }
 :root[data-theme="dark"] {
-  --island-backdrop: color-mix(in srgb, var(--accent) 4%, color-mix(in srgb, var(--ui-surface-canvas) 62%, black));
-  --island-backdrop-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+  --island-backdrop: color-mix(in srgb, var(--accent) 2%, color-mix(in srgb, var(--ui-surface-canvas) 75%, var(--ui-surface-pane)));
+  --island-backdrop-glow: color-mix(in srgb, var(--accent) 5%, transparent);
   --island-surface: var(--ui-surface-pane);
-  --island-canvas: color-mix(in srgb, var(--ui-surface-pane) 70%, var(--ui-surface-raised));
-  --island-border: rgb(255 255 255 / 8%);
-  --island-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset, 0 10px 30px -8px rgb(0 0 0 / 55%);
+  --island-canvas: var(--ui-surface-pane);
+  --island-border: rgb(255 255 255 / 6%);
+  --island-shadow: 0 1px 0 rgb(255 255 255 / 3%) inset, 0 8px 24px -10px rgb(0 0 0 / 45%);
   --island-card-shadow: 0 0 0 1px rgb(255 255 255 / 5%);
   --island-card-shadow-hover: 0 0 0 1px rgb(255 255 255 / 10%), 0 6px 18px -6px rgb(0 0 0 / 60%);
 }
@@ -15445,8 +15445,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   background: transparent;
   box-shadow: none;
 }
+/* Rebind --canvas locally so face, tongue shadow and scoop feet all match the island. */
 .app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
-  background: var(--island-canvas);
+  --canvas: var(--island-canvas);
 }
 
 .app-shell[data-shell-layout="islands"] > .navigation-pane,
@@ -15493,6 +15494,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .asset-card {
   border-color: transparent;
   border-radius: var(--island-inner-radius);
+  background: color-mix(in srgb, var(--island-canvas) 55%, var(--ui-surface-raised));
   box-shadow: var(--island-card-shadow);
   transition: box-shadow 140ms ease;
 }
