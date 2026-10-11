@@ -21,14 +21,14 @@
 
 ## 3. 打包流程
 
-优先用发布管线（本机构建，禁止交叉平台打包——`forge.config.ts` 的 `nativeMediaPlatform` 强制 `darwin-arm64` / `win32-x64` 本机）：
+优先用发布管线（本机构建，禁止交叉平台打包——`forge.config.ts` 的 `nativeMediaPlatform` 强制 `darwin-arm64` / `win32-x64` 本机；Linux AppImage 也必须在 Linux 本机或 `make:appimage:docker` 内构建）：
 
 ```bash
 npm run release:verify     # rebuild:native + verify:mainline（CI 同款门禁）
-npm run release:media      # media:acquire + media:verify
+npm run release:media      # media:acquire + media:verify（Linux 自动跳过：使用系统 ffmpeg）
 npm run release:package    # package + verify:package
 npm run release:e2e        # test:e2e:packaged（针对打包产物）
-npm run release:make       # electron-forge make（ZIP + DMG）
+npm run release:make       # macOS/Windows: electron-forge make；Linux: AppImage（优先 docker）
 npm run release:checksums  # out/make/SHA256SUMS-<platform>.txt
 ```
 
@@ -56,12 +56,18 @@ Forge 默认产物名（如 `Serpent-0.1.1-arm64.dmg`、`Serpent-darwin-arm64-0.
 | macOS arm64 | 便携版 | `Serpent-darwin-arm64-<ver>-portable.zip` |
 | Windows x64 | 便携版 | `Serpent-win-x86-64-<ver>-portable.zip` |
 | Windows x64 | 安装包 | `Serpent-win-x86-64-<ver>-setup.zip`（Inno 安装器 `SerpentSetup.exe` 打包为 zip 上传；安装器由 `npm run make:inno` 产出 `out/make/inno/SerpentSetup.exe`） |
+| Linux x64 | AppImage | `Serpent-linux-x86-64-<ver>.AppImage`（`npm run release:make` 在 Linux 上优先跑 `make:appimage:docker`，把 `Serpent-<ver>-x86_64.AppImage` 重命名为该规范名） |
 
 每个产物配套 SHA-256 文件：`shasum -a 256 <file> | awk '{print $1}' > <file>.sha256`。
 
 Windows 安装器（Inno Setup，2026-08-08 决策替代 WiX MSI）：
 - `npm run make:inno`（`scripts/inno-build.mjs` + `assets/inno/serpentsetup.iss`），需先 `npm run package`；支持安装时语言选择（中/英）、per-machine 路径、干净卸载。
 - Inno 工具获取：NuGet `Tools.InnoSetup` 或官方安装，免管理员优先。
+
+Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
+- 发布管线 `release:make` 在 Linux 上优先 `npm run make:appimage:docker`（无 docker 时回退 `make:appimage`）。
+- 不内置 pinned media 二进制，运行依赖系统 `ffmpeg` / `ffprobe` / `oiiotool`（可选 `openimageio-tools`）。
+- 需要 FUSE（`libfuse2`）；无 FUSE 时用 `--appimage-extract-and-run`。
 
 ### 自动更新资产契约（2026-08-20）
 
@@ -71,6 +77,7 @@ Windows 安装器（Inno Setup，2026-08-08 决策替代 WiX MSI）：
 
 - 已安装版：macOS 选择 `*-package.dmg`；Windows 选择 `*-setup.zip`，下载校验后打开 DMG 或解压并打开 `SerpentSetup.exe`。Inno 安装完成后会在应用目录写入 `.serpent-installed` 标记；旧安装仍以 `unins*.exe` 兼容识别。
 - 便携版：macOS/Windows 选择各自 `*-portable.zip`，下载校验后显示文件位置；不能覆盖正在运行的便携目录，用户退出后解压并启动新版本。
+- Linux：选择 `Serpent-linux-x86-64-<ver>.AppImage`（便携），下载校验后显示文件位置；用户 `chmod +x` 后运行。
 - 资产名是运行时选择器的一部分，不能只改 Release 上传名而不改客户端。每个平台和分发形态必须同时上传目标资产与 `.sha256`。
 - GitHub Release 必须是公开、稳定、已发布的 SemVer Release；`/releases/latest` 不会返回 draft/prerelease。当前 `v0.1.2` 已验证包含 macOS DMG/portable ZIP、Windows setup/portable ZIP 及对应校验文件，但没有 `latest*.yml`、`RELEASES` 或 `RELEASES.json`。
 
@@ -117,6 +124,10 @@ gh release upload v<ver> \
   Serpent-win-x86-64-<ver>-portable.zip Serpent-win-x86-64-<ver>-portable.zip.sha256 \
   Serpent-win-x86-64-<ver>-setup.zip Serpent-win-x86-64-<ver>-setup.zip.sha256
 
+# 上传资产（Linux 2 个：AppImage + sha256）
+gh release upload v<ver> \
+  Serpent-linux-x86-64-<ver>.AppImage Serpent-linux-x86-64-<ver>.AppImage.sha256
+
 # 必传：更新日志元信息（version 必须等于 <ver>，见 §4「更新日志元信息（强制）」）
 gh release upload v<ver> release-meta.json release-meta-<ver>.json
 ```
@@ -136,6 +147,10 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 - 打包产物 `.app` 不能从 SMB/NAS 路径运行，先复制到本地 APFS。
 - 用户测试临时产物（out/、test-results/）用后清理。
 
+**Linux**：
+- 发布构建优先 `make:appimage:docker`（Ubuntu 22.04 / glibc 2.35），避免在较新发行版上打出高 glibc 依赖。
+- AppImage 使用系统媒体工具；验收机需能 `ffmpeg -version`（可选 `oiiotool`）。
+
 ## 8. 发布检查清单（逐条对照，禁止凭印象执行）
 
 - [ ] 版本号已改（package.json + lock，提交 `chore(release): 版本号 …`），先落 dev
@@ -147,7 +162,7 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 - [ ] **`release-meta.json` 与 `release-meta-<ver>.json` 已上传，且 `version` 等于 tag 版本**（§4 强制项）
 - [ ] Release 正文只面向用户：不写构建/打包/平台流程或内部约束（如「本页只含某平台产物」）
 - [ ] `gh release create v<ver> --title "Serpent <ver>" --notes-file <本地临时草稿.md> --target main`（gh 全路径调用；草稿不提交进仓库）
-- [ ] 资产上传齐全（macOS 4 / Windows 4 + release-meta 2），release 页核对标题/notes/资产/`--target main`
+- [ ] 资产上传齐全（macOS 4 / Windows 4 / Linux 2 + release-meta 2），release 页核对标题/notes/资产/`--target main`
 - [ ] tag `v<ver>` 指向 main 发布基线（`git tag v<ver> <main-commit>` + `git push origin v<ver>`）
 - [ ] `npm run rebuild:native` 已恢复 dev 环境（FTS5 probe OK）
 - [ ] 切回 dev 分支

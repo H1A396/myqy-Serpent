@@ -157,16 +157,22 @@ if (!mainSource.includes(`AUTOMATION_API_VERSION`) || !mainSource.includes(Strin
   );
 }
 
-const mediaResourcesPath = path.join(resourcesPath, 'resources');
-const mediaPlatform = currentPlatformKey();
-verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
-if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
-  console.warn(
-    'Skipping packaged release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
-      'This is only valid for local build trials, not production release.',
-  );
+// Linux AppImage packages do not ship a pinned media bundle; they use system
+// ffmpeg / ffprobe / oiiotool from PATH (forge.config.ts skips the same gates).
+if (process.platform !== 'linux') {
+  const mediaResourcesPath = path.join(resourcesPath, 'resources');
+  const mediaPlatform = currentPlatformKey();
+  verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
+  if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
+    console.warn(
+      'Skipping packaged release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
+        'This is only valid for local build trials, not production release.',
+    );
+  } else {
+    verifyReleaseProvenance({ root: mediaResourcesPath, platform: mediaPlatform });
+  }
 } else {
-  verifyReleaseProvenance({ root: mediaResourcesPath, platform: mediaPlatform });
+  console.log('Skipping media bundle verification on Linux (system tools from PATH).');
 }
 
 if (process.platform === 'darwin') {

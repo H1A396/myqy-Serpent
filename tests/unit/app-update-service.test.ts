@@ -107,6 +107,22 @@ describe('Serpent app update release contract', () => {
       name: 'Serpent-win-x86-64-0.1.3-portable.zip',
       assetKind: 'portable',
     });
+    const linuxAppImage = resolveAppUpdateTarget({
+      platform: 'linux',
+      arch: 'x64',
+      distribution: 'portable',
+    });
+    expect(linuxAppImage).toEqual({ platform: 'linux', arch: 'x64', distribution: 'portable' });
+    expect(updateAssetName('0.1.3', linuxAppImage!)).toEqual({
+      name: 'Serpent-linux-x86-64-0.1.3.AppImage',
+      assetKind: 'portable',
+    });
+    // Linux only ships AppImage today; installed distribution still maps to portable.
+    expect(resolveAppUpdateTarget({
+      platform: 'linux',
+      arch: 'x64',
+      distribution: 'installed',
+    })).toEqual({ platform: 'linux', arch: 'x64', distribution: 'portable' });
     expect(resolveAppUpdateTarget({
       platform: 'darwin',
       arch: 'x64',

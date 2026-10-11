@@ -4,7 +4,7 @@
 
 - Node.js **24.15.0**（`.nvmrc` 锁定，用 `nvm use` 切换）
 - npm（国内网络建议 `--registry=https://registry.npmjs.org`）
-- 原生开发目标：macOS arm64、Windows x64
+- 原生开发目标：macOS arm64、Windows x64、Linux x64
 - **不要在 SMB/NAS 挂载目录上构建或运行**——Electron 在挂载盘上无法正常启动（`icudtl.dat not found`），打包产物也不能从挂载盘运行
 
 ### macOS
@@ -21,6 +21,13 @@
   - 官网安装方式：安装官方 Inno Setup 6 并将环境变量 `SERPENT_INNO_TOOLS` 指向 `ISCC.exe` 所在目录（或加入系统 `PATH`）；
   - 若仅在开发态运行（`npm start`）或生成便携版（`npm run package`），则无需安装 Inno Setup。
 - 媒体组件构建（仅需要重建底层二进制时）：`scripts/media-build/win32-x64.ps1`（vcpkg）
+
+### Linux
+
+- 编译工具链与 Python（`better-sqlite3`）：Debian/Ubuntu 可用 `sudo apt install build-essential python3`
+- **系统媒体工具**（无 pinned media bundle）：`ffmpeg` / `ffprobe` 必需才能生成视频缩略图与代理；可选 `openimageio-tools`（`oiiotool`）用于 EXR/RAW/PSD 等
+- AppImage 发布构建建议安装 Docker（`npm run make:appimage:docker` 使用 Ubuntu 22.04 / glibc 2.35 基线）；无 Docker 时可本机 `npm run make:appimage`
+- 常用环境变量：`SERPENT_SOFTWARE_GL=1`（无 GPU 时软件 WebGL）、`SERPENT_LINUX_ROUNDED_CORNERS=0|1`（强制直角/圆角）、`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH`（覆盖 PATH 查找）
 
 ## 首次构建
 
@@ -47,6 +54,12 @@ npm start
 ```powershell
 # Windows
 $env:SERPENT_FFMPEG_PATH = 'C:\tools\ffmpeg\ffmpeg.exe'
+npm start
+```
+
+```bash
+# Linux（也可直接依赖 PATH 中的发行版 ffmpeg）
+export SERPENT_FFMPEG_PATH=/usr/bin/ffmpeg
 npm start
 ```
 
