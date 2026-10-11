@@ -27,6 +27,8 @@
     "extension:verify": "node scripts/build-extension.mjs",
     "premake": "node scripts/media-binaries.mjs ensure && node scripts/verify-ufbx-wasm.mjs",
     "make": "electron-forge make",
+    "make:appimage": "node scripts/make-appimage.mjs",
+    "make:appimage:docker": "bash scripts/appimage-docker.sh",
     "make:inno": "node scripts/inno-build.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.extension.json",

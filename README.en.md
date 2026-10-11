@@ -12,7 +12,7 @@
 
 </div>
 
-Open-source (MIT), cross-platform (macOS / Windows) digital asset manager for game artists, film and post-production teams, and designers.
+Open-source (MIT), cross-platform (macOS / Windows / Linux) digital asset manager for game artists, film and post-production teams, and designers.
 
 [Homepage](https://serpent.dolag.work) · [Online docs](https://serpent.dolag.work/docs/user-guide/) · [Latest release](https://github.com/dolag233/Serpent/releases) · [Browser extension](https://github.com/dolag233/Serpent-Extension/releases)
 
@@ -71,6 +71,38 @@ npm run make             # build platform installers (macOS dmg / Windows zip; W
 ```
 
 The full build, packaging and release flow is in the [developer docs](docs/developer/build-packaging.en.md).
+
+### Linux (x64)
+
+Linux follows the Windows-style shell: a frameless window with Serpent's own title bar (minimize / maximize / close, drag, double-click to maximize, edge resize), the in-app main menu (≡) instead of a native menu bar, and Windows 11-style rounded corners when a compositor is running (square corners otherwise).
+
+Tested on Debian 13 (X11 / xfwm4) and under a nested Wayland compositor. Prerequisites (Debian/Ubuntu):
+
+```bash
+sudo apt install build-essential python3 ffmpeg    # compiler for better-sqlite3; ffmpeg/ffprobe for video/audio
+# optional: openimageio-tools (oiiotool) for EXR/RAW/PSD and other pro image formats
+```
+
+Then use Node.js 24.15.0 and the same commands as above (`npm ci`, `npm run rebuild:native`, `npm start`). On Linux, Serpent uses `ffmpeg`, `ffprobe`, and `oiiotool` from `PATH`; `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` override this.
+
+Environment switches:
+
+| Variable | Effect |
+| --- | --- |
+| `SERPENT_SOFTWARE_GL=1` | Software WebGL (SwiftShader) for machines with no usable GPU / GL driver (VMs, remote desktops), so the 3D viewer can render |
+| `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1` | Force square / rounded window corners (the default is auto: rounded only when a compositor is running) |
+
+AppImage: `npm run make:appimage` produces `out/make/appimage/Serpent-<version>-x86_64.AppImage` (details below).
+
+#### AppImage (Linux)
+
+```bash
+npm run make:appimage           # on this machine (AppImage needs the glibc of the build host or newer)
+npm run make:appimage:docker    # inside Ubuntu 22.04 (glibc 2.35 baseline), needs docker
+chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+```
+
+The AppImage uses the system `ffmpeg` / `ffprobe` / `oiiotool` (install `ffmpeg`, optionally `openimageio-tools`). Running it needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`. When unprivileged user namespaces are unavailable (some containers; Ubuntu 24.04 AppArmor policy), the launcher falls back to `--no-sandbox`.
 
 ## Documentation
 

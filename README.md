@@ -12,7 +12,7 @@
 
 </div>
 
-开源（MIT）、跨平台（macOS / Windows）的数字资产管理软件，面向游戏美术、影视后期、平面/动态图形设计师。
+开源（MIT）、跨平台（macOS / Windows / Linux）的数字资产管理软件，面向游戏美术、影视后期、平面/动态图形设计师。
 
 主页：[serpent.dolag.work](https://serpent.dolag.work) · [在线文档](https://serpent.dolag.work/docs/user-guide/) · [下载最新版本](https://github.com/dolag233/Serpent/releases) · [浏览器扩展](https://github.com/dolag233/Serpent-Extension/releases)
 
@@ -69,6 +69,38 @@ npm run make             # 按平台生成安装包（macOS dmg / Windows zip；
 ```
 
 完整的构建、打包、发布流程见[开发者文档](docs/developer/build-packaging.md)。
+
+### Linux（x64）
+
+Linux 沿用 Windows 风格的界面：无边框窗口 + Serpent 自绘标题栏（最小化 / 最大化 / 关闭、拖动、双击最大化、边缘缩放），用应用内主菜单（≡）代替原生菜单栏；有合成器时显示 Windows 11 风格圆角，没有合成器时自动退回直角。
+
+已在 Debian 13（X11 / xfwm4）和嵌套 Wayland 合成器下测试。依赖（Debian/Ubuntu）：
+
+```bash
+sudo apt install build-essential python3 ffmpeg    # better-sqlite3 需要编译器；视频/音频需要 ffmpeg/ffprobe
+# 可选：openimageio-tools（oiiotool），用于 EXR/RAW/PSD 等专业图像格式
+```
+
+然后用 Node.js 24.15.0 执行上面的命令（`npm ci`、`npm run rebuild:native`、`npm start`）。Linux 上 Serpent 从 `PATH` 中查找 `ffmpeg`、`ffprobe`、`oiiotool`，也可以用 `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 指定。
+
+环境变量：
+
+| 变量 | 作用 |
+| --- | --- |
+| `SERPENT_SOFTWARE_GL=1` | 没有可用 GPU / GL 驱动（虚拟机、远程桌面）时启用软件 WebGL（SwiftShader），让 3D 查看器能渲染 |
+| `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1` | 强制直角 / 圆角（默认自动：有合成器才用圆角） |
+
+AppImage：`npm run make:appimage` 生成 `out/make/appimage/Serpent-<version>-x86_64.AppImage`。
+
+#### AppImage（Linux）
+
+```bash
+npm run make:appimage           # 在本机构建（运行环境的 glibc 需不低于构建机）
+npm run make:appimage:docker    # 在 Ubuntu 22.04（glibc 2.35 基线）中构建，需要 docker
+chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+```
+
+AppImage 使用系统的 `ffmpeg` / `ffprobe` / `oiiotool`（请安装 `ffmpeg`，可选 `openimageio-tools`）。运行需要 FUSE（`libfuse2`），没有 FUSE 时加 `--appimage-extract-and-run`。系统不允许非特权 user namespace 时（部分容器、Ubuntu 24.04 的 AppArmor 策略），启动器会自动改用 `--no-sandbox`。
 
 ## 文档
 

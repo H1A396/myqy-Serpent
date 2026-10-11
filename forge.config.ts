@@ -24,6 +24,21 @@ function nativeMediaPlatform(platform: string, arch: string): string {
   return target;
 }
 
+/**
+ * Linux packages (AppImage) have no pinned media bundle yet: they rely on the
+ * distro's ffmpeg / ffprobe / oiiotool from PATH, so the media release gates
+ * are skipped. Linux must still be packaged natively (host === target).
+ */
+function isNativeLinuxPackage(platform: string, arch: string): boolean {
+  if (platform !== 'linux') return false;
+  if (platform !== process.platform || arch !== process.arch) {
+    throw new Error(
+      `Serpent Linux packages must be built natively; host=${process.platform}-${process.arch}, target=${platform}-${arch}.`,
+    );
+  }
+  return true;
+}
+
 function runNodeGate(script: string, args: string[], extraEnv?: NodeJS.ProcessEnv): void {
   const result = spawnSync(process.execPath, [path.join(projectRoot, script), ...args], {
     cwd: projectRoot,
@@ -51,6 +66,10 @@ const config: ForgeConfig = {
       // rebuild 之前强制 VcpkgEnabled=false（与 scripts/rebuild-native.mjs
       // 一致）。
       process.env.VcpkgEnabled = 'false';
+      if (isNativeLinuxPackage(platform, arch)) {
+        runNodeGate('scripts/build-extension.mjs', []);
+        return;
+      }
       const mediaPlatform = nativeMediaPlatform(platform, arch);
       // Recover ignored media executables from the pinned Serpent-Build
       // release when a clean checkout or a local replacement fails the gate.
@@ -61,6 +80,7 @@ const config: ForgeConfig = {
       runNodeGate('scripts/build-extension.mjs', []);
     },
     postPackage: async (_forgeConfig, packageResult) => {
+      if (isNativeLinuxPackage(packageResult.platform, packageResult.arch)) return;
       nativeMediaPlatform(packageResult.platform, packageResult.arch);
       for (const outputPath of packageResult.outputPaths) {
         runNodeGate('scripts/verify-package.mjs', [], {
@@ -72,6 +92,7 @@ const config: ForgeConfig = {
     // input again so that shortcut cannot feed stale or modified bytes to a
     // maker without passing the package gate.
     preMake: async () => {
+      if (isNativeLinuxPackage(process.platform, process.arch)) return;
       const mediaPlatform = nativeMediaPlatform(process.platform, process.arch);
       runNodeGate('scripts/media-binaries.mjs', ['ensure', '--platform', mediaPlatform]);
       runNodeGate('scripts/verify-package.mjs', [], {
