@@ -123,7 +123,7 @@ describe("MediaJobsDialog asset labels", () => {
     );
     expect(indexingHtml).toContain("media-jobs-embedding-section");
     expect(indexingHtml).toContain("task-progress-fill");
-    expect(indexingHtml).toContain("Text already done can be searched now");
+    expect(indexingHtml).toContain("Already indexed text can be searched now");
 
     const ready = createElement(MediaJobsDialog, {
       open: true,
