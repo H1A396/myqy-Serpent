@@ -14722,18 +14722,27 @@ select.ai-config-input.ai-config-languages {
 }
 
 .asset-caption {
+  /* Even inset — feedback2's padding-top:2px left the band top-heavy/misaligned. */
   border-top: 1px solid color-mix(in srgb, var(--divider-soft) 88%, transparent);
-  padding-top: 2px;
+  gap: 4px;
+  padding: 10px 12px 12px;
   background: transparent;
 }
 
 .asset-caption strong {
   font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.35;
 }
 
 .asset-caption span {
   color: var(--tertiary);
+  line-height: 1.4;
+}
+
+.asset-caption .asset-dimensions {
+  margin-top: 0;
+  line-height: 1.4;
 }
 
 /* --- Filter chips: modest rounded rects, restrained active --- */
@@ -15348,4 +15357,46 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: var(--viewer-chrome-shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+
+
+/* === Serpent ui-card-caption: caption alignment + micro polish === */
+.justified-card-slot .asset-caption,
+.masonry-card-slot .asset-caption {
+  gap: 4px;
+  padding: 10px 12px 12px;
+  justify-content: flex-start;
+}
+
+.asset-caption-skeleton-line.is-name {
+  margin-top: 0;
+}
+
+.asset-caption-skeleton-line.is-meta {
+  margin-top: 0;
+}
+
+/* Preview sits flush on the caption hairline; keep bottom corners square. */
+.asset-preview {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Discovery filter strip: slightly airier chip row (minimal modern). */
+.workspace-discovery {
+  gap: 8px;
+  padding: 8px 14px 10px;
+}
+
+.dimension-filter-btn,
+.discovery-filters > summary {
+  min-height: 28px;
+  padding-inline: 10px;
+}
+
+/* Inspector section labels a touch quieter. */
+.inspector-section h2 {
+  letter-spacing: 0.02em;
+  color: var(--tertiary);
+  font-weight: 600;
 }
