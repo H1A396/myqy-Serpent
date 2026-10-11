@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 
 import {
   collectMakeArtifacts,
   currentVersion,
+  releasePlatformKey,
   repoRoot,
   resolvePackagedExecutable,
   runNpmScript,
@@ -28,7 +29,7 @@ function printUsage() {
       '  media      media:acquire + media:verify (or local build with --build-media-locally)',
       '  package    package + verify:package',
       '  e2e        test:e2e:packaged against the packaged app',
-      '  make       electron-forge make',
+      '  make       electron-forge make (macOS/Windows) or AppImage (Linux)',
       '  checksums  SHA-256 manifests for out/make artifacts',
       '  all        run every phase in order (release:local)',
       '',
@@ -136,6 +137,15 @@ function phaseVerify() {
 }
 
 function phaseMedia({ buildMediaLocally }) {
+  // Linux AppImage has no pinned media bundle; runtime uses system ffmpeg /
+  // ffprobe / oiiotool from PATH (see forge.config.ts isNativeLinuxPackage).
+  if (process.platform === 'linux') {
+    console.warn(
+      '[release:media] Skipping media acquire/verify on Linux (AppImage uses system media tools).',
+    );
+    return;
+  }
+
   if (buildMediaLocally) {
     phaseMediaBuildLocally();
     return;
@@ -148,6 +158,7 @@ function phaseMedia({ buildMediaLocally }) {
 
 function phasePackage() {
   runReleaseScript('package');
+  // Linux skips pinned-media gates inside verify-package (system tools only).
   runReleaseScript('verify:package');
 }
 
@@ -158,7 +169,52 @@ function phaseE2E() {
   });
 }
 
+function dockerAvailable() {
+  const result = spawnSync('docker', ['info'], {
+    cwd: repoRoot,
+    stdio: 'ignore',
+    shell: false,
+  });
+  return result.status === 0;
+}
+
+/**
+ * AppImage maker writes Serpent-<ver>-x86_64.AppImage; release uploads use the
+ * same naming contract as macOS/Windows: Serpent-linux-x86-64-<ver>.AppImage.
+ */
+function finalizeLinuxAppImageArtifact() {
+  const version = currentVersion();
+  const archLabel = process.arch === 'arm64' ? 'aarch64' : 'x86_64';
+  const releaseArch = process.arch === 'arm64' ? 'arm64' : 'x86-64';
+  const appimageDir = path.join(repoRoot, 'out', 'make', 'appimage');
+  const produced = path.join(appimageDir, `Serpent-${version}-${archLabel}.AppImage`);
+  const canonical = path.join(appimageDir, `Serpent-linux-${releaseArch}-${version}.AppImage`);
+  if (!existsSync(produced)) {
+    console.error(`[release:make] Expected AppImage at ${produced}`);
+    process.exit(1);
+  }
+  if (produced !== canonical) {
+    renameSync(produced, canonical);
+    console.log(`[release:make] Renamed AppImage → ${path.relative(repoRoot, canonical)}`);
+  }
+  return canonical;
+}
+
 function phaseMake() {
+  if (process.platform === 'linux') {
+    // Prefer the Ubuntu 22.04 / glibc 2.35 docker baseline for release builds.
+    if (dockerAvailable()) {
+      runReleaseScript('make:appimage:docker');
+    } else {
+      console.warn(
+        '[release:make] docker unavailable; building AppImage on the host (make:appimage).',
+      );
+      runReleaseScript('make:appimage');
+    }
+    finalizeLinuxAppImageArtifact();
+    return;
+  }
+
   runReleaseScript('make');
   // Windows 安装器（Inno Setup）在 Windows 原生环境构建；
   // macOS 不产安装器（dmg 已由 make 产出）。
@@ -178,7 +234,7 @@ function phaseChecksums() {
     repoRoot,
     'out',
     'make',
-    `SHA256SUMS-${currentPlatformKey()}.txt`,
+    `SHA256SUMS-${releasePlatformKey()}.txt`,
   );
   writeChecksumManifest(artifacts, manifestPath);
 
@@ -198,7 +254,7 @@ function main() {
 
   // Every release phase runs against an explicit semver from package.json;
   // bump with `npm version patch|minor|major` before releasing.
-  console.log(`[release] Serpent v${currentVersion()} on ${currentPlatformKey()}`);
+  console.log(`[release] Serpent v${currentVersion()} on ${releasePlatformKey()}`);
 
   const options = {
     skipVerify: flags.has('--skip-verify'),

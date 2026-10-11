@@ -45,6 +45,8 @@ xattr -cr /Applications/Serpent.app
 
 **Windows**：下载安装包 `Serpent-win-x86-64-<版本>-setup.zip`（解压运行内含的安装程序），或下载便携版 `Serpent-win-x86-64-<版本>-portable.zip`（解压即用）。未签名版本首次运行会显示 SmartScreen 警告，选择「更多信息 → 仍要运行」。
 
+**Linux**：下载 `Serpent-linux-x86-64-<版本>.AppImage`，`chmod +x` 后运行。需要 FUSE（`libfuse2`）；无 FUSE 时加 `--appimage-extract-and-run`。运行依赖系统 `ffmpeg`（可选 `openimageio-tools` 提供 `oiiotool`）。
+
 **浏览器扩展**：从[浏览器扩展发布页](https://github.com/dolag233/Serpent-Extension/releases)下载。安装与配置指引见[浏览器扩展使用指南](docs/user-guide/browser-extension.md)。
 
 ## 本地构建
