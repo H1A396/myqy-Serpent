@@ -13,6 +13,7 @@ import type { AiJobStatus, LibraryApiResult, LinkedAssetDeleteResult, MediaJobSt
 import type { MutationReceipt } from '../../shared/performance-contract';
 import { summarizePluginJobs } from '../../shared/plugin-job-status';
 import type { RecentLibraryEntry } from '../../shared/recent-libraries';
+import type { EmbeddingHttpAdapter } from '../../shared/embedding/http-service';
 import type { AiApiFormat } from '../../shared/ai-endpoints';
 import type { AiReliabilitySettings } from '../../shared/ai-reliability';
 import { searchQuerySchema } from '../../shared/asset-types';
@@ -2106,6 +2107,19 @@ export const library: SerpentLibraryApi = Object.freeze({
       },
     };
   },
+  async embeddingUninstall(input: { modelId: 'embeddinggemma-2-compact' | 'embeddinggemma-2-balanced' | 'embeddinggemma-2-quality' }) {
+    const result = await request({ type: 'embedding.install.delete.request', modelId: input.modelId });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'embedding.install.status') throw new Error('Unexpected embedding uninstall response.');
+    return {
+      ok: true as const,
+      value: {
+        runtimeInstalled: result.runtimeInstalled,
+        runtimeDownloadable: result.runtimeDownloadable,
+        models: result.models,
+      },
+    };
+  },
   onEmbeddingInstallProgress(listener: (event: import('../../shared/embedding/install-progress').EmbeddingInstallProgress) => void) {
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
       listener(payload as import('../../shared/embedding/install-progress').EmbeddingInstallProgress);
@@ -2163,7 +2177,8 @@ export const library: SerpentLibraryApi = Object.freeze({
   async embeddingSaveService(input: {
     id?: string;
     name: string;
-    adapter?: 'openai-embeddings-v1' | 'dashscope-multimodal-v1';
+    description?: string;
+    adapter?: EmbeddingHttpAdapter;
     destination: 'loopback' | 'lan' | 'internet';
     baseUrl: string;
     modelName: string;
@@ -2186,7 +2201,15 @@ export const library: SerpentLibraryApi = Object.freeze({
     const result = await request({ type: 'embedding.services.probe.request', id });
     if (!result.ok) return failure(result);
     if (result.type !== 'embedding.service.probed') throw new Error('Unexpected embedding service probe response.');
-    return { ok: true as const, value: { id: result.id, textStatus: result.textStatus, dimensions: result.dimensions } };
+    return {
+      ok: true as const,
+      value: {
+        id: result.id,
+        textStatus: result.textStatus,
+        dimensions: result.dimensions,
+        probeFailure: result.probeFailure,
+      },
+    };
   },
   async embeddingGrantService(input: { id: string; libraryId: string }) {
     const result = await request({ type: 'embedding.services.grant.request', ...input });

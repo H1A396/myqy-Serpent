@@ -1,15 +1,20 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
+  normalizeEmbeddingServiceUrl,
   parseEmbeddingDimensions,
   validateEmbeddingServiceDraft,
   type EmbeddingHttpAdapter,
+  type EmbeddingProbeFailure,
   type EmbeddingServiceDestination,
   type EmbeddingServiceIssue,
 } from "../shared/embedding/http-service";
 import { EMBEDDING_MODALITIES, type EmbeddingModality } from "../shared/embedding/modalities";
 import type { EmbeddingHttpServiceSummary } from "../shared/library-api";
+import { EmbeddingApiFormatControl } from "./EmbeddingApiFormatControl";
 import { notifyEmbeddingCatalogChanged } from "./embedding-catalog-events";
+import { Icon } from "./Icons";
+import { iconActionAttrs } from "./icon-action-attrs";
 import { useT } from "./i18n";
 
 export type EmbeddingServiceSettingsApi = {
@@ -17,6 +22,7 @@ export type EmbeddingServiceSettingsApi = {
   embeddingSaveService: (input: {
     id?: string;
     name: string;
+    description?: string;
     adapter?: EmbeddingHttpAdapter;
     destination: EmbeddingServiceDestination;
     baseUrl: string;
@@ -26,12 +32,16 @@ export type EmbeddingServiceSettingsApi = {
     dimensions?: number | null;
   }) => Promise<{ ok: boolean; value?: { id: string } }>;
   embeddingDeleteService: (input: { id: string }) => Promise<{ ok: boolean }>;
-  embeddingProbeService: (input: { id: string }) => Promise<{ ok: boolean; value?: { textStatus: "verified" | "failed"; dimensions: number | null } }>;
-  embeddingGrantService: (input: { id: string; libraryId: string }) => Promise<{ ok: boolean }>;
+  embeddingProbeService: (input: { id: string }) => Promise<{
+    ok: boolean;
+    value?: {
+      textStatus: "verified" | "failed";
+      dimensions: number | null;
+      probeFailure: EmbeddingProbeFailure | null;
+    };
+  }>;
 };
 
-const DESTINATIONS: readonly EmbeddingServiceDestination[] = ["loopback", "lan", "internet"];
-const ADAPTERS: readonly EmbeddingHttpAdapter[] = ["openai-embeddings-v1", "dashscope-multimodal-v1"];
 const MODALITY_KEYS = {
   image: "settings.semanticSearch.modalityImage",
   video: "settings.semanticSearch.modalityVideo",
@@ -39,29 +49,31 @@ const MODALITY_KEYS = {
   text: "settings.semanticSearch.modalityText",
 } as const;
 
-const PLACEHOLDER_URL: Record<EmbeddingHttpAdapter, Record<EmbeddingServiceDestination, string>> = {
-  "openai-embeddings-v1": {
-    loopback: "http://127.0.0.1:11434/v1",
-    lan: "http://192.168.1.10:8080/v1",
-    internet: "https://api.openai.com/v1",
-  },
-  "dashscope-multimodal-v1": {
-    loopback: "http://127.0.0.1:8080",
-    lan: "http://192.168.1.10:8080",
-    internet: "https://dashscope.aliyuncs.com/api/v1",
-  },
+const PLACEHOLDER_URL: Record<EmbeddingHttpAdapter, string> = {
+  "openai-embeddings-v1": "http://127.0.0.1:11434/v1",
+  "llamacpp-multimodal-v1": "http://127.0.0.1:8080/v1",
+  "dashscope-multimodal-v1": "https://dashscope.aliyuncs.com/api/v1",
 };
 
 const PLACEHOLDER_MODEL: Record<EmbeddingHttpAdapter, string> = {
   "openai-embeddings-v1": "text-embedding-3-small",
+  "llamacpp-multimodal-v1": "embeddinggemma-2",
   "dashscope-multimodal-v1": "qwen3-vl-embedding",
 };
 
+const PROBE_FAILURE_KEYS = {
+  network: "settings.semanticSearch.probeFailure.network",
+  auth: "settings.semanticSearch.probeFailure.auth",
+  format: "settings.semanticSearch.probeFailure.format",
+  dimensions: "settings.semanticSearch.probeFailure.dimensions",
+  https: "settings.semanticSearch.probeFailure.https",
+} as const;
+
 export function EmbeddingServiceSettings({
   api,
-  libraryId,
 }: {
   api: EmbeddingServiceSettingsApi;
+  /** @deprecated Grant UX removed; kept optional for call-site compatibility. */
   libraryId?: string;
 }): ReactNode {
   const t = useT();
@@ -69,15 +81,21 @@ export function EmbeddingServiceSettings({
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [destination, setDestination] = useState<EmbeddingServiceDestination>("loopback");
+  const [description, setDescription] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [modelName, setModelName] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [adapter, setAdapter] = useState<EmbeddingHttpAdapter>("openai-embeddings-v1");
   const [modalities, setModalities] = useState<EmbeddingModality[]>(["text"]);
+  const [adapter, setAdapter] = useState<EmbeddingHttpAdapter>("openai-embeddings-v1");
   const [dimensions, setDimensions] = useState("");
   const [issue, setIssue] = useState<EmbeddingServiceIssue | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const remoteDestination = useMemo(() => {
+    const place = normalizeEmbeddingServiceUrl(baseUrl)?.place;
+    return place === "lan" || place === "internet";
+  }, [baseUrl]);
 
   async function refresh(): Promise<void> {
     const listed = await api.embeddingListServices();
@@ -98,7 +116,7 @@ export function EmbeddingServiceSettings({
   function resetForm(): void {
     setEditingId(null);
     setName("");
-    setDestination("loopback");
+    setDescription("");
     setBaseUrl("");
     setModelName("");
     setApiKey("");
@@ -106,12 +124,13 @@ export function EmbeddingServiceSettings({
     setModalities(["text"]);
     setDimensions("");
     setIssue(null);
+    setFormError(null);
   }
 
   function beginEdit(service: EmbeddingHttpServiceSummary): void {
     setEditingId(service.id);
     setName(service.name);
-    setDestination(service.destination);
+    setDescription(service.description ?? "");
     setBaseUrl(service.baseUrl);
     setModelName(service.modelName);
     setApiKey("");
@@ -119,6 +138,7 @@ export function EmbeddingServiceSettings({
     setModalities(service.modalities.length > 0 ? [...service.modalities] : ["text"]);
     setDimensions(service.dimensions == null ? "" : String(service.dimensions));
     setIssue(null);
+    setFormError(null);
     setOpen(true);
   }
 
@@ -132,20 +152,28 @@ export function EmbeddingServiceSettings({
 
   async function save(): Promise<void> {
     const parsedDimensions = dimensions.trim() === "" ? null : parseEmbeddingDimensions(Number(dimensions.trim()));
+    const normalized = normalizeEmbeddingServiceUrl(baseUrl);
+    const destination: EmbeddingServiceDestination = normalized?.place ?? "loopback";
     const nextIssue = validateEmbeddingServiceDraft({
       name,
       modelName,
-      destination,
       baseUrl,
       modalities,
       dimensions: dimensions.trim() === "" ? null : parsedDimensions,
     });
-    setIssue(nextIssue ?? (dimensions.trim() !== "" && parsedDimensions === null ? "dimensions" : null));
-    if (nextIssue || (dimensions.trim() !== "" && parsedDimensions === null)) return;
+    const dimensionsIssue = dimensions.trim() !== "" && parsedDimensions === null;
+    const resolvedIssue: EmbeddingServiceIssue | null = nextIssue ?? (dimensionsIssue ? "dimensions" : null);
+    setIssue(resolvedIssue);
+    if (resolvedIssue) {
+      setFormError(t(`settings.semanticSearch.serviceIssue.${resolvedIssue}`));
+      return;
+    }
+    setFormError(null);
     setBusy(true);
     const saved = await api.embeddingSaveService({
       ...(editingId ? { id: editingId } : {}),
       name,
+      description,
       adapter,
       destination,
       baseUrl,
@@ -155,46 +183,62 @@ export function EmbeddingServiceSettings({
       ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
     });
     setBusy(false);
-    if (!saved.ok || !saved.value) return;
+    if (!saved.ok || !saved.value) {
+      const fallbackIssue = validateEmbeddingServiceDraft({
+        name,
+        modelName,
+        baseUrl,
+        modalities,
+        dimensions: parsedDimensions,
+      });
+      setIssue(fallbackIssue);
+      setFormError(
+        fallbackIssue
+          ? t(`settings.semanticSearch.serviceIssue.${fallbackIssue}`)
+          : t("settings.semanticSearch.serviceSaveFailed"),
+      );
+      return;
+    }
     resetForm();
     setOpen(false);
     await refresh();
     notifyEmbeddingCatalogChanged();
   }
 
-  const urlPlaceholder = PLACEHOLDER_URL[adapter][destination];
+  const urlPlaceholder = PLACEHOLDER_URL[adapter];
   const modelPlaceholder = PLACEHOLDER_MODEL[adapter];
+  const addLabel = t("settings.semanticSearch.addService");
 
   return (
     <div className="semantic-custom-panel">
-      <div className="app-settings-action-row semantic-settings-toolbar">
+      <div className="app-settings-action-row semantic-settings-toolbar semantic-custom-header">
         <div className="app-settings-row-copy">
           <strong>{t("settings.semanticSearch.servicesTitle")}</strong>
           <span>{t("settings.semanticSearch.servicesHint")}</span>
         </div>
         <button
-          className="primary-button"
+          className="semantic-install-icon-button"
           onClick={() => {
             if (open && !editingId) {
               setOpen(false);
+              setFormError(null);
               return;
             }
             resetForm();
             setOpen(true);
           }}
           type="button"
+          {...iconActionAttrs(addLabel)}
         >
-          {t("settings.semanticSearch.addService")}
+          <Icon name="plus" size={15} />
         </button>
       </div>
-      <p className="app-settings-help-note">{t("settings.semanticSearch.serviceSimilarLimit")}</p>
       {services.length > 0 ? (
         <div className="semantic-model-list" role="list">
           {services.map((service) => (
             <ServiceStatus
               api={api}
               key={service.id}
-              libraryId={libraryId}
               onChanged={async () => {
                 await refresh();
                 notifyEmbeddingCatalogChanged();
@@ -214,29 +258,6 @@ export function EmbeddingServiceSettings({
       {open ? (
         <div className="semantic-service-form">
           <div className="editor-field ai-config-field">
-            <span className="micro-label">{t("settings.semanticSearch.adapterTitle")}</span>
-            <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.adapterTitle")}>
-              {ADAPTERS.map((item) => (
-                <button
-                  aria-checked={adapter === item}
-                  className="app-settings-option"
-                  key={item}
-                  onClick={() => setAdapter(item)}
-                  role="radio"
-                  type="button"
-                >
-                  {t(item === "openai-embeddings-v1" ? "settings.semanticSearch.adapterOpenAi" : "settings.semanticSearch.adapterDashScope")}
-                </button>
-              ))}
-            </div>
-            {adapter === "dashscope-multimodal-v1" ? (
-              <p className="ai-config-hint">{t("settings.semanticSearch.adapterDashScopeHint")}</p>
-            ) : (
-              <p className="ai-config-hint">{t("settings.semanticSearch.adapterOpenAiHint")}</p>
-            )}
-          </div>
-
-          <div className="editor-field ai-config-field">
             <label className="micro-label" htmlFor="embedding-service-name">{t("settings.semanticSearch.serviceName")}</label>
             <input
               className="text-field ai-config-input"
@@ -249,26 +270,23 @@ export function EmbeddingServiceSettings({
           </div>
 
           <div className="editor-field ai-config-field">
-            <span className="micro-label">{t("settings.semanticSearch.serviceWhere")}</span>
-            <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.semanticSearch.serviceWhere")}>
-              {DESTINATIONS.map((item) => (
-                <button
-                  aria-checked={destination === item}
-                  className="app-settings-option"
-                  key={item}
-                  onClick={() => setDestination(item)}
-                  role="radio"
-                  type="button"
-                >
-                  {t(`settings.semanticSearch.destination.${item}`)}
-                </button>
-              ))}
-            </div>
+            <label className="micro-label" htmlFor="embedding-service-description">{t("settings.semanticSearch.serviceDescription")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-description"
+              maxLength={200}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder={t("settings.semanticSearch.serviceDescriptionPlaceholder")}
+              value={description}
+            />
           </div>
+
+          <EmbeddingApiFormatControl adapter={adapter} onChange={setAdapter} />
 
           <div className="editor-field ai-config-field">
             <label className="micro-label" htmlFor="embedding-service-url">{t("settings.semanticSearch.serviceAddress")}</label>
             <input
+              aria-invalid={issue === "url" || issue === "https" || issue === "loopback" || issue === "lan" ? true : undefined}
               className="text-field ai-config-input"
               id="embedding-service-url"
               maxLength={300}
@@ -278,6 +296,9 @@ export function EmbeddingServiceSettings({
               value={baseUrl}
             />
             <p className="ai-config-hint">{t("settings.semanticSearch.serviceAddressHint")}</p>
+            {remoteDestination ? (
+              <p className="ai-config-hint">{t("settings.semanticSearch.serviceRemoteSendHint")}</p>
+            ) : null}
           </div>
 
           <div className="editor-field ai-config-field">
@@ -294,18 +315,21 @@ export function EmbeddingServiceSettings({
           </div>
 
           <div className="editor-field ai-config-field">
-            <span className="micro-label">{t("settings.semanticSearch.modalitiesTitle")}</span>
-            <div className="app-settings-option-group" role="group" aria-label={t("settings.semanticSearch.modalitiesTitle")}>
+            <span className="micro-label ai-config-switches-title">{t("settings.semanticSearch.modalitiesTitle")}</span>
+            <div
+              className="ai-config-switches-row semantic-modality-row"
+              role="group"
+              aria-label={t("settings.semanticSearch.modalitiesTitle")}
+            >
               {EMBEDDING_MODALITIES.map((modality) => (
-                <button
-                  aria-pressed={modalities.includes(modality)}
-                  className="app-settings-option"
-                  key={modality}
-                  onClick={() => toggleModality(modality)}
-                  type="button"
-                >
+                <label className="ai-config-check-row" key={modality}>
+                  <input
+                    checked={modalities.includes(modality)}
+                    onChange={() => toggleModality(modality)}
+                    type="checkbox"
+                  />
                   {t(MODALITY_KEYS[modality])}
-                </button>
+                </label>
               ))}
             </div>
           </div>
@@ -336,10 +360,12 @@ export function EmbeddingServiceSettings({
               type="password"
               value={apiKey}
             />
-            <p className="ai-config-hint">
-              {issue ? t(`settings.semanticSearch.serviceIssue.${issue}`) : t("settings.semanticSearch.serviceFormHint")}
-            </p>
+            <p className="ai-config-hint">{t("settings.semanticSearch.serviceFormHint")}</p>
           </div>
+
+          {formError ? (
+            <p className="settings-error-message" role="alert">{formError}</p>
+          ) : null}
 
           <div className="semantic-service-form-actions">
             <button
@@ -365,59 +391,107 @@ export function EmbeddingServiceSettings({
 
 function ServiceStatus({
   api,
-  libraryId,
   service,
   onChanged,
   onDelete,
   onEdit,
 }: {
   api: EmbeddingServiceSettingsApi;
-  libraryId?: string;
   service: EmbeddingHttpServiceSummary;
   onChanged: () => Promise<unknown>;
   onDelete: () => void;
   onEdit: () => void;
 }): ReactNode {
   const t = useT();
-  const granted = service.destination === "loopback" || (libraryId ? service.grantedLibraryIds.includes(libraryId) : false);
-  const statusKey = service.textStatus === "verified"
-    ? "settings.semanticSearch.serviceVerified"
-    : service.textStatus === "failed"
-      ? "settings.semanticSearch.serviceFailed"
-      : "settings.semanticSearch.serviceUnverified";
-  const statusTone = service.textStatus === "verified"
-    ? "connected"
-    : service.textStatus === "failed"
-      ? "failed"
-      : "idle";
+  const [probing, setProbing] = useState(false);
+  const [liveFailure, setLiveFailure] = useState<EmbeddingProbeFailure | null>(null);
+
+  const failed = service.textStatus === "failed";
+  const verified = service.textStatus === "verified";
+  const failure = probing ? null : (liveFailure ?? service.probeFailure);
+  const statusTone = probing
+    ? "checking"
+    : verified
+      ? "connected"
+      : failed
+        ? "failed"
+        : "idle";
+  const statusLabel = probing
+    ? t("settings.semanticSearch.serviceTesting")
+    : verified
+      ? t("settings.semanticSearch.serviceVerified")
+      : failed
+        ? t("settings.semanticSearch.serviceFailed")
+        : t("settings.semanticSearch.serviceUnverified");
+  const reason = failure ? t(PROBE_FAILURE_KEYS[failure]) : null;
+  const editLabel = t("settings.semanticSearch.serviceEdit");
+  const testLabel = probing ? t("settings.semanticSearch.serviceTesting") : t("settings.semanticSearch.serviceTest");
+  const deleteLabel = t("settings.semanticSearch.serviceDelete");
+
+  async function runProbe(): Promise<void> {
+    setProbing(true);
+    setLiveFailure(null);
+    try {
+      const result = await api.embeddingProbeService({ id: service.id });
+      if (result.ok && result.value?.textStatus === "failed") {
+        setLiveFailure(result.value.probeFailure);
+      } else {
+        setLiveFailure(null);
+      }
+      await onChanged();
+    } finally {
+      setProbing(false);
+    }
+  }
+
   return (
     <div className="semantic-model-card" role="listitem">
       <div className="semantic-model-card-copy">
         <div className="semantic-model-card-title-row">
           <strong>{service.name}</strong>
-          <span className="sync-status-indicator" data-state={statusTone}>
+          <span className="sync-status-indicator" data-state={statusTone} role="status">
             <span className="sync-status-dot" data-state={statusTone} />
-            <span>{t(statusKey)}{service.dimensions ? ` · ${service.dimensions}` : ""}</span>
+            <span className="semantic-service-status-label">
+              {statusLabel}
+              {verified && service.dimensions ? ` · ${service.dimensions}` : ""}
+            </span>
+            {reason ? (
+              <span className="semantic-service-status-reason" title={reason}>
+                {reason}
+              </span>
+            ) : null}
           </span>
         </div>
+        {service.description ? <span>{service.description}</span> : null}
         <span>{service.modelName}</span>
-        <span>{service.destination === "loopback" ? t("settings.semanticSearch.serviceLocalNote") : t("settings.semanticSearch.serviceRemoteNote")}</span>
-        {service.destination === "lan" ? <span>{t("settings.semanticSearch.serviceLanNote")}</span> : null}
+        <span className="semantic-service-url">{service.baseUrl}</span>
       </div>
-      <div className="semantic-model-card-action app-settings-option-group">
-        <button className="secondary-button" onClick={onEdit} type="button">
-          {t("settings.semanticSearch.serviceEdit")}
+      <div className="semantic-model-card-action">
+        <button
+          className="semantic-install-icon-button is-secondary"
+          onClick={onEdit}
+          type="button"
+          {...iconActionAttrs(editLabel)}
+        >
+          <Icon name="edit" size={15} />
         </button>
-        <button className="secondary-button" onClick={() => { void api.embeddingProbeService({ id: service.id }).then(onChanged); }} type="button">
-          {t("settings.semanticSearch.serviceTest")}
+        <button
+          className="semantic-install-icon-button is-secondary"
+          disabled={probing}
+          onClick={() => { void runProbe(); }}
+          type="button"
+          {...iconActionAttrs(testLabel)}
+        >
+          <Icon name={probing ? "loader" : "activity"} size={15} />
         </button>
-        {!granted && libraryId ? (
-          <button className="secondary-button" onClick={() => { void api.embeddingGrantService({ id: service.id, libraryId }).then(onChanged); }} type="button">
-            {t("settings.semanticSearch.serviceGrant")}
-          </button>
-        ) : null}
-        <button className="secondary-button" onClick={onDelete} type="button">
-          {t("settings.semanticSearch.serviceDelete")}
+        <button
+          className="semantic-install-icon-button is-danger"
+          disabled={probing}
+          onClick={onDelete}
+          type="button"
+          {...iconActionAttrs(deleteLabel)}
+        >
+          <Icon name="trash" size={15} />
         </button>
       </div>
     </div>

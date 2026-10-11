@@ -3,10 +3,12 @@ import { randomUUID } from "node:crypto";
 import {
   embeddingHttpProfileKey,
   isEmbeddingHttpAdapter,
+  isEmbeddingProbeFailure,
   normalizeEmbeddingServiceUrl,
   parseEmbeddingDimensions,
   validateEmbeddingServiceDraft,
   type EmbeddingHttpAdapter,
+  type EmbeddingProbeFailure,
   type EmbeddingServiceDestination,
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
@@ -19,11 +21,14 @@ import {
 export type EmbeddingServiceRecord = {
   id: string;
   name: string;
+  description: string;
   adapter: EmbeddingHttpAdapter;
   destination: EmbeddingServiceDestination;
   baseUrl: string;
   modelName: string;
   textStatus: EmbeddingTextStatus;
+  /** Set when textStatus is failed; cleared on verify or endpoint change. */
+  probeFailure: EmbeddingProbeFailure | null;
   dimensions: number | null;
   grantedLibraryIds: string[];
   modalities: EmbeddingModality[];
@@ -47,6 +52,7 @@ export type EmbeddingServiceCredentialStore = {
 };
 
 const SERVICE_ID = /^svc_[a-z0-9]{8,40}$/;
+const DESCRIPTION_MAX = 200;
 const LIBRARY_LIMIT = 100;
 
 export function emptyEmbeddingServiceCatalog(): EmbeddingServiceCatalog {
@@ -92,6 +98,7 @@ export function saveEmbeddingService(
   input: {
     id?: string;
     name: string;
+    description?: string;
     adapter?: EmbeddingHttpAdapter;
     destination: EmbeddingServiceDestination;
     baseUrl: string;
@@ -107,6 +114,7 @@ export function saveEmbeddingService(
   const dimensions = input.dimensions === undefined || input.dimensions === null
     ? input.dimensions ?? null
     : parseEmbeddingDimensions(input.dimensions);
+  // Adapter comes from the user-chosen field only — never from model id heuristics.
   const adapter = input.adapter ?? "openai-embeddings-v1";
   const issue = validateEmbeddingServiceDraft({
     ...input,
@@ -122,10 +130,16 @@ export function saveEmbeddingService(
   if (!SERVICE_ID.test(id)) throw new EmbeddingServiceRegistryError("invalid");
   const existing = catalog.services.find((service) => service.id === id);
   const modelName = input.modelName.trim();
+  const rawDescription = input.description === undefined
+    ? (existing?.description ?? "")
+    : input.description;
+  const description = rawDescription.trim();
+  if (description.length > DESCRIPTION_MAX) throw new EmbeddingServiceRegistryError("invalid");
+  const destination = url.place;
   const sameEndpoint = Boolean(existing
     && existing.baseUrl === url.baseUrl
     && existing.modelName === modelName
-    && existing.destination === input.destination
+    && existing.destination === destination
     && existing.adapter === adapter);
   const nextDimensions = input.dimensions === undefined
     ? (sameEndpoint && existing ? existing.dimensions : null)
@@ -134,11 +148,13 @@ export function saveEmbeddingService(
   const next: EmbeddingServiceRecord = {
     id,
     name: input.name.trim(),
+    description,
     adapter,
-    destination: input.destination,
+    destination,
     baseUrl: url.baseUrl,
     modelName,
     textStatus: sameTarget && existing ? existing.textStatus : "declared",
+    probeFailure: sameTarget && existing ? existing.probeFailure : null,
     dimensions: nextDimensions,
     grantedLibraryIds: sameTarget && existing ? [...existing.grantedLibraryIds] : [],
     modalities,
@@ -186,17 +202,26 @@ export function grantEmbeddingService(
 export function markEmbeddingServiceProbe(
   catalog: EmbeddingServiceCatalog,
   id: string,
-  result: { ok: true; dimensions: number } | { ok: false },
+  result:
+    | { ok: true; dimensions: number }
+    | { ok: false; failure: EmbeddingProbeFailure },
 ): EmbeddingServiceCatalog {
   return {
     version: 1,
     services: catalog.services.map((service) => {
       if (service.id !== id) return service;
-      if (!result.ok) return { ...service, textStatus: "failed" };
-      if (service.dimensions != null && service.dimensions !== result.dimensions) {
-        return { ...service, textStatus: "failed" };
+      if (!result.ok) {
+        return { ...service, textStatus: "failed", probeFailure: result.failure };
       }
-      return { ...service, textStatus: "verified", dimensions: result.dimensions };
+      if (service.dimensions != null && service.dimensions !== result.dimensions) {
+        return { ...service, textStatus: "failed", probeFailure: "dimensions" };
+      }
+      return {
+        ...service,
+        textStatus: "verified",
+        probeFailure: null,
+        dimensions: result.dimensions,
+      };
     }),
   };
 }
@@ -227,10 +252,21 @@ function isServiceRecord(value: unknown): value is EmbeddingServiceRecord {
 }
 
 function withServiceDefaults(record: EmbeddingServiceRecord): EmbeddingServiceRecord {
-  const adapter = isEmbeddingHttpAdapter(String(record.adapter)) ? record.adapter : "openai-embeddings-v1";
+  const adapter = isEmbeddingHttpAdapter(String(record.adapter ?? ""))
+    ? record.adapter
+    : "openai-embeddings-v1";
+  const description = typeof (record as { description?: unknown }).description === "string"
+    ? (record as { description: string }).description.trim().slice(0, DESCRIPTION_MAX)
+    : "";
+  const rawFailure = (record as { probeFailure?: unknown }).probeFailure;
+  const probeFailure = typeof rawFailure === "string" && isEmbeddingProbeFailure(rawFailure)
+    ? rawFailure
+    : null;
   return {
     ...record,
+    description,
     adapter,
+    probeFailure: record.textStatus === "failed" ? probeFailure : null,
     modalities: normalizeEmbeddingModalities(record.modalities),
   };
 }

@@ -2,23 +2,30 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import path from "node:path";
 
 import { readEmbeddingDocument } from "./embedding-text";
-import { postEmbeddingHttp } from "./embedding-http";
+import { EMBEDDING_HTTP_IMAGE_MAX_BYTES, postEmbeddingHttp } from "./embedding-http";
+import { DASHSCOPE_VISUAL_SEARCH_INSTRUCT } from "../shared/embedding/http-service";
 import {
   embeddingSkipKey,
   embeddingTargetsToEncode,
   resolveContainedPath,
+  rankSimilarAssetIds,
   scoreEmbeddings,
 } from "./embedding-test-index";
 import {
   embeddingHttpProfileKey,
   type EmbeddingHttpAdapter,
+  type EmbeddingHttpContent,
   type EmbeddingServiceDestination,
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
-import type { EmbeddingModality } from "../shared/embedding/modalities";
+import {
+  modalityForMediaType,
+  type EmbeddingModality,
+} from "../shared/embedding/modalities";
 import {
   embeddingSourcePlan,
   embeddingTextRevision,
+  embeddingThumbnailRevision,
   normalizeEmbedding,
   type EmbeddingIndexSnapshot,
 } from "../shared/embedding/profile";
@@ -32,6 +39,22 @@ type JobState = EmbeddingIndexSnapshot & {
   serviceId: string;
   entries: Map<string, StoredEntry>;
 };
+
+type HttpEmbeddingTarget = {
+  assetId: string;
+  revisionId: string;
+  filePath: string;
+  kind: "text" | "image";
+};
+
+const THUMBNAIL_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+const IMAGE_MIME_TYPES = new Map([
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".png", "image/png"],
+  [".webp", "image/webp"],
+  [".bmp", "image/bmp"],
+]);
 
 export type EmbeddingHttpServiceView = {
   id: string;
@@ -95,12 +118,8 @@ export class EmbeddingHttpIndex {
     void this.#encode(generation, request.libraryId, request.modelId);
     const snapshot = this.#snapshot();
     const service = this.options.loadService(request.modelId);
-    if (!textServiceReady(service)) {
+    if (!httpServiceReady(service)) {
       this.#write(generation, { phase: "unavailable" });
-      return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
-    }
-    if (!this.#allowed(service, request.libraryId)) {
-      this.#write(generation, { phase: "unavailable", hold: "grant" });
       return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
     }
     const state = this.#state;
@@ -115,11 +134,17 @@ export class EmbeddingHttpIndex {
         dimensions: service.dimensions,
         inputs: [request.query],
         apiKey: this.options.readKey(service.id),
+        instruct: service.adapter === "dashscope-multimodal-v1"
+          ? DASHSCOPE_VISUAL_SEARCH_INSTRUCT
+          : null,
       });
       if (!vector || this.#state?.generation !== generation) {
         return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
       }
-      const scores = scoreEmbeddings(normalizeEmbedding(vector, service.dimensions), [...state.entries.values()]);
+      const scores = scoreEmbeddings(
+        normalizeEmbedding(vector, service.dimensions),
+        [...state.entries.values()],
+      );
       return {
         ok: true,
         type: "embedding.search",
@@ -133,15 +158,53 @@ export class EmbeddingHttpIndex {
   }
 
   handleSimilar(request: { libraryId: string; modelId: string; assetId: string }): RendererResult {
-    // Text search can use OpenAI-compatible and DashScope multimodal adapters.
-    // Encoding a library asset for find-similar is not implemented for either.
+    const state = this.#state;
+    const snapshot = this.#snapshot();
+    if (
+      !state
+      || state.libraryId !== request.libraryId
+      || state.serviceId !== request.modelId
+      || state.phase === "unavailable"
+      || state.phase === "failed"
+    ) {
+      return {
+        ok: true,
+        type: "embedding.similar",
+        ...snapshot,
+        status: "unavailable",
+        sourceAssetId: request.assetId,
+        assetIds: [],
+      };
+    }
+    const skipped = [...this.#skipped].some((key) => key.startsWith(`${request.assetId}\0`));
+    if (!state.entries.has(request.assetId)) {
+      if (state.phase === "ready" || skipped) {
+        return {
+          ok: true,
+          type: "embedding.similar",
+          ...snapshot,
+          status: "unsupported",
+          sourceAssetId: request.assetId,
+          assetIds: [],
+        };
+      }
+      void this.#encode(state.generation, state.libraryId, state.serviceId);
+      return {
+        ok: true,
+        type: "embedding.similar",
+        ...snapshot,
+        status: "preparing",
+        sourceAssetId: request.assetId,
+        assetIds: [],
+      };
+    }
     return {
       ok: true,
       type: "embedding.similar",
-      ...this.#snapshot(),
-      status: "unsupported",
+      ...snapshot,
+      status: "ready",
       sourceAssetId: request.assetId,
-      assetIds: [],
+      assetIds: rankSimilarAssetIds(request.assetId, [...state.entries.values()]),
     };
   }
 
@@ -166,17 +229,13 @@ export class EmbeddingHttpIndex {
   async #encode(generation: number, libraryId: string, serviceId: string): Promise<void> {
     if (this.#running) return;
     const service = this.options.loadService(serviceId);
-    if (!textServiceReady(service)) {
+    if (!httpServiceReady(service)) {
       this.#write(generation, { phase: "unavailable", hold: undefined });
-      return;
-    }
-    if (!this.#allowed(service, libraryId)) {
-      this.#write(generation, { phase: "unavailable", hold: "grant" });
       return;
     }
     this.#running = true;
     try {
-      const targets = await this.#listText(libraryId);
+      const targets = await this.#listTargets(libraryId, service);
       if (this.#state?.generation !== generation) return;
       const profileKey = embeddingHttpProfileKey({
         adapter: service.adapter,
@@ -201,13 +260,13 @@ export class EmbeddingHttpIndex {
       for (const target of pending) {
         if (this.#state?.generation !== generation) return;
         try {
-          const document = await readEmbeddingDocument(target.filePath, path.basename(target.filePath));
+          const inputs = await this.#buildInputs(target);
           const [vector] = await postEmbeddingHttp({
             baseUrl: service.baseUrl,
             modelName: service.modelName,
             adapter: service.adapter,
             dimensions: service.dimensions,
-            inputs: [document],
+            inputs,
             apiKey: this.options.readKey(service.id),
           });
           if (!vector || this.#state?.generation !== generation) return;
@@ -230,11 +289,23 @@ export class EmbeddingHttpIndex {
     }
   }
 
-  #allowed(service: EmbeddingHttpServiceView, libraryId: string): boolean {
-    return service.destination === "loopback" || service.grantedLibraryIds.includes(libraryId);
+  async #buildInputs(target: HttpEmbeddingTarget): Promise<EmbeddingHttpContent[] | string[]> {
+    if (target.kind === "text") {
+      const document = await readEmbeddingDocument(target.filePath, path.basename(target.filePath));
+      return [document];
+    }
+    return [{ image: readImageDataUri(target.filePath) }];
   }
 
-  async #listText(libraryId: string): Promise<Array<{ assetId: string; revisionId: string; filePath: string }>> {
+  /**
+   * List assets the service can encode. OpenAI-compatible stays text-only.
+   * DashScope multimodal indexes text plus image/video when those modalities
+   * are declared; local video uses a ready thumbnail (API needs a public URL).
+   */
+  async #listTargets(
+    libraryId: string,
+    service: EmbeddingHttpServiceView & { dimensions: number },
+  ): Promise<HttpEmbeddingTarget[]> {
     const listed = await this.options.requestWorker({ type: "library.list" });
     if (!listed.ok || listed.type !== "library.list") return [];
     const library = listed.libraries.find((entry) => entry.libraryId === libraryId);
@@ -249,22 +320,88 @@ export class EmbeddingHttpIndex {
         if (folder.relativePath === "" || !roots.has(id)) roots.set(id, folder.absoluteRootPath);
       }
     }
-    const targets: Array<{ assetId: string; revisionId: string; filePath: string }> = [];
+
+    const encodeModalities = encodeModalitiesForAdapter(service.adapter, service.modalities);
+    const targets: HttpEmbeddingTarget[] = [];
+    const thumbnailIds: string[] = [];
+    const thumbnailTargets: Array<{ assetId: string; revisionId: string; artifactId: string }> = [];
+
     for (const asset of assets.assets) {
-      if (embeddingSourcePlan(asset) !== "text") continue;
-      const root = asset.locationKind === "managed"
-        ? path.join(library.libraryPath, "Assets")
-        : asset.linkedFolderId ? roots.get(asset.linkedFolderId) : undefined;
-      if (!root) continue;
-      const filePath = resolveContainedPath(root, asset.relativeFilePath);
-      if (!filePath || !existsSync(filePath)) continue;
+      const modality = modalityForMediaType(asset.mediaType);
+      if (!encodeModalities.has(modality)) continue;
+      const plan = embeddingSourcePlan(asset);
+      if (plan === "text") {
+        const root = asset.locationKind === "managed"
+          ? path.join(library.libraryPath, "Assets")
+          : asset.linkedFolderId ? roots.get(asset.linkedFolderId) : undefined;
+        if (!root) continue;
+        const filePath = resolveContainedPath(root, asset.relativeFilePath);
+        if (!filePath || !existsSync(filePath)) continue;
+        targets.push({
+          assetId: asset.assetId,
+          revisionId: embeddingTextRevision(asset.currentRevisionId),
+          filePath,
+          kind: "text",
+        });
+        continue;
+      }
+      if (plan === "file") {
+        const root = asset.locationKind === "managed"
+          ? path.join(library.libraryPath, "Assets")
+          : asset.linkedFolderId ? roots.get(asset.linkedFolderId) : undefined;
+        if (!root) continue;
+        const filePath = resolveContainedPath(root, asset.relativeFilePath);
+        if (!filePath || !existsSync(filePath)) continue;
+        targets.push({
+          assetId: asset.assetId,
+          revisionId: asset.currentRevisionId,
+          filePath,
+          kind: "image",
+        });
+        continue;
+      }
+      if (plan === "thumbnail" && asset.thumbnailArtifactId) {
+        thumbnailIds.push(asset.thumbnailArtifactId);
+        thumbnailTargets.push({
+          assetId: asset.assetId,
+          revisionId: embeddingThumbnailRevision(asset.currentRevisionId, asset.thumbnailArtifactId),
+          artifactId: asset.thumbnailArtifactId,
+        });
+      }
+    }
+
+    const thumbnailPaths = await this.#thumbnailPaths(libraryId, thumbnailIds);
+    for (const target of thumbnailTargets) {
+      const filePath = thumbnailPaths.get(target.artifactId);
+      if (!filePath) continue;
+      const extension = path.extname(filePath).toLowerCase();
+      if (!THUMBNAIL_EXTENSIONS.has(extension) || !existsSync(filePath)) continue;
       targets.push({
-        assetId: asset.assetId,
-        revisionId: embeddingTextRevision(asset.currentRevisionId),
+        assetId: target.assetId,
+        revisionId: target.revisionId,
         filePath,
+        kind: "image",
       });
     }
     return targets;
+  }
+
+  async #thumbnailPaths(libraryId: string, artifactIds: readonly string[]): Promise<Map<string, string>> {
+    const paths = new Map<string, string>();
+    const unique = [...new Set(artifactIds)];
+    for (let index = 0; index < unique.length; index += 500) {
+      const artifactChunk = unique.slice(index, index + 500);
+      if (artifactChunk.length === 0) continue;
+      const result = await this.options.requestWorker({
+        type: "media.get-artifact-paths",
+        libraryId,
+        artifactIds: artifactChunk,
+        usage: "preview",
+      });
+      if (!result.ok || result.type !== "media.artifact-paths") continue;
+      for (const entry of result.entries) paths.set(entry.artifactId, entry.absolutePath);
+    }
+    return paths;
   }
 
   #snapshot(): EmbeddingIndexSnapshot {
@@ -330,7 +467,7 @@ export class EmbeddingHttpIndex {
   }
 }
 
-function textServiceReady(
+function httpServiceReady(
   service: EmbeddingHttpServiceView | null,
 ): service is EmbeddingHttpServiceView & { dimensions: number } {
   return Boolean(
@@ -339,4 +476,30 @@ function textServiceReady(
     && service.dimensions
     && service.modalities.includes("text"),
   );
+}
+
+/** Multimodal adapters can encode images and the existing video thumbnails. */
+export function encodeModalitiesForAdapter(
+  adapter: EmbeddingHttpAdapter,
+  modalities: readonly EmbeddingModality[],
+): Set<EmbeddingModality> {
+  const allowed = new Set<EmbeddingModality>();
+  for (const modality of modalities) {
+    if (modality === "text") allowed.add("text");
+    if (adapter !== "openai-embeddings-v1" && (modality === "image" || modality === "video")) {
+      allowed.add(modality);
+    }
+  }
+  return allowed;
+}
+
+function readImageDataUri(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+  const mimeType = IMAGE_MIME_TYPES.get(extension);
+  if (!mimeType) throw new Error("Image format is not supported.");
+  const bytes = readFileSync(filePath);
+  if (bytes.byteLength <= 0 || bytes.byteLength > EMBEDDING_HTTP_IMAGE_MAX_BYTES) {
+    throw new Error("Image is too large to embed.");
+  }
+  return `data:${mimeType};base64,${bytes.toString("base64")}`;
 }

@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { semanticBackgroundWorkActive, semanticToolbarReady } from "../../src/renderer/semantic-work";
+import {
+  resolveLocalSimilarModelId,
+  semanticBackgroundWorkActive,
+  semanticToolbarReady,
+} from "../../src/renderer/semantic-work";
 import { embeddingIndexCopyKey, embeddingIndexJobsVisible } from "../../src/renderer/semantic-index-copy";
-import { semanticBrowseRegistration } from "../../src/renderer/semantic-browse";
-import { similarMenuBlock } from "../../src/shared/embedding/modalities";
+import {
+  mergeKeywordAndSemanticRanks,
+  semanticBrowseRegistration,
+} from "../../src/renderer/semantic-browse";
+import { embeddingServiceTextOnly, similarMenuBlock } from "../../src/shared/embedding/modalities";
+import { encodeModalitiesForAdapter } from "../../src/main/embedding-http-index";
 
 describe("semantic readiness", () => {
   it("offers the toolbar only when the library model can search text", () => {
@@ -57,8 +65,19 @@ describe("semantic readiness", () => {
     expect(similarMenuBlock({
       mediaType: "image",
       implementation: "http",
+      declared: ["text"],
+    })).toBe("modality");
+    expect(similarMenuBlock({
+      mediaType: "image",
+      implementation: "http",
+      declared: ["text"],
+      localSimilarReady: true,
+    })).toBe("modality");
+    expect(similarMenuBlock({
+      mediaType: "image",
+      implementation: "http",
       declared: ["text", "image"],
-    })).toBe("service");
+    })).toBeNull();
     expect(similarMenuBlock({
       mediaType: "audio",
       implementation: "gemma",
@@ -70,6 +89,7 @@ describe("semantic readiness", () => {
       declared: ["image", "video", "audio", "text"],
     })).toBeNull();
   });
+
 });
 
 describe("semantic index jobs copy", () => {
@@ -84,11 +104,39 @@ describe("semantic index jobs copy", () => {
       { phase: "ready", done: 0, total: 0, failedCount: 0 },
       { textOnly: true },
     )).toBe("dialog.mediaJobs.embeddingReadyEmptyText");
+    expect(embeddingServiceTextOnly(["text"])).toBe(true);
+    expect(embeddingServiceTextOnly(["text", "image"])).toBe(false);
+    expect([...encodeModalitiesForAdapter("openai-embeddings-v1", ["text", "image"])]).toEqual(["text"]);
+    expect([...encodeModalitiesForAdapter("llamacpp-multimodal-v1", ["text", "image", "video", "audio"])].sort())
+      .toEqual(["image", "text", "video"]);
+    expect([...encodeModalitiesForAdapter("dashscope-multimodal-v1", ["text", "image", "video"])].sort())
+      .toEqual(["image", "text", "video"]);
   });
 
   it("hides the jobs panel semantic section once the index is ready", () => {
     expect(embeddingIndexJobsVisible({ phase: "starting", done: 0, total: 0, failedCount: 0 })).toBe(true);
     expect(embeddingIndexJobsVisible({ phase: "indexing", done: 1, total: 3, failedCount: 0 })).toBe(true);
     expect(embeddingIndexJobsVisible({ phase: "ready", done: 3, total: 3, failedCount: 0 })).toBe(false);
+  });
+});
+
+describe("local similar model and keyword blend", () => {
+  it("picks an installed local model for find-similar fallback", () => {
+    expect(resolveLocalSimilarModelId({
+      runtimeInstalled: false,
+      models: [{ modelId: "embeddinggemma-2-compact", installed: true }],
+    })).toBeNull();
+    expect(resolveLocalSimilarModelId({
+      runtimeInstalled: true,
+      models: [{ modelId: "embeddinggemma-2-compact", installed: true }],
+      preferredModelId: "embeddinggemma-2-compact",
+    })).toBe("embeddinggemma-2-compact");
+  });
+
+  it("keeps keyword hits ahead of semantic-only matches", () => {
+    expect(mergeKeywordAndSemanticRanks({
+      keywordAssetIds: ["k1", "shared"],
+      semanticAssetIds: ["shared", "s1", "s2"],
+    })).toEqual(["k1", "shared", "s1", "s2"]);
   });
 });

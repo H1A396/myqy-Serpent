@@ -4,8 +4,9 @@ import type { EmbeddingIndexSnapshot, SemanticSearchModelId } from "../shared/em
 import { SETTINGS_LOCAL_SEMANTIC_MODELS } from "../shared/embedding/profile";
 import { embeddingBindingIssue } from "../shared/embedding/library-binding";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
+import { embeddingServiceTextOnly } from "../shared/embedding/modalities";
 import type { EmbeddingHttpServiceSummary } from "../shared/library-api";
-import { notifyEmbeddingCatalogChanged } from "./embedding-catalog-events";
+import { notifyEmbeddingCatalogChanged, subscribeEmbeddingCatalog } from "./embedding-catalog-events";
 import { useT } from "./i18n";
 import { loadSemanticSearchPreferences } from "./semantic-search-preferences";
 import { embeddingIndexCopyKey } from "./semantic-index-copy";
@@ -37,6 +38,20 @@ function toSelectValue(binding: { selectionId: string | null; enabled: boolean; 
   return binding.selectionId;
 }
 
+function indexStatusTone(phase: EmbeddingIndexSnapshot["phase"]): "checking" | "connected" | "failed" | "idle" {
+  if (phase === "starting" || phase === "indexing") return "checking";
+  if (phase === "ready") return "connected";
+  if (phase === "failed") return "failed";
+  return "idle";
+}
+
+function indexPhaseLabelKey(phase: EmbeddingIndexSnapshot["phase"]): string {
+  if (phase === "starting" || phase === "indexing") return "settings.librarySemantic.indexPhaseIndexing";
+  if (phase === "ready") return "settings.librarySemantic.indexPhaseReady";
+  if (phase === "failed") return "settings.librarySemantic.indexPhaseFailed";
+  return "settings.librarySemantic.indexPhaseUnavailable";
+}
+
 export function LibraryEmbeddingSettings({
   libraryId,
   callbacks,
@@ -57,7 +72,7 @@ export function LibraryEmbeddingSettings({
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    async function load(): Promise<void> {
       const [listed, status, binding] = await Promise.all([
         callbacks.listServices(),
         callbacks.installStatus(),
@@ -71,9 +86,14 @@ export function LibraryEmbeddingSettings({
         setSelectionValue(next);
         setSavedValue(next);
       }
-    })();
+    }
+    void load();
+    const unsubscribe = subscribeEmbeddingCatalog(() => {
+      void load();
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libraryId]);
@@ -99,6 +119,13 @@ export function LibraryEmbeddingSettings({
     const service = services.find((item) => item.id === id);
     return service?.name ?? id;
   })();
+  const dirty = selectionValue !== savedValue;
+  const showIndex = Boolean(
+    issue === "ready"
+    && index
+    && savedValue !== INHERIT_VALUE
+    && savedValue !== OFF_VALUE,
+  );
 
   async function save(): Promise<void> {
     setBusy(true);
@@ -125,20 +152,19 @@ export function LibraryEmbeddingSettings({
         <h3>{t("settings.librarySemantic.title")}</h3>
         <p>{t("settings.librarySemantic.hint")}</p>
       </div>
-      <section className="app-settings-card">
+      <section className="app-settings-card library-semantic-card">
         <div className="app-settings-row app-settings-row-stack">
           <div className="app-settings-row-copy">
             <strong>{t("settings.librarySemantic.model")}</strong>
             <span>{t("settings.librarySemantic.inheritHint", { model: defaultLabel })}</span>
           </div>
-          {!globalPrefs.enabled ? (
-            <p className="app-settings-help-note">{t("settings.librarySemantic.globalOff")}</p>
-          ) : null}
-          {nothingReady ? <p className="app-settings-help-note">{t("settings.librarySemantic.empty")}</p> : null}
           <select
             aria-label={t("settings.librarySemantic.model")}
-            className="text-field"
-            onChange={(event) => setSelectionValue(event.target.value)}
+            className="text-field library-semantic-select"
+            onChange={(event) => {
+              setSelectionValue(event.target.value);
+              setNotice(null);
+            }}
             value={selectionValue}
           >
             <option value={INHERIT_VALUE}>
@@ -155,27 +181,58 @@ export function LibraryEmbeddingSettings({
               <option key={service.id} value={service.id}>{service.name}</option>
             ))}
           </select>
-          {savedValue !== INHERIT_VALUE && issue === "missing" ? <p className="app-settings-help-note">{t("settings.librarySemantic.missing")}</p> : null}
-          {savedValue !== INHERIT_VALUE && issue === "install" ? <p className="app-settings-help-note">{t("settings.librarySemantic.install")}</p> : null}
-          {savedValue !== INHERIT_VALUE && issue === "configure" ? <p className="app-settings-help-note">{t("settings.librarySemantic.configure")}</p> : null}
-          {issue === "ready" && index && savedValue !== INHERIT_VALUE && savedValue !== OFF_VALUE ? (
-            <span>
-              {t(embeddingIndexCopyKey(index, {
-                textOnly: isEmbeddingServiceSelectionId(savedValue),
-              }), {
-                done: index.done,
-                total: index.total,
-                failed: index.failedCount,
-              })}
-            </span>
+          {!globalPrefs.enabled ? (
+            <p className="app-settings-help-note">{t("settings.librarySemantic.globalOff")}</p>
+          ) : null}
+          {nothingReady ? <p className="app-settings-help-note">{t("settings.librarySemantic.empty")}</p> : null}
+          {savedValue !== INHERIT_VALUE && issue === "missing" ? (
+            <p className="app-settings-help-note">{t("settings.librarySemantic.missing")}</p>
+          ) : null}
+          {savedValue !== INHERIT_VALUE && issue === "install" ? (
+            <p className="app-settings-help-note">{t("settings.librarySemantic.install")}</p>
+          ) : null}
+          {savedValue !== INHERIT_VALUE && issue === "configure" ? (
+            <p className="app-settings-help-note">{t("settings.librarySemantic.configure")}</p>
           ) : null}
         </div>
-        <div className="library-settings-gitignore-actions">
-          <button className="primary-button" disabled={busy} onClick={() => { void save(); }} type="button">
-            {t("settings.librarySemantic.save")}
+
+        {showIndex && index ? (
+          <>
+            <div className="app-settings-card-divider" />
+            <div className="app-settings-row library-semantic-status-row">
+              <div className="app-settings-row-copy">
+                <strong>{t("settings.librarySemantic.indexStatus")}</strong>
+                <span>
+                  {t(embeddingIndexCopyKey(index, {
+                    textOnly: isEmbeddingServiceSelectionId(savedValue)
+                      && embeddingServiceTextOnly(services.find((item) => item.id === savedValue)?.modalities),
+                  }), {
+                    done: index.done,
+                    total: index.total,
+                    failed: index.failedCount,
+                  })}
+                </span>
+              </div>
+              <span className="sync-status-indicator" data-state={indexStatusTone(index.phase)} role="status">
+                <span className="sync-status-dot" data-state={indexStatusTone(index.phase)} />
+                <span>{t(indexPhaseLabelKey(index.phase))}</span>
+              </span>
+            </div>
+          </>
+        ) : null}
+
+        <div className="app-settings-card-divider" />
+        <div className="library-settings-gitignore-actions library-sync-actions">
+          <button
+            className="primary-button"
+            disabled={busy || !dirty}
+            onClick={() => { void save(); }}
+            type="button"
+          >
+            {busy ? t("common.saving") : t("common.save")}
           </button>
         </div>
-        {notice ? <p className="library-settings-gitignore-help">{notice}</p> : null}
+        {notice ? <p className="library-settings-gitignore-help library-semantic-notice">{notice}</p> : null}
       </section>
     </>
   );

@@ -1,22 +1,35 @@
 /**
  * Custom embedding HTTP services.
  * `openai-embeddings-v1` posts to `/v1/embeddings` and may send `dimensions`.
+ * `llamacpp-multimodal-v1` uses that endpoint with image content objects.
  * `dashscope-multimodal-v1` posts to DashScope's multimodal embedding API
- * (`parameters.dimension`). qwen3-vl-embedding is not served by `/v1/embeddings`.
+ * (`parameters.dimension`). The adapter is chosen by the user, never inferred from the model id.
  * A saved address is not a verified model.
  */
 
 import { explicitEmbeddingModalities } from "./modalities";
 
-export const EMBEDDING_HTTP_ADAPTERS = ["openai-embeddings-v1", "dashscope-multimodal-v1"] as const;
+export const EMBEDDING_HTTP_ADAPTERS = ["openai-embeddings-v1", "llamacpp-multimodal-v1", "dashscope-multimodal-v1"] as const;
 export type EmbeddingHttpAdapter = (typeof EMBEDDING_HTTP_ADAPTERS)[number];
 export const EMBEDDING_HTTP_ADAPTER = "openai-embeddings-v1";
 export const DASHSCOPE_MULTIMODAL_PATH = "/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding";
+
+/** DashScope `parameters.instruct` for text→image library search (reduces text-doc dominance). */
+export const DASHSCOPE_VISUAL_SEARCH_INSTRUCT =
+  "Retrieve images relevant to the user's query. Prefer visual matches over plain text documents.";
 export const EMBEDDING_DIMENSION_MAX = 8192;
 export const EMBEDDING_SERVICE_DESTINATIONS = ["loopback", "lan", "internet"] as const;
 export type EmbeddingServiceDestination = (typeof EMBEDDING_SERVICE_DESTINATIONS)[number];
 export const EMBEDDING_TEXT_STATUSES = ["unsupported", "declared", "verified", "failed"] as const;
 export type EmbeddingTextStatus = (typeof EMBEDDING_TEXT_STATUSES)[number];
+
+/** Why the last probe failed. Cleared when verified or the endpoint changes. */
+export const EMBEDDING_PROBE_FAILURES = ["network", "auth", "format", "dimensions", "https"] as const;
+export type EmbeddingProbeFailure = (typeof EMBEDDING_PROBE_FAILURES)[number];
+
+export function isEmbeddingProbeFailure(value: string): value is EmbeddingProbeFailure {
+  return (EMBEDDING_PROBE_FAILURES as readonly string[]).includes(value);
+}
 
 export const EMBEDDING_SELECTION_ID = /^(?:embeddinggemma-2-(?:compact|balanced|quality)|svc_[a-z0-9]{8,40})$/;
 
@@ -88,7 +101,8 @@ export function classifyEmbeddingHost(hostname: string): EmbeddingServiceDestina
 export function validateEmbeddingServiceDraft(input: {
   name: string;
   modelName: string;
-  destination: EmbeddingServiceDestination;
+  /** Ignored for place checks — destination is derived from the URL. Kept optional for callers. */
+  destination?: EmbeddingServiceDestination;
   baseUrl: string;
   modalities?: readonly string[];
   dimensions?: number | null;
@@ -99,10 +113,8 @@ export function validateEmbeddingServiceDraft(input: {
   if (!modelName || modelName.length > MODEL_MAX) return "model";
   const url = normalizeEmbeddingServiceUrl(input.baseUrl);
   if (!url) return "url";
-  if (input.destination === "loopback" && url.place !== "loopback") return "loopback";
-  if (input.destination === "lan" && url.place !== "lan") return "lan";
-  if (input.destination === "internet" && url.place !== "internet") return "lan";
-  if (input.destination === "internet" && url.protocol !== "https:") return "https";
+  // Only the URL matters: classify place from the host, and require https for cloud hosts.
+  if (url.place === "internet" && url.protocol !== "https:") return "https";
   if (input.modalities !== undefined && explicitEmbeddingModalities(input.modalities) === null) return "modalities";
   if (input.dimensions != null && parseEmbeddingDimensions(input.dimensions) === null) return "dimensions";
   return null;
@@ -119,7 +131,7 @@ export function embeddingHttpEndpoint(baseUrl: string): string {
 }
 
 export function embeddingServiceEndpoint(adapter: EmbeddingHttpAdapter, baseUrl: string): string {
-  if (adapter === "openai-embeddings-v1") return embeddingHttpEndpoint(baseUrl);
+  if (adapter !== "dashscope-multimodal-v1") return embeddingHttpEndpoint(baseUrl);
   const url = new URL(baseUrl);
   url.search = "";
   url.hash = "";
@@ -127,23 +139,64 @@ export function embeddingServiceEndpoint(adapter: EmbeddingHttpAdapter, baseUrl:
   return url.toString();
 }
 
+/** Independent asset inputs; each item produces one vector in the selected format. */
+export type EmbeddingHttpContent =
+  | { text: string }
+  | { image: string }
+  | { video: string };
+
+function toDashScopeContents(inputs: readonly string[] | readonly EmbeddingHttpContent[]): EmbeddingHttpContent[] {
+  return inputs.map((entry) => {
+    if (typeof entry === "string") return { text: entry };
+    return entry;
+  });
+}
+
+function toOpenAiInputs(inputs: readonly string[] | readonly EmbeddingHttpContent[]): string[] {
+  return inputs.map((entry) => {
+    if (typeof entry === "string") return entry;
+    if ("text" in entry) return entry.text;
+    throw new Error("OpenAI embeddings accept text only.");
+  });
+}
+
+function toLlamaCppInputs(inputs: readonly string[] | readonly EmbeddingHttpContent[]): unknown[] {
+  return inputs.map((entry) => {
+    if (typeof entry === "string") return entry;
+    if ("text" in entry) return entry.text;
+    if ("image" in entry) {
+      return { content: [{ type: "image_url", image_url: { url: entry.image } }] };
+    }
+    // Video assets use the existing thumbnail path, rather than native video input.
+    throw new Error("llama.cpp embeddings accept text and image inputs.");
+  });
+}
+
 export function embeddingRequestBody(input: {
   adapter: EmbeddingHttpAdapter;
   modelName: string;
-  inputs: readonly string[];
+  inputs: readonly string[] | readonly EmbeddingHttpContent[];
   dimensions: number | null;
+  /** DashScope only: task instruction for the query (not used when indexing corpus items). */
+  instruct?: string | null;
 }): Record<string, unknown> {
   if (input.adapter === "dashscope-multimodal-v1") {
     const body: Record<string, unknown> = {
       model: input.modelName,
-      input: { contents: input.inputs.map((text) => ({ text })) },
+      input: { contents: toDashScopeContents(input.inputs) },
     };
-    if (input.dimensions) body.parameters = { dimension: input.dimensions };
+    const parameters: Record<string, unknown> = {};
+    if (input.dimensions) parameters.dimension = input.dimensions;
+    const instruct = input.instruct?.trim();
+    if (instruct) parameters.instruct = instruct;
+    if (Object.keys(parameters).length > 0) body.parameters = parameters;
     return body;
   }
   const body: Record<string, unknown> = {
     model: input.modelName,
-    input: [...input.inputs],
+    input: input.adapter === "llamacpp-multimodal-v1"
+      ? toLlamaCppInputs(input.inputs)
+      : toOpenAiInputs(input.inputs),
   };
   if (input.dimensions) body.dimensions = input.dimensions;
   return body;
@@ -167,9 +220,11 @@ export function readEmbeddingResponse(
   payload: unknown,
   expected: number,
   expectedDimensions: number | null,
+  adapter: EmbeddingHttpAdapter,
 ): number[][] | null {
-  return readEmbeddingHttpBatch(payload, expected, expectedDimensions)
-    ?? readDashScopeEmbeddings(payload, expected, expectedDimensions);
+  return adapter === "dashscope-multimodal-v1"
+    ? readDashScopeEmbeddings(payload, expected, expectedDimensions)
+    : readEmbeddingHttpBatch(payload, expected, expectedDimensions);
 }
 
 export function readEmbeddingHttpBatch(

@@ -15,6 +15,7 @@ import {
   semanticModelPackageBytes,
   EmbeddingInstallError,
   downloadEmbeddingFile,
+  uninstallSemanticModelFiles,
 } from "../../src/main/embedding-install";
 import { EMBEDDING_GEMMA2_MODEL_REVISION } from "../../src/shared/embedding/profile";
 
@@ -112,5 +113,35 @@ describe("embedding install download sizing", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+
+describe("embedding uninstall", () => {
+  it("removes model files under userData/embedding-models and keeps shared projectors when needed", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-embedding-uninstall-"));
+    const models = path.join(root, "embedding-models");
+    mkdirSync(models, { recursive: true });
+    writeFileSync(path.join(models, "embeddinggemma-2-UD-Q4_K_XL.gguf"), "core");
+    writeFileSync(path.join(models, "mmproj-Q8_0.gguf"), "proj");
+    writeFileSync(path.join(models, "embeddinggemma-2-Q8_0.gguf"), "balanced");
+
+    const removedCompact = uninstallSemanticModelFiles({
+      modelId: "embeddinggemma-2-compact",
+      userDataPath: root,
+      homePath: root,
+    });
+    expect(removedCompact.removed.some((item) => item.endsWith("embeddinggemma-2-UD-Q4_K_XL.gguf"))).toBe(true);
+    // Shared projector stays because balanced is still present.
+    expect(removedCompact.removed.some((item) => item.endsWith("mmproj-Q8_0.gguf"))).toBe(false);
+    expect(readFileSync(path.join(models, "mmproj-Q8_0.gguf"), "utf8")).toBe("proj");
+
+    const removedBalanced = uninstallSemanticModelFiles({
+      modelId: "embeddinggemma-2-balanced",
+      userDataPath: root,
+      homePath: root,
+    });
+    expect(removedBalanced.removed.some((item) => item.endsWith("embeddinggemma-2-Q8_0.gguf"))).toBe(true);
+    expect(removedBalanced.removed.some((item) => item.endsWith("mmproj-Q8_0.gguf"))).toBe(true);
   });
 });

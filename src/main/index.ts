@@ -2742,6 +2742,7 @@ async function commandFor(
     case "embedding.binding.save.request":
     case "embedding.install.status.request":
     case "embedding.install.start.request":
+    case "embedding.install.delete.request":
     case "embedding.index.status.request":
     case "embedding.search.request":
     case "embedding.similar.request":

@@ -18,6 +18,7 @@ import {
   installedSemanticModels,
   pinnedLlamaRuntimeAsset,
   semanticModelPackageBytes,
+  uninstallSemanticModelFiles,
   type EmbeddingDownloadProgress,
 } from "../embedding-install";
 import type { EmbeddingInstallProgress } from "../../shared/embedding/install-progress";
@@ -38,9 +39,13 @@ import {
   type EmbeddingServiceCatalog,
   type EmbeddingServiceCredentialStore,
 } from "../embedding-service-registry";
-import { probeEmbeddingHttp } from "../embedding-http";
+import { EmbeddingHttpRequestError, probeEmbeddingHttp } from "../embedding-http";
 import type { EmbeddingHttpIndex } from "../embedding-http-index";
-import { isEmbeddingServiceSelectionId } from "../../shared/embedding/http-service";
+import {
+  isEmbeddingServiceSelectionId,
+  normalizeEmbeddingServiceUrl,
+  type EmbeddingProbeFailure,
+} from "../../shared/embedding/http-service";
 import { isSemanticSearchModelId, SEMANTIC_SEARCH_MODEL_IDS, type SemanticSearchModelId } from "../../shared/embedding/profile";
 import type { EmbeddingTestIndex } from "../embedding-test-index";
 import { createPublicError } from "../../shared/protocol/errors";
@@ -100,6 +105,8 @@ export async function tryHandleEmbeddingModelRequest(
       return installStatus(runtime);
     case "embedding.install.start.request":
       return installModel(request.modelId, runtime);
+    case "embedding.install.delete.request":
+      return uninstallModel(request.modelId, runtime);
     case "embedding.index.status.request":
       // run:false is a snapshot only — never stop/wipe an index that may still be useful.
       if (!request.run) {
@@ -240,6 +247,15 @@ async function installModel(modelId: SemanticSearchModelId, runtime: EmbeddingMo
   return installStatus(runtime);
 }
 
+function uninstallModel(modelId: SemanticSearchModelId, runtime: EmbeddingModelRuntime): RendererResult {
+  uninstallSemanticModelFiles({
+    modelId,
+    userDataPath: runtime.userDataPath(),
+    homePath: runtime.homePath(),
+  });
+  return installStatus(runtime);
+}
+
 function saveModel(
   request: Extract<RendererRequest, { type: "embedding.models.upsert.request" }>,
   runtime: EmbeddingModelRuntime,
@@ -365,6 +381,18 @@ async function probeService(id: string, runtime: EmbeddingModelRuntime): Promise
   const catalog = parseEmbeddingServiceCatalog(runtime.readServices());
   const service = catalog.services.find((entry) => entry.id === id);
   if (!service) return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
+  const url = normalizeEmbeddingServiceUrl(service.baseUrl);
+  if (url?.place === "internet" && url.protocol === "http:") {
+    runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: false, failure: "https" }));
+    return {
+      ok: true,
+      type: "embedding.service.probed",
+      id,
+      textStatus: "failed",
+      dimensions: service.dimensions,
+      probeFailure: "https",
+    };
+  }
   try {
     const probed = await probeEmbeddingHttp({
       baseUrl: service.baseUrl,
@@ -373,11 +401,40 @@ async function probeService(id: string, runtime: EmbeddingModelRuntime): Promise
       dimensions: service.dimensions,
       apiKey: runtime.serviceCredentials.read(id),
     });
-    runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: true, dimensions: probed.dimensions }));
-    return { ok: true, type: "embedding.service.probed", id, textStatus: "verified", dimensions: probed.dimensions };
-  } catch {
-    runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: false }));
-    return { ok: true, type: "embedding.service.probed", id, textStatus: "failed", dimensions: null };
+    const next = markEmbeddingServiceProbe(catalog, id, { ok: true, dimensions: probed.dimensions });
+    const marked = next.services.find((entry) => entry.id === id);
+    runtime.writeServices(next);
+    if (marked?.textStatus === "failed") {
+      return {
+        ok: true,
+        type: "embedding.service.probed",
+        id,
+        textStatus: "failed",
+        dimensions: marked.dimensions,
+        probeFailure: marked.probeFailure,
+      };
+    }
+    return {
+      ok: true,
+      type: "embedding.service.probed",
+      id,
+      textStatus: "verified",
+      dimensions: probed.dimensions,
+      probeFailure: null,
+    };
+  } catch (error) {
+    const failure: EmbeddingProbeFailure = error instanceof EmbeddingHttpRequestError
+      ? error.kind
+      : "network";
+    runtime.writeServices(markEmbeddingServiceProbe(catalog, id, { ok: false, failure }));
+    return {
+      ok: true,
+      type: "embedding.service.probed",
+      id,
+      textStatus: "failed",
+      dimensions: service.dimensions,
+      probeFailure: failure,
+    };
   }
 }
 

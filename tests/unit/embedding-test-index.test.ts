@@ -52,6 +52,16 @@ describe("embedding test index", () => {
     expect(ids.slice(0, 2)).toEqual(["text-screenshot", "reflection"]);
   });
 
+  it("ranks mixed text and image rows by raw cosine without a type penalty", () => {
+    const ranked = scoreEmbeddings([1, 0], [
+      { assetId: "text-doc", revisionId: "r\ntext:v1:2500", vector: [0.95, Math.sqrt(1 - 0.95 ** 2)] },
+      { assetId: "photo", revisionId: "r", vector: [0.88, Math.sqrt(1 - 0.88 ** 2)] },
+    ]);
+    expect(ranked.map(({ assetId }) => assetId)).toEqual(["text-doc", "photo"]);
+    expect(ranked[0]?.score).toBeCloseTo(0.95);
+    expect(ranked[1]?.score).toBeCloseTo(0.88);
+  });
+
   it("exposes raw cosine scores and uses a stable ID tie-break", () => {
     const ranked = scoreEmbeddings([1, 0], [
       { assetId: "z", vector: [0.7, Math.sqrt(1 - 0.7 ** 2)] },

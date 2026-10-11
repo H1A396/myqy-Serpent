@@ -380,6 +380,8 @@ interface AssetContextMenuProps {
   semanticModelSupportsSimilar?: boolean;
   embeddingSelectionId?: string | null;
   embeddingModalities?: readonly EmbeddingModality[] | null;
+  /** Local Gemma install is ready; find-similar can fall back while HTTP is bound. */
+  localSimilarModelReady?: boolean;
   onFindSimilar: (assetId: string) => void;
   onCopyFilePath: (assetId: string) => void;
   /** OS file clipboard copy (Finder/Explorer interoperable). */
@@ -471,6 +473,7 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
     semanticModelSupportsSimilar = true,
     embeddingSelectionId = null,
     embeddingModalities = null,
+    localSimilarModelReady = false,
     onFindSimilar,
     onCopyFilePath,
     onCopyAssetFiles,
@@ -2030,6 +2033,7 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                 declared: isSemanticSearchModelId(embeddingSelectionId)
                   ? LOCAL_GEMMA_MODALITIES
                   : (embeddingModalities ?? ["text"]),
+                localSimilarReady: localSimilarModelReady,
               })
               : null;
             const sourceSupported = singleAsset && !similarBlock && (embeddingSelectionId || semanticModelSupportsSimilar)

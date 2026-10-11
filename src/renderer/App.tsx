@@ -502,9 +502,14 @@ import {
   type SemanticSearchPageSize,
 } from "./semantic-search-preferences";
 import { semanticSearchNotice } from "./semantic-index-copy";
-import { semanticBrowseRegistration } from "./semantic-browse";
+import { mergeKeywordAndSemanticRanks, semanticBrowseRegistration } from "./semantic-browse";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
-import { semanticBackgroundWorkActive, semanticToolbarReady } from "./semantic-work";
+import { embeddingServiceTextOnly } from "../shared/embedding/modalities";
+import {
+  resolveLocalSimilarModelId,
+  semanticBackgroundWorkActive,
+  semanticToolbarReady,
+} from "./semantic-work";
 import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-binding";
 import { subscribeEmbeddingCatalog, subscribeEmbeddingInstallActivity } from "./embedding-catalog-events";
 import {
@@ -2746,6 +2751,11 @@ function AppInner() {
       ? embeddingService.textStatus === "verified" && embeddingService.dimensions != null
       : embeddingSearchReady
   );
+  const localSimilarModelId = resolveLocalSimilarModelId({
+    runtimeInstalled: embeddingInstall?.runtimeInstalled ?? false,
+    models: embeddingInstall?.models ?? [],
+    preferredModelId: semanticSearchPrefs.modelId,
+  });
   embeddingSelectionRef.current = embeddingSearchReady ? embeddingSelectionId : null;
   useEffect(() => {
     embeddingRestartRef.current = true;
@@ -8769,24 +8779,41 @@ function AppInner() {
     if (!modelId) return;
     const searchPreferences = loadSemanticSearchPreferences();
     const pageSize = searchPreferences.pageSize;
+    const definition = currentQueryDefinition();
+    const searchScope = currentSearchScope(definition.search !== undefined);
     const request = silent
       ? { isCurrent: () => true }
       : beginWorkspaceNavigationRequest("none");
     try {
       if (!silent) await closeAssetPreview(false);
       if (!request.isCurrent()) return;
-      const ranked = await api.embeddingSearch({
-        libraryId: library.libraryId,
-        modelId,
-        query,
-      });
+      const [ranked, keyword] = await Promise.all([
+        api.embeddingSearch({
+          libraryId: library.libraryId,
+          modelId,
+          query,
+        }),
+        api.searchAssets({
+          libraryId: library.libraryId,
+          query: definition.search ?? null,
+          filters: definition.filters,
+          scope: searchScope,
+          idsOnly: true,
+          showIgnored: showIgnoredItems,
+        }),
+      ]);
       if (!request.isCurrent()) return;
       if (!ranked.ok) throw new LibraryOperationError(ranked.error);
-      if (ranked.value.assetIds.length === 0) {
+      const keywordAssetIds = keyword.ok ? (keyword.value.assetIds ?? []) : [];
+      const rankedAssetIds = mergeKeywordAndSemanticRanks({
+        keywordAssetIds,
+        semanticAssetIds: ranked.value.assetIds,
+      });
+      if (rankedAssetIds.length === 0) {
         const notice = semanticSearchNotice({
           ...ranked.value,
           matched: 0,
-          textOnly: isEmbeddingServiceSelectionId(modelId),
+          textOnly: isEmbeddingServiceSelectionId(modelId) && embeddingServiceTextOnly(embeddingService?.modalities),
         });
         setNotice(t(notice.key, notice.params));
         if (ranked.value.phase === "ready") {
@@ -8797,7 +8824,7 @@ function AppInner() {
       const firstPage = await fetchFirstRankedBrowsePage({
         api,
         libraryId: library.libraryId,
-        rankedAssetIds: ranked.value.assetIds,
+        rankedAssetIds,
         pageSize,
         shouldContinue: () => request.isCurrent(),
       });
@@ -16001,7 +16028,7 @@ function AppInner() {
         mediaJobs={mediaJobs}
         mediaJobsLoading={mediaJobsLoading}
         aiJobs={aiJobs}
-        embeddingIndex={embeddingSearchReady && embeddingSelectionId ? { modelId: embeddingSelectionId, snapshot: embeddingIndex } : null}
+        embeddingIndex={embeddingSearchReady && embeddingSelectionId ? { modelId: embeddingSelectionId, snapshot: embeddingIndex, modalities: embeddingService?.modalities } : null}
         pluginJobs={pluginJobs}
         onClose={() => setMediaJobsOpen(false)}
         onControlMediaJobs={(action, jobIds) => void controlMediaJobs(action, jobIds)}
@@ -16231,6 +16258,7 @@ function AppInner() {
         semanticSearchEnabled={embeddingBound}
         embeddingSelectionId={embeddingSelectionId}
         embeddingModalities={embeddingService?.modalities ?? null}
+        localSimilarModelReady={Boolean(localSimilarModelId)}
         onFindSimilar={(assetId) => {
           void runFindSimilar(assetId);
         }}

@@ -109,6 +109,53 @@ export function embeddingSearchRoots(input: { userData: string; home: string }):
   ];
 }
 
+/** Remove on-disk files for one Settings-installed model under userData/embedding-models.
+ * Shared projector files stay if another installed tier still needs them. Runtime is never removed.
+ */
+export function uninstallSemanticModelFiles(input: {
+  modelId: SemanticSearchModelId;
+  userDataPath: string;
+  homePath: string;
+}): { removed: string[] } {
+  const model = SEMANTIC_SEARCH_MODELS.find((entry) => entry.id === input.modelId);
+  if (!model) return { removed: [] };
+  const inspection = inspectEmbeddingTree(embeddingSearchRoots({
+    userData: input.userDataPath,
+    home: input.homePath,
+  }));
+  const installed = new Set(installedSemanticModels(new Set(inspection.files.keys())));
+  if (!installed.has(input.modelId)) return { removed: [] };
+
+  const stillNeeded = new Set<string>();
+  for (const otherId of installed) {
+    if (otherId === input.modelId) continue;
+    const other = SEMANTIC_SEARCH_MODELS.find((entry) => entry.id === otherId);
+    if (!other) continue;
+    const otherFiles = EMBEDDING_GEMMA2_TIER_FILES[other.tier];
+    stillNeeded.add(otherFiles.coreFile);
+    stillNeeded.add(otherFiles.projectorFile);
+  }
+
+  const files = EMBEDDING_GEMMA2_TIER_FILES[model.tier];
+  const allowedRoot = path.resolve(path.join(input.userDataPath, "embedding-models"));
+  const removed: string[] = [];
+  for (const fileName of [files.coreFile, files.projectorFile]) {
+    if (stillNeeded.has(fileName)) continue;
+    const filePath = inspection.files.get(fileName);
+    if (!filePath) continue;
+    const resolved = path.resolve(filePath);
+    const relative = path.relative(allowedRoot, resolved);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) continue;
+    try {
+      unlinkSync(resolved);
+      removed.push(resolved);
+    } catch {
+      // File may already be gone.
+    }
+  }
+  return { removed };
+}
+
 export function embeddingDownloadUrl(fileName: string): string {
   return `https://huggingface.co/unsloth/embeddinggemma-2-GGUF/resolve/${EMBEDDING_GEMMA2_MODEL_REVISION}/${fileName}`;
 }

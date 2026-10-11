@@ -13,6 +13,7 @@ import {
 import type { MediaJobStatus, AiJobStatus, PluginJobStatus } from "../shared/library-api";
 import type { EmbeddingIndexSnapshot } from "../shared/embedding/profile";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
+import { embeddingServiceTextOnly, type EmbeddingModality } from "../shared/embedding/modalities";
 import { embeddingIndexCopyKey, embeddingIndexJobsVisible } from "./semantic-index-copy";
 
 function embeddingModelLabel(
@@ -47,7 +48,7 @@ export interface MediaJobsDialogProps {
   mediaJobs: MediaJobStatus | null;
   mediaJobsLoading: boolean;
   aiJobs: AiJobStatus | null;
-  embeddingIndex?: { modelId: string; snapshot: EmbeddingIndexSnapshot } | null;
+  embeddingIndex?: { modelId: string; snapshot: EmbeddingIndexSnapshot; modalities?: readonly EmbeddingModality[] } | null;
   pluginJobs: PluginJobStatus | null;
   onClose: () => void;
   onControlMediaJobs: (
@@ -241,7 +242,8 @@ export function MediaJobsDialog({
                   {embeddingModelLabel(embeddingIndex.modelId, t)}
                   {" · "}
                   {t(embeddingIndexCopyKey(embeddingIndex.snapshot, {
-                    textOnly: isEmbeddingServiceSelectionId(embeddingIndex.modelId),
+                    textOnly: isEmbeddingServiceSelectionId(embeddingIndex.modelId)
+                      && embeddingServiceTextOnly(embeddingIndex.modalities),
                   }), {
                     done: embeddingIndex.snapshot.done,
                     total: embeddingIndex.snapshot.total,

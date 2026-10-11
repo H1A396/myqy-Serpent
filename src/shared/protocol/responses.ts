@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { EMBEDDING_HTTP_ADAPTERS } from '../embedding/http-service';
+
 import { aiSearchPlanSchema, assetMetadataResultSchema, extractedMetadataResultSchema, assetSummarySchema, browseLayoutEntrySchema, collectionSummarySchema, folderBrowseEntrySchema, gitignorePreviewSchema, ignoredPathSchema, linkedFolderDirectoryMutationSchema, linkedFolderRuleSchema, linkedFolderSummarySchema, managedFolderSummarySchema, portableRelativePathSchema, smartCollectionSummarySchema, tagCooccurrenceGraphSchema, tagSummarySchema, trashedFolderSummarySchema } from '../asset-types';
 import { entityAppearanceSchema, entityAppearanceTargetSchema } from '../entity-appearance';
 import { libraryNavigationSummarySchema } from '../library-navigation';
@@ -2584,11 +2586,13 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
     services: z.array(z.strictObject({
       id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
       name: nonBlankString.max(80),
-      adapter: z.enum(['openai-embeddings-v1', 'dashscope-multimodal-v1']),
+      description: z.string().max(200),
+      adapter: z.enum(EMBEDDING_HTTP_ADAPTERS),
       destination: z.enum(['loopback', 'lan', 'internet']),
       baseUrl: nonBlankString.max(300),
       modelName: nonBlankString.max(120),
       textStatus: z.enum(['unsupported', 'declared', 'verified', 'failed']),
+      probeFailure: z.enum(['network', 'auth', 'format', 'dimensions', 'https']).nullable(),
       dimensions: z.number().int().positive().max(8192).nullable(),
       modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4),
       grantedLibraryIds: z.array(nonBlankString.max(255)).max(100),
@@ -2612,6 +2616,7 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
     id: z.string().regex(/^svc_[a-z0-9]{8,40}$/),
     textStatus: z.enum(['verified', 'failed']),
     dimensions: z.number().int().positive().nullable(),
+    probeFailure: z.enum(['network', 'auth', 'format', 'dimensions', 'https']).nullable(),
   }),
   z.strictObject({
     ok: z.literal(true),

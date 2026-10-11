@@ -14,7 +14,7 @@ import {
   CONTENT_REPLACE_STAGE_CHUNK_MAX_BASE64_LENGTH,
 } from '../content-replace';
 import { performanceRequestEnvelopeSchema } from '../performance-contract';
-import { isEmbeddingSelectionId } from '../embedding/http-service';
+import { EMBEDDING_HTTP_ADAPTERS, isEmbeddingSelectionId } from '../embedding/http-service';
 import {
   entityAppearanceSchema,
   entityAppearanceTargetSchema,
@@ -1401,7 +1401,8 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     type: z.literal('embedding.services.save.request'),
     id: z.string().regex(/^svc_[a-z0-9]{8,40}$/).optional(),
     name: nonBlankString.max(80),
-    adapter: z.enum(['openai-embeddings-v1', 'dashscope-multimodal-v1']).optional(),
+    description: z.string().max(200).optional(),
+    adapter: z.enum(EMBEDDING_HTTP_ADAPTERS).optional(),
     destination: z.enum(['loopback', 'lan', 'internet']),
     baseUrl: nonBlankString.max(300),
     modelName: nonBlankString.max(120),
@@ -1437,6 +1438,10 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({
     type: z.literal('embedding.install.start.request'),
+    modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
+  }),
+  z.strictObject({
+    type: z.literal('embedding.install.delete.request'),
     modelId: z.enum(['embeddinggemma-2-compact', 'embeddinggemma-2-balanced', 'embeddinggemma-2-quality']),
   }),
   z.strictObject({

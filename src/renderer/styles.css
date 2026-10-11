@@ -7211,7 +7211,7 @@ body.serpent-modal-open .app-shell {
 .semantic-batch-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .semantic-search-card.is-dimmed {
@@ -7221,23 +7221,6 @@ body.serpent-modal-open .app-shell {
 .semantic-default-model-select {
   min-width: 200px;
   max-width: min(280px, 100%);
-}
-
-.semantic-settings-heading {
-  margin: 0;
-}
-
-.semantic-settings-heading h3 {
-  margin: 0;
-  font-size: calc(14px * var(--ui-font-scale));
-  font-weight: 600;
-}
-
-.semantic-settings-heading p {
-  margin: 4px 0 0;
-  color: var(--secondary);
-  font-size: calc(12px * var(--ui-font-scale));
-  line-height: 1.45;
 }
 
 .semantic-settings-tabs {
@@ -7277,17 +7260,32 @@ body.serpent-modal-open .app-shell {
 
 .semantic-settings-tabpanel {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .semantic-settings-toolbar {
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
 }
 
 .semantic-settings-toolbar .app-settings-row-copy {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.semantic-custom-header {
+  align-items: flex-start;
+}
+
+.semantic-custom-header .semantic-install-icon-button,
+.semantic-custom-header .primary-button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 1px;
+}
+
+.semantic-service-form .settings-error-message {
+  margin: 0;
 }
 
 .semantic-settings-segment {
@@ -7303,10 +7301,10 @@ body.serpent-modal-open .app-shell {
 
 .semantic-model-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 13px;
+  gap: 12px;
+  padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--raised) 55%, var(--pane));
@@ -7351,7 +7349,7 @@ body.serpent-modal-open .app-shell {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
   margin-top: 0;
 }
 
@@ -7384,9 +7382,41 @@ body.serpent-modal-open .app-shell {
   filter: none;
 }
 
-.semantic-install-icon-button:disabled {
-  opacity: 0.55;
+.semantic-install-icon-button.is-danger {
+  border-color: color-mix(in srgb, var(--danger, #d14343) 35%, var(--divider));
+  background: transparent;
+  color: var(--danger, #d14343);
+}
+
+.semantic-install-icon-button.is-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #d14343) 12%, transparent);
+  filter: none;
+}
+
+.semantic-install-icon-button:disabled,
+.semantic-install-icon-button:disabled:hover {
+  opacity: 1;
   cursor: default;
+  filter: none;
+  background: color-mix(in srgb, var(--raised) 82%, var(--pane));
+  color: color-mix(in srgb, var(--tertiary) 88%, var(--secondary));
+  border-color: color-mix(in srgb, var(--divider) 92%, transparent);
+  box-shadow: none;
+}
+
+.semantic-modality-row {
+  margin-top: 2px;
+  gap: 4px 16px;
+  justify-content: flex-start;
+}
+
+.semantic-service-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(11px * var(--ui-font-scale)) !important;
+  color: var(--tertiary) !important;
 }
 
 .semantic-install-progress {
@@ -7416,17 +7446,75 @@ body.serpent-modal-open .app-shell {
 
 .semantic-model-card .sync-status-indicator {
   max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
-.semantic-model-card .sync-status-indicator > span:last-child {
+.semantic-service-status-label {
+  color: var(--text);
+  font-weight: 560;
+}
+
+.semantic-service-status-reason {
+  min-width: 0;
+  max-width: 280px;
   overflow: hidden;
+  color: var(--tertiary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+
+/* Library settings → Semantic search: match Sync / AI analysis polish. */
+.library-semantic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.library-semantic-card > .app-settings-row,
+.library-semantic-card > .library-settings-gitignore-actions,
+.library-semantic-card > .library-semantic-notice {
+  margin: 0;
+}
+
+.library-semantic-card > .app-settings-row-stack {
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
+.library-semantic-select {
+  width: min(100%, 420px);
+  max-width: 100%;
+}
+
+.library-semantic-status-row {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.library-semantic-status-row .app-settings-row-copy {
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+
+.library-semantic-status-row .app-settings-row-copy span {
+  line-height: 1.5;
+}
+
+.library-semantic-status-row .sync-status-indicator {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.library-semantic-notice {
+  margin-top: 10px;
+}
+
 .semantic-custom-panel {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .semantic-service-form {
@@ -9665,6 +9753,17 @@ select.ai-config-input.ai-config-languages {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
+}
+
+.embedding-api-options {
+  flex-direction: column;
+}
+
+.embedding-api-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
 }
 
 .app-settings-row-inline {

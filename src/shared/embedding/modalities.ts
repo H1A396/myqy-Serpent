@@ -41,16 +41,30 @@ export function modalityForMediaType(mediaType: string): EmbeddingModality {
 export type SimilarMenuBlock = "service" | "modality";
 
 /**
- * Find-similar is offered only for a declared modality the current adapter can run.
- * Custom HTTP services stay text-search only until a similar path exists.
+ * Find-similar needs a declared modality the current adapter actually indexes.
+ * Text-only HTTP services cannot encode pictures; multimodal HTTP (image/video
+ * declared) ranks from the shared index once the source vector exists.
  */
 export function similarMenuBlock(input: {
   mediaType: string;
   implementation: "gemma" | "http";
   declared: readonly EmbeddingModality[];
+  /** Reserved: local dual-index fallback is not active while an HTTP service is bound. */
+  localSimilarReady?: boolean;
 }): SimilarMenuBlock | null {
   const modality = modalityForMediaType(input.mediaType);
   if (!input.declared.includes(modality)) return "modality";
-  if (input.implementation === "http") return "service";
+  if (input.implementation === "http") {
+    // OpenAI-compatible indexes text only. DashScope may declare image/video.
+    const httpCanVisual = input.declared.includes("image") || input.declared.includes("video");
+    if (modality !== "text" && !httpCanVisual) return "service";
+    return null;
+  }
   return null;
+}
+
+/** Custom HTTP services that only declare text use text-oriented index copy. */
+export function embeddingServiceTextOnly(modalities: readonly EmbeddingModality[] | null | undefined): boolean {
+  if (!modalities || modalities.length === 0) return true;
+  return !modalities.some((modality) => modality === "image" || modality === "video");
 }

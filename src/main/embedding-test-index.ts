@@ -72,10 +72,16 @@ export function embeddingTargetsToEncode<T extends { assetId: string; revisionId
 
 export type ScoredEmbedding = { assetId: string; score: number };
 
-/** Exact cosine ranking for the already L2-normalized query and image vectors. */
+function compareScoredEmbeddings(left: ScoredEmbedding, right: ScoredEmbedding): number {
+  return right.score - left.score || (
+    left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0
+  );
+}
+
+/** Exact cosine ranking for the already L2-normalized query and corpus vectors. */
 export function scoreEmbeddings(
   query: readonly number[],
-  entries: readonly { assetId: string; vector: readonly number[] }[],
+  entries: readonly { assetId: string; vector: readonly number[]; revisionId?: string }[],
 ): ScoredEmbedding[] {
   const scored = entries.map((entry) => {
     let score = 0;
@@ -85,9 +91,7 @@ export function scoreEmbeddings(
     }
     return { assetId: entry.assetId, score };
   });
-  scored.sort((left, right) => right.score - left.score || (
-    left.assetId < right.assetId ? -1 : left.assetId > right.assetId ? 1 : 0
-  ));
+  scored.sort(compareScoredEmbeddings);
   return scored;
 }
 

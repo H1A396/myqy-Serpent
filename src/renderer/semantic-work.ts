@@ -1,5 +1,10 @@
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
-import { isSemanticSearchModelId, type EmbeddingIndexPhase, type SemanticSearchModelId } from "../shared/embedding/profile";
+import {
+  isSemanticSearchModelId,
+  SETTINGS_LOCAL_SEMANTIC_MODELS,
+  type EmbeddingIndexPhase,
+  type SemanticSearchModelId,
+} from "../shared/embedding/profile";
 import type { EmbeddingModality } from "../shared/embedding/modalities";
 
 export type SemanticInstallModel = {
@@ -40,4 +45,32 @@ export function semanticBackgroundWorkActive(input: {
   if (input.installing) return true;
   if (!input.enabled) return false;
   return input.phase === "starting" || input.phase === "indexing";
+}
+
+
+/** Prefer the settings default when installed; otherwise the first ready local model. */
+export function resolveLocalSimilarModelId(input: {
+  runtimeInstalled: boolean;
+  models: readonly SemanticInstallModel[];
+  preferredModelId?: string | null;
+}): SemanticSearchModelId | null {
+  if (!input.runtimeInstalled) return null;
+  const installed = new Set(
+    input.models.filter((model) => model.installed).map((model) => model.modelId),
+  );
+  if (installed.size === 0) return null;
+  if (
+    input.preferredModelId
+    && isSemanticSearchModelId(input.preferredModelId)
+    && installed.has(input.preferredModelId)
+  ) {
+    return input.preferredModelId;
+  }
+  for (const modelId of SETTINGS_LOCAL_SEMANTIC_MODELS) {
+    if (installed.has(modelId)) return modelId;
+  }
+  for (const model of input.models) {
+    if (model.installed) return model.modelId;
+  }
+  return null;
 }

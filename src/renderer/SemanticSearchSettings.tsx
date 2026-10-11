@@ -9,7 +9,7 @@ import {
   type SemanticSearchModelId,
 } from "../shared/embedding/profile";
 import { EmbeddingServiceSettings, type EmbeddingServiceSettingsApi } from "./EmbeddingServiceSettings";
-import { notifyEmbeddingCatalogChanged, setEmbeddingInstallActive } from "./embedding-catalog-events";
+import { notifyEmbeddingCatalogChanged, setEmbeddingInstallActive, subscribeEmbeddingCatalog } from "./embedding-catalog-events";
 import { messageForPublicError } from "./error-utils";
 import { formatBytes } from "./format-file-meta";
 import { Icon } from "./Icons";
@@ -35,6 +35,7 @@ type ModelInstallState = "ready" | "missing" | "missing-runtime" | "runtime-unav
 export type EmbeddingCatalogApi = EmbeddingServiceSettingsApi & {
   embeddingInstallStatus: () => Promise<{ ok: boolean; value?: InstallSnapshot; error?: PublicError }>;
   embeddingInstall: (input: { modelId: SemanticSearchModelId }) => Promise<{ ok: boolean; value?: InstallSnapshot; error?: PublicError }>;
+  embeddingUninstall: (input: { modelId: SemanticSearchModelId }) => Promise<{ ok: boolean; value?: InstallSnapshot; error?: PublicError }>;
   onEmbeddingInstallProgress?: (listener: (event: EmbeddingInstallProgress) => void) => () => void;
 };
 
@@ -67,6 +68,7 @@ export function SemanticSearchSettings({
   const [mode, setMode] = useState<"local" | "custom">("local");
   const [install, setInstall] = useState<InstallSnapshot | null>(null);
   const [installingId, setInstallingId] = useState<SemanticSearchModelId | null>(null);
+  const [uninstallingId, setUninstallingId] = useState<SemanticSearchModelId | null>(null);
   const [installError, setInstallError] = useState<string | null>(null);
   const [progress, setProgress] = useState<EmbeddingInstallProgress | null>(null);
   const [serviceOptions, setServiceOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -74,7 +76,8 @@ export function SemanticSearchSettings({
   useEffect(() => {
     if (!servicesApi) return;
     let cancelled = false;
-    void (async () => {
+    async function loadCatalog(): Promise<void> {
+      if (!servicesApi) return;
       const [status, listed] = await Promise.all([
         servicesApi.embeddingInstallStatus(),
         servicesApi.embeddingListServices(),
@@ -84,9 +87,14 @@ export function SemanticSearchSettings({
       if (listed.ok && listed.value) {
         setServiceOptions(listed.value.map((service) => ({ id: service.id, name: service.name })));
       }
-    })();
+    }
+    void loadCatalog();
+    const unsubscribe = subscribeEmbeddingCatalog(() => {
+      void loadCatalog();
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [servicesApi]);
 
@@ -111,7 +119,7 @@ export function SemanticSearchSettings({
   }
 
   async function installModel(modelId: SemanticSearchModelId): Promise<void> {
-    if (!servicesApi || installingId) return;
+    if (!servicesApi || installingId || uninstallingId) return;
     setInstallingId(modelId);
     setInstallError(null);
     setProgress({
@@ -139,6 +147,26 @@ export function SemanticSearchSettings({
     } finally {
       setInstallingId(null);
       setEmbeddingInstallActive(false);
+    }
+  }
+
+  async function uninstallModel(modelId: SemanticSearchModelId): Promise<void> {
+    if (!servicesApi || installingId || uninstallingId) return;
+    setUninstallingId(modelId);
+    setInstallError(null);
+    try {
+      const result = await servicesApi.embeddingUninstall({ modelId });
+      if (!result.ok || !result.value) {
+        setInstallError(result.error
+          ? messageForPublicError(result.error, locale, t("error.code.EMBEDDING_INSTALL_FAILED"))
+          : t("error.code.EMBEDDING_INSTALL_FAILED"));
+        return;
+      }
+      setInstall(result.value);
+      notifyEmbeddingCatalogChanged();
+      setProgress(null);
+    } finally {
+      setUninstallingId(null);
     }
   }
 
@@ -194,9 +222,9 @@ export function SemanticSearchSettings({
       </SettingsCard>
 
       <SettingsCard className={`semantic-search-card${prefs.enabled ? "" : " is-dimmed"}`}>
-        <div className="app-settings-page-heading semantic-settings-heading">
-          <h3>{t("settings.semanticSearch.modelTitle")}</h3>
-          <p>{t("settings.semanticSearch.libraryChooses")}</p>
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.semanticSearch.modelTitle")}</strong>
+          <span>{t("settings.semanticSearch.libraryChooses")}</span>
         </div>
 
         <div
@@ -263,12 +291,19 @@ export function SemanticSearchSettings({
                       : "idle";
                 const actionLabel = working
                   ? t("settings.semanticSearch.installWorking")
-                  : state === "ready"
-                    ? t("settings.semanticSearch.installReinstall")
-                    : t("settings.semanticSearch.installAction");
+                  : t("settings.semanticSearch.installAction");
+                const deleteLabel = uninstallingId === modelId
+                  ? t("settings.semanticSearch.installRemoving")
+                  : t("settings.semanticSearch.installDelete");
                 const packageBytes = SEMANTIC_MODEL_PACKAGE_BYTES[modelId];
                 const activeProgress = working ? progress : null;
                 const percent = progressPercent(activeProgress);
+                const downloadDisabled = (
+                  installingId !== null
+                  || uninstallingId !== null
+                  || state === "ready"
+                  || state === "runtime-unavailable"
+                );
                 return (
                   <div className="semantic-model-card" key={modelId} role="listitem">
                     <div className="semantic-model-card-copy">
@@ -316,14 +351,25 @@ export function SemanticSearchSettings({
                     </div>
                     <div className="semantic-model-card-action">
                       <button
-                        className={`semantic-install-icon-button${state === "ready" ? " is-secondary" : ""}`}
-                        disabled={installingId !== null || state === "runtime-unavailable"}
+                        className="semantic-install-icon-button"
+                        disabled={downloadDisabled}
                         onClick={() => { void installModel(modelId); }}
                         type="button"
                         {...iconActionAttrs(actionLabel)}
                       >
                         <Icon name={working ? "refresh" : "download"} size={15} />
                       </button>
+                      {state === "ready" || state === "missing-runtime" ? (
+                        <button
+                          className="semantic-install-icon-button is-danger"
+                          disabled={installingId !== null || uninstallingId !== null}
+                          onClick={() => { void uninstallModel(modelId); }}
+                          type="button"
+                          {...iconActionAttrs(deleteLabel)}
+                        >
+                          <Icon name="trash" size={15} />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

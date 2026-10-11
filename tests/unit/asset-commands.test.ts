@@ -232,14 +232,14 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
       similarBlockedReason: 'service',
     });
     expect(findItem(registry.resolveMenu(service.ctx), 'asset.find-similar').disabledReason)
-      .toBe('自定义服务目前不能用来找相似');
+      .toBe('请先安装本机模型，再按图查找相似资产');
     const modality = makeCtx({
       semanticSearchEnabled: true,
       similarImageSupported: false,
       similarBlockedReason: 'modality',
     });
     expect(findItem(registry.resolveMenu(modality.ctx), 'asset.find-similar').disabledReason)
-      .toBe('这个模型没有声明支持这类内容');
+      .toBe('当前模型未声明支持此类内容');
   });
 
   it('损坏的图片不能用来找相似', () => {
@@ -250,7 +250,7 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
     });
     const item = findItem(registry.resolveMenu(ctx), 'asset.find-similar');
     expect(item.disabled).toBe(true);
-    expect(item.disabledReason).toBe('这个文件已损坏，不能参与语义搜索');
+    expect(item.disabledReason).toBe('该文件已损坏，无法参与语义搜索');
   });
 
   it('回收站里不显示找相似', () => {

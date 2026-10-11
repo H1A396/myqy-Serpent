@@ -1,6 +1,6 @@
 import type { EmbeddingInstallProgress } from "./embedding/install-progress";
 import type { EmbeddingGemmaTier, EmbeddingIndexSnapshot, EmbeddingModelSummary, SemanticSearchModelId } from './embedding/profile';
-import type { EmbeddingHttpAdapter, EmbeddingServiceDestination, EmbeddingTextStatus } from './embedding/http-service';
+import type { EmbeddingHttpAdapter, EmbeddingServiceDestination, EmbeddingProbeFailure, EmbeddingTextStatus } from './embedding/http-service';
 import type { EmbeddingModality } from './embedding/modalities';
 import type { PublicError, PublicErrorReason } from './protocol/errors';
 import type { LibraryNavigationSummary } from './library-navigation';
@@ -40,11 +40,13 @@ export interface SemanticSearchAssetScore {
 export interface EmbeddingHttpServiceSummary {
   id: string;
   name: string;
+  description: string;
   adapter: EmbeddingHttpAdapter;
   destination: EmbeddingServiceDestination;
   baseUrl: string;
   modelName: string;
   textStatus: EmbeddingTextStatus;
+  probeFailure: EmbeddingProbeFailure | null;
   dimensions: number | null;
   modalities: EmbeddingModality[];
   grantedLibraryIds: string[];
@@ -791,6 +793,11 @@ export interface SerpentLibraryApi {
     runtimeDownloadable: boolean;
     models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
   }>>;
+  embeddingUninstall(input: { modelId: SemanticSearchModelId }): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
   onEmbeddingInstallProgress?(listener: (event: EmbeddingInstallProgress) => void): () => void;
   embeddingIndexStatus(input: {
     libraryId: string;
@@ -820,6 +827,7 @@ export interface SerpentLibraryApi {
   embeddingSaveService(input: {
     id?: string;
     name: string;
+    description?: string;
     adapter?: EmbeddingHttpAdapter;
     destination: "loopback" | "lan" | "internet";
     baseUrl: string;
@@ -833,6 +841,7 @@ export interface SerpentLibraryApi {
     id: string;
     textStatus: "verified" | "failed";
     dimensions: number | null;
+    probeFailure: EmbeddingProbeFailure | null;
   }>>;
   embeddingGrantService(input: { id: string; libraryId: string }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingGetBinding(input: { libraryId: string }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
