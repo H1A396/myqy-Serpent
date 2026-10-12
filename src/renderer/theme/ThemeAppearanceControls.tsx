@@ -30,6 +30,11 @@ const PROFILE_LABELS = {
   forest: 'settings.themeProfileForest',
   indigo: 'settings.themeProfileIndigo',
   rose: 'settings.themeProfileRose',
+  ocean: 'settings.themeProfileOcean',
+  copper: 'settings.themeProfileCopper',
+  ink: 'settings.themeProfileInk',
+  lilac: 'settings.themeProfileLilac',
+  citrus: 'settings.themeProfileCitrus',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
