@@ -17650,17 +17650,19 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
    The pad floats and casts the chosen shadow with the island formula (a83);
    the thumb is a lit sphere casting its own contact shadow on the pad.
    --pad-elev-size / --pad-elev-intensity = value / 50 (same as --elev-*). */
+/* a89: square pad; axis labels outside (left = intensity, bottom = size). */
 .elevation-pad-field {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  max-width: 400px;
+  display: grid;
+  grid-template-columns: 14px 184px;
+  grid-template-rows: 184px auto;
+  column-gap: 10px;
+  row-gap: 9px;
+  width: max-content;
+  padding: 6px 0 4px;
 }
 .elevation-pad-stage {
-  /* Room for the pad's own shadow (max ≈ 6px down / 28px blur at 2×). */
-  padding: 6px 10px 16px;
-  margin: -6px -10px -10px;
+  grid-column: 2;
+  grid-row: 1;
 }
 .elevation-pad {
   --pad-surface: var(--ui-surface-raised, var(--raised));
@@ -17674,8 +17676,9 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   position: relative;
   --pad-x: calc(var(--pad-inset) + (100% - 2 * var(--pad-inset)) * var(--pad-fx));
   --pad-y: calc(var(--pad-inset) + (100% - 2 * var(--pad-inset)) * var(--pad-fy));
-  height: 168px;
-  border-radius: 16px;
+  width: 184px;
+  height: 184px;
+  border-radius: 20px;
   background:
     radial-gradient(120% 90% at 18% 0%, color-mix(in oklab, white 55%, transparent), transparent 60%),
     linear-gradient(180deg, var(--pad-surface), color-mix(in oklab, var(--pad-surface) 96%, var(--pad-ink)));
@@ -17719,65 +17722,6 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 }
 :root[data-theme="dark"] .elevation-pad-field-dots {
   background-image: radial-gradient(circle, color-mix(in oklab, white 13%, transparent) 0.7px, transparent 1.1px);
-}
-/* Hairline guides from the sphere to the axes. */
-.elevation-pad-guide {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0.9;
-}
-.elevation-pad-guide-x {
-  left: var(--pad-x);
-  top: calc(var(--pad-y) + 16px);
-  bottom: 0;
-  width: 1px;
-  margin-left: -0.5px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--pad-accent) 28%, transparent), transparent 85%);
-}
-.elevation-pad-guide-y {
-  left: 0;
-  right: calc(100% - var(--pad-x) + 14px);
-  top: var(--pad-y);
-  height: 1px;
-  margin-top: -0.5px;
-  background: linear-gradient(270deg, color-mix(in oklab, var(--pad-accent) 28%, transparent), transparent 85%);
-}
-.elevation-pad.is-off .elevation-pad-guide {
-  opacity: 0;
-}
-.elevation-pad-label {
-  position: absolute;
-  color: color-mix(in oklab, var(--pad-ink) 42%, transparent);
-  font-size: calc(10px * var(--ui-font-scale));
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  pointer-events: none;
-}
-.elevation-pad-label-y {
-  top: 10px;
-  left: 12px;
-}
-.elevation-pad-label-y::before {
-  content: "↑ ";
-  opacity: 0.7;
-}
-.elevation-pad-label-x {
-  right: 12px;
-  bottom: 10px;
-}
-.elevation-pad-label-x::after {
-  content: " →";
-  opacity: 0.7;
-}
-.elevation-pad-label-off {
-  left: 32px;
-  bottom: 10px;
-  opacity: 0;
-  transition: opacity 160ms ease;
-}
-.elevation-pad.is-off .elevation-pad-label-off {
-  opacity: 1;
 }
 /* Sphere thumb */
 .elevation-pad-thumb {
@@ -17857,29 +17801,74 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 .elevation-pad.is-off .elevation-pad-thumb-shadow {
   opacity: 0;
 }
-.elevation-pad-readout {
+/* Axis labels outside the pad: small, quiet, with a hairline arrow. */
+.elevation-pad-axis {
   display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 5px;
-  padding-right: 2px;
+  align-items: center;
+  gap: 6px;
   color: var(--ui-content-tertiary, var(--tertiary));
-  font-size: calc(10.5px * var(--ui-font-scale));
-  letter-spacing: 0.02em;
+  font-size: calc(10px * var(--ui-font-scale));
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
 }
-.elevation-pad-readout b {
-  min-width: 2ch;
-  color: var(--ui-content-primary, var(--text));
-  font-weight: 560;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+.elevation-pad-axis::after {
+  content: "";
+  flex: 0 0 18px;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in oklab, currentColor 70%, transparent), transparent);
 }
-.elevation-pad-readout i {
-  width: 1px;
-  height: 9px;
-  margin: 0 6px;
+.elevation-pad-axis-x {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: center;
+}
+.elevation-pad-axis-y {
+  grid-column: 1;
+  grid-row: 1;
   align-self: center;
-  background: var(--ui-border-divider, var(--divider));
+  justify-self: center;
+  width: 0;
+  height: 0;
+  position: relative;
+}
+.elevation-pad-axis-y > span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+.elevation-pad-axis-y > span::after {
+  content: "";
+  flex: 0 0 18px;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in oklab, currentColor 70%, transparent), transparent);
+}
+.elevation-pad-axis-y::after {
+  content: none;
+}
+/* Off: sits under the pad's bottom-left corner, lights up when off. */
+.elevation-pad-off {
+  grid-column: 2;
+  padding-left: 2px;
+  grid-row: 2;
+  justify-self: start;
+  align-self: center;
+  color: color-mix(in oklab, var(--ui-content-tertiary, var(--tertiary)) 60%, transparent);
+  font-size: calc(10px * var(--ui-font-scale));
+  letter-spacing: 0.04em;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.elevation-pad-off.is-active {
+  opacity: 1;
+  color: var(--ui-content-secondary, var(--secondary));
 }
 
 /* ==== a87: vertically center card info block ================================

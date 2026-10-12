@@ -99,6 +99,9 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
 
   return (
     <div className="elevation-pad-field">
+      <span aria-hidden="true" className="elevation-pad-axis elevation-pad-axis-y">
+        <span>{labels.intensity}</span>
+      </span>
       <div className="elevation-pad-stage">
         <div
           className={`elevation-pad${enabled ? "" : " is-off"}`}
@@ -111,17 +114,6 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
           style={padStyle}
         >
           <span aria-hidden="true" className="elevation-pad-field-dots" />
-          <span aria-hidden="true" className="elevation-pad-guide elevation-pad-guide-x" />
-          <span aria-hidden="true" className="elevation-pad-guide elevation-pad-guide-y" />
-          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-y">
-            {labels.intensity}
-          </span>
-          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-x">
-            {labels.size}
-          </span>
-          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-off">
-            {labels.off}
-          </span>
           <div
             aria-label={labels.pad}
             aria-valuemax={SHADOW_VALUE_MAX}
@@ -138,19 +130,12 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
           </div>
         </div>
       </div>
-      <div aria-hidden="true" className="elevation-pad-readout">
-        {enabled ? (
-          <>
-            <span>{labels.size}</span>
-            <b>{size}</b>
-            <i />
-            <span>{labels.intensity}</span>
-            <b>{intensity}</b>
-          </>
-        ) : (
-          <span>{labels.off}</span>
-        )}
-      </div>
+      <span aria-hidden="true" className={`elevation-pad-off${enabled ? "" : " is-active"}`}>
+        {labels.off}
+      </span>
+      <span aria-hidden="true" className="elevation-pad-axis elevation-pad-axis-x">
+        {labels.size}
+      </span>
     </div>
   );
 }
