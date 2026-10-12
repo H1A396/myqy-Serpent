@@ -16886,17 +16886,20 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a62: retune tag tip nose rounding ==================================
-   a61 nose A2 sweep=0 carved a concave notch (convexity<0). Fix: smaller
-   R≈1.05 fillet with sweep=1 so the tip reads as a crisp convex round.
-   Keep straight L slopes, tiny shoulder A1.5, left body R=3. */
+/* ==== a63: quieter dark tags, clearer light tags ==========================
+   Shape unchanged from a62. Contrast only: dark fill/hairline down a notch,
+   light fill/hairline up a notch. Defaults = light; dark overrides below. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
   --tag-tip-flat: 4px; /* join band ends before shoulder fillet (~x=4.29) */
+  --tag-fill-tint: 8%; /* light: was 5% */
+  --tag-fill-tint-hover: 11%; /* light: was 8% */
+  --tag-hairline: 28%; /* light: was 18% */
+  --tag-hairline-hover: 36%; /* light: was 24% */
   --tag-chip-fill: color-mix(
     in srgb,
-    var(--tag-chip-color, var(--ui-content-primary)) 5%,
+    var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint),
     var(--island-surface-soft)
   );
   position: relative;
@@ -16909,7 +16912,25 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   padding: 0 var(--tag-tip-w) 0 8px;
   min-height: 22px;
   filter: drop-shadow(
-    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) 18%, transparent)
+    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) var(--tag-hairline), transparent)
+  );
+}
+
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .tag-chip,
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  --tag-fill-tint: 2.5%; /* dark: was 5% — quieter */
+  --tag-fill-tint-hover: 4%;
+  --tag-hairline: 10%; /* dark: was 18% */
+  --tag-hairline-hover: 15%;
+  /* Soften raised surface so chips sit closer to panel */
+  --tag-chip-fill: color-mix(
+    in srgb,
+    color-mix(
+      in srgb,
+      var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint),
+      var(--island-surface-soft)
+    ) 72%,
+    transparent
   );
 }
 
@@ -16958,11 +16979,11 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .tag-chip:hover {
   --tag-chip-fill: color-mix(
     in srgb,
-    var(--tag-chip-color, var(--ui-content-primary)) 8%,
+    var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint-hover),
     var(--island-surface-soft)
   );
   filter: drop-shadow(
-    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) 24%, transparent)
+    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) var(--tag-hairline-hover), transparent)
   );
 }
 
@@ -16999,7 +17020,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-chip-fill: color-mix(
     in srgb,
-    var(--ui-content-primary) 4%,
+    var(--ui-content-primary) var(--tag-fill-tint),
     var(--island-surface-soft)
   );
   height: var(--shell-chip-height);
