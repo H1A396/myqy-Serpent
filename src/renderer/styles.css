@@ -15729,20 +15729,18 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 /* Selected ring: must beat the islands .asset-card border-color rule so the
    accent stroke replaces the hairline (no gap) and follows border-radius. */
+/* Ring = the card's own 1px border painted accent + 1px outer shadow, so the
+   stroke hugs the media with no light sliver of card background between. */
 .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
 .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
-  border-color: transparent;
+  border-color: var(--accent);
   outline: none;
   border-radius: var(--island-card-radius);
-  box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 :root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
 :root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent);
-}
-.app-shell[data-shell-layout="islands"] .asset-card.is-selected .asset-preview,
-.app-shell[data-shell-layout="islands"] .asset-card:focus-visible .asset-preview {
-  border-radius: var(--island-card-radius) var(--island-card-radius) 0 0;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 /* ---- Gallery: Photos air + softer card chrome --------------------------- */
@@ -15763,8 +15761,28 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .asset-card:hover {
   box-shadow: 0 2px 8px -2px rgb(0 0 0 / 10%);
 }
+/* Concentric corners: the card clips its own content, and the media layers sit
+   1px inside the card border, so their radius is card radius - border width.
+   (Was 14px inside a 14px/1px card → corners flattened with a sliver gap.) */
+.app-shell[data-shell-layout="islands"] .asset-card {
+  overflow: hidden;
+  isolation: isolate;
+  background-clip: padding-box;
+}
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-card-media,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-thumbnail {
+  border-radius: calc(var(--island-card-radius) - 1px) calc(var(--island-card-radius) - 1px) 0 0;
+}
 .app-shell[data-shell-layout="islands"] .asset-preview {
-  border-radius: var(--island-card-radius) var(--island-card-radius) 0 0;
+  margin: 0;
+  box-shadow: none;
+}
+/* Justified slots already match the image aspect (±rounding, or the 0.66
+   min-slot clamp). "contain" left 1–2px letterbox slivers under the rounded
+   top edge, so the picture's corners read as flattened. Fill the slot instead. */
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-card .asset-thumbnail {
+  object-fit: cover;
 }
 .app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
 .app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
