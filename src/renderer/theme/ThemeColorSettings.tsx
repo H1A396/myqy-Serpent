@@ -6,6 +6,8 @@ import { Button, TextField } from '../ui/primitives';
 import { useTheme } from './ThemeProvider';
 import { cssColorToHex, sampleThemeColors, type SampledThemeColors } from './sample-theme-colors';
 import { USER_THEME_NAME_MAX } from './user-themes';
+import { ThemeMiniDialog } from './ThemeMiniDialog';
+import { Icon } from '../Icons';
 
 /**
  * Twelve fields cover every surface the islands app paints; everything else
@@ -24,7 +26,7 @@ export const CUSTOM_THEME_EDITOR_FIELDS = [
   { token: '--ui-content-primary', labelKey: 'settings.customThemePrimary', sample: null },
   { token: '--ui-content-secondary', labelKey: 'settings.customThemeSecondary', sample: null },
   { token: '--ui-action-accent', labelKey: 'settings.customThemeAccent', sample: null },
-  { token: '--ui-action-accent-soft', labelKey: 'settings.customThemeAccentSoft', sample: null },
+  { token: '--ui-island-select', labelKey: 'settings.customThemeAccentSoft', sample: 'select' },
   { token: '--ui-status-danger', labelKey: 'settings.customThemeDanger', sample: null },
 ] as const;
 
@@ -40,22 +42,18 @@ const HEX6 = /^#[0-9a-f]{6}$/iu;
 export function ThemeColorSettings(): ReactNode {
   const t = useT();
   const {
-    activeUserTheme,
     createUserTheme,
     customOverlay,
     customTheme,
-    deleteUserTheme,
-    renameUserTheme,
     resetCustomTheme,
     resolved,
-    saveOverlayToActiveUserTheme,
     setCustomTheme,
     themeProfile,
     themeRevision,
   } = useTheme();
   const editStartValues = useRef<Partial<Record<EditorToken, string>>>({});
   const [draftName, setDraftName] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [naming, setNaming] = useState(false);
   const [sampled, setSampled] = useState<SampledThemeColors | null>(null);
   const [rootValues, setRootValues] = useState<Record<string, string>>({});
   // Re-read the live app after every theme change (next frame, once the
@@ -84,7 +82,13 @@ export function ThemeColorSettings(): ReactNode {
     if (!HEX6.test(value)) return;
     setCustomTheme({
       ...customOverlay,
-      [resolved]: { ...customOverlay[resolved], [token]: value },
+      [resolved]: {
+        ...customOverlay[resolved],
+        [token]: value,
+        // The soft accent is one colour: selection wash + every accent-soft
+        // surface (chips, pills, filter washes).
+        ...(token === '--ui-island-select' ? { '--ui-action-accent-soft': value } : {}),
+      },
     });
   }
 
@@ -96,12 +100,16 @@ export function ThemeColorSettings(): ReactNode {
     '--tp-canvas': sampled?.canvas,
     '--tp-card': sampled?.card,
     '--tp-edge': sampled?.border,
+    '--tp-select': sampled?.select,
+    '--tp-tool': sampled?.tool,
+    '--tp-field': sampled?.field,
   } as CSSProperties;
 
+  // The new theme is created (and selected, edits folded in) only on 完成.
   function saveAsTheme() {
     createUserTheme(draftName.trim() || t('settings.customThemeUntitled'));
     setDraftName('');
-    setConfirmDelete(false);
+    setNaming(false);
   }
 
   return (
@@ -109,34 +117,6 @@ export function ThemeColorSettings(): ReactNode {
       hint={t('settings.customThemesHint')}
       title={t('settings.advancedColors')}
     >
-      {activeUserTheme ? (
-        <div className="app-settings-custom-theme-active">
-          <TextField
-            aria-label={t('settings.customThemeName')}
-            label={t('settings.customThemeActive')}
-            maxLength={USER_THEME_NAME_MAX}
-            onChange={(event) => renameUserTheme(activeUserTheme.id, event.target.value)}
-            placeholder={t('settings.customThemeUntitled')}
-            value={activeUserTheme.name}
-            wrapperClassName="app-settings-custom-theme-name"
-          />
-          <Button
-            onBlur={() => setConfirmDelete(false)}
-            onClick={() => {
-              if (!confirmDelete) {
-                setConfirmDelete(true);
-                return;
-              }
-              setConfirmDelete(false);
-              deleteUserTheme(activeUserTheme.id);
-            }}
-            size="sm"
-            variant="danger"
-          >
-            {confirmDelete ? t('settings.customThemeDeleteConfirm') : t('settings.customThemeDelete')}
-          </Button>
-        </div>
-      ) : null}
       <span className="app-settings-custom-theme-meta">
         {t('settings.customThemeEditingMode', {
           mode: t(resolved === 'dark' ? 'settings.customThemeModeDark' : 'settings.customThemeModeLight'),
@@ -181,6 +161,16 @@ export function ThemeColorSettings(): ReactNode {
       >
         <div className="app-settings-theme-preview-heading">
           {t('settings.customThemePreview')}
+          {hasOverlay ? (
+            <span
+              className="app-settings-theme-modified-badge"
+              role="img"
+              aria-label={t('settings.customThemeModified')}
+              title={t('settings.customThemeModified')}
+            >
+              <Icon name="settings" size={11} />
+            </span>
+          ) : null}
         </div>
         {/* Live miniature of the islands app, painted from the real theme
             tokens so every edit above shows up immediately. */}
@@ -237,29 +227,6 @@ export function ThemeColorSettings(): ReactNode {
         </div>
       </div>
       <div className="app-settings-custom-theme-save">
-        <label className="app-settings-custom-theme-save-label" htmlFor="custom-theme-save-name">
-          {t('settings.customThemeName')}
-        </label>
-        <TextField
-          aria-label={t('settings.customThemeName')}
-          id="custom-theme-save-name"
-          maxLength={USER_THEME_NAME_MAX}
-          onChange={(event) => setDraftName(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') saveAsTheme();
-          }}
-          placeholder={t('settings.customThemeUntitled')}
-          value={draftName}
-          wrapperClassName="app-settings-custom-theme-save-input"
-        />
-        <Button onClick={saveAsTheme} size="sm" variant="primary">
-          {t('settings.customThemeCreate')}
-        </Button>
-        {activeUserTheme && hasOverlay ? (
-          <Button onClick={saveOverlayToActiveUserTheme} size="sm">
-            {t('settings.customThemeUpdate', { name: activeUserTheme.name || t('settings.customThemeUntitled') })}
-          </Button>
-        ) : null}
         <Button
           className="app-settings-theme-reset"
           disabled={!hasOverlay}
@@ -268,7 +235,36 @@ export function ThemeColorSettings(): ReactNode {
         >
           {t('settings.customThemeReset')}
         </Button>
+        <Button
+          className="app-settings-theme-save-new"
+          onClick={() => {
+            setDraftName('');
+            setNaming(true);
+          }}
+          size="sm"
+          variant="primary"
+        >
+          {t('settings.customThemeCreate')}
+        </Button>
       </div>
+      {naming ? (
+        <ThemeMiniDialog
+          cancelLabel={t('settings.customThemeCancel')}
+          confirmLabel={t('settings.customThemeDone')}
+          dialogId="theme-new-name-dialog"
+          onCancel={() => setNaming(false)}
+          onConfirm={saveAsTheme}
+          title={t('settings.customThemeNewTitle')}
+        >
+          <TextField
+            aria-label={t('settings.customThemeName')}
+            maxLength={USER_THEME_NAME_MAX}
+            onChange={(event) => setDraftName(event.target.value)}
+            placeholder={t('settings.customThemeUntitled')}
+            value={draftName}
+          />
+        </ThemeMiniDialog>
+      ) : null}
     </SettingsDisclosure>
   );
 }

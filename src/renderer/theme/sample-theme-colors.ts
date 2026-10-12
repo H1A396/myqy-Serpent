@@ -10,6 +10,12 @@ export type SampledThemeColors = {
   readonly canvas: string;
   readonly card: string;
   readonly border: string;
+  /** Selection wash (nav active row) as seen over the side panel. */
+  readonly select: string;
+  /** Main-panel toolstrip as seen over the main panel. */
+  readonly tool: string;
+  /** Inspector text field as seen over the side panel. */
+  readonly field: string;
 };
 
 let paintContext: CanvasRenderingContext2D | null | undefined;
@@ -53,6 +59,9 @@ export function sampleThemeColors(): SampledThemeColors | null {
   const realCard = shell?.querySelector('.asset-card');
   const card = realCard ? getComputedStyle(realCard).backgroundColor : canvas;
   const sideHex = cssColorToHex(side) ?? '#ffffff';
+  const canvasHex = cssColorToHex(canvas) ?? '#ffffff';
+  const realTool = shell?.querySelector('.workspace-toolstrip');
+  const realField = shell?.querySelector('.inspector-pane .text-field, .inspector-pane textarea, .inspector-pane input');
   return {
     backdrop: cssColorToHex(probe(host, 'var(--island-backdrop, var(--ui-surface-canvas))')) ?? '#ffffff',
     side: sideHex,
@@ -60,5 +69,8 @@ export function sampleThemeColors(): SampledThemeColors | null {
     card: cssColorToHex(card, cssColorToHex(canvas) ?? '#ffffff') ?? '#ffffff',
     // Island borders are translucent ink; show them as seen on the panels.
     border: cssColorToHex(probe(host, 'var(--island-border, var(--ui-border-subtle))'), sideHex) ?? '#cccccc',
+    select: cssColorToHex(probe(host, 'var(--island-select, var(--ui-action-accent-soft))'), sideHex) ?? sideHex,
+    tool: realTool ? (cssColorToHex(getComputedStyle(realTool).backgroundColor, canvasHex) ?? canvasHex) : canvasHex,
+    field: realField ? (cssColorToHex(getComputedStyle(realField).backgroundColor, sideHex) ?? sideHex) : sideHex,
   };
 }

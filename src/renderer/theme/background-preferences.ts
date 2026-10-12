@@ -354,6 +354,10 @@ export function applyBackgroundPreferences(
   );
   root.style.setProperty('--ui-background-position', 'center');
   root.style.setProperty('--ui-panel-opacity', `${Math.round(normalized.panelOpacity * 100)}%`);
+  // a94: the wallpaper veil only exists when an image is shown; without one
+  // the window backdrop must be exactly the theme's backdrop colour.
+  if (normalized.imageDataUrl !== null) root.setAttribute?.('data-bg-image', 'on');
+  else root.removeAttribute?.('data-bg-image');
   if (normalized.showInMainPanel && normalized.imageDataUrl !== null) {
     root.setAttribute?.('data-bg-main-panel', 'on');
   } else {

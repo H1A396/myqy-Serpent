@@ -72,6 +72,7 @@ export const CUSTOM_THEME_ISLAND_TOKENS = [
   '--ui-island-canvas',
   '--ui-island-card',
   '--ui-island-border',
+  '--ui-island-select',
 ] as const;
 export type CustomThemeIslandToken = (typeof CUSTOM_THEME_ISLAND_TOKENS)[number];
 export type CustomThemeOverrideToken = CustomThemeColorToken | CustomThemeIslandToken;

@@ -22,7 +22,7 @@ describe('a92 settings live preview', () => {
   });
 
   it('fades the backdrop only while adjusting (a93)', () => {
-    expect(css).toMatch(/\.dialog-backdrop\.app-settings-backdrop\.is-adjusting[^{]*\{[^}]*background-color: transparent;[^}]*transition-duration: 180ms;/);
+    expect(css).toMatch(/\.dialog-backdrop\.app-settings-backdrop\.is-adjusting[^{]*\{[^}]*background-color: transparent;[^}]*transition-duration: 360ms;/);
     expect(css).not.toMatch(/is-live-preview/);
   });
 

@@ -1,6 +1,8 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { useT } from '../i18n';
+import { Icon } from '../Icons';
+import { ThemeMiniDialog } from './ThemeMiniDialog';
 import { Select, Slider, Switch } from '../ui/primitives';
 import { BackgroundImagePanel } from './BackgroundImageControls';
 import {
@@ -94,7 +96,12 @@ export function ThemeProfilePicker(): ReactNode {
     userThemes,
     activeUserTheme,
     selectUserTheme,
+    deleteUserTheme,
+    customOverlay,
   } = useTheme();
+  const [pendingDelete, setPendingDelete] = useState<UserTheme | null>(null);
+  const hasOverlay = Object.values(customOverlay.light).some(Boolean)
+    || Object.values(customOverlay.dark).some(Boolean);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   // Custom themes lead the grid so they are visible without scrolling.
   const entries: PickerEntry[] = [
@@ -133,11 +140,11 @@ export function ThemeProfilePicker(): ReactNode {
           ? asPreviewStyle(entry.theme.base, resolved, entry.theme[resolved])
           : asPreviewStyle(entry.preset, resolved);
         return (
+          <div className="app-settings-theme-profile-cell" key={entry.key}>
           <button
             aria-checked={selected}
             className={`app-settings-theme-profile${selected ? ' is-active' : ''}${entry.kind === 'user' ? ' is-custom' : ''}`}
             data-theme-entry={entry.key}
-            key={entry.key}
             onClick={() => select(entry)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -178,10 +185,51 @@ export function ThemeProfilePicker(): ReactNode {
                   {t('settings.customThemeBadge')}
                 </span>
               ) : null}
+              {selected && hasOverlay ? (
+                <span
+                  aria-label={t('settings.customThemeModified')}
+                  className="app-settings-theme-modified-badge"
+                  role="img"
+                  title={t('settings.customThemeModified')}
+                >
+                  <Icon name="settings" size={11} />
+                </span>
+              ) : null}
             </span>
           </button>
+          {entry.kind === 'user' ? (
+            <button
+              aria-label={t('settings.customThemeDelete')}
+              className="app-settings-theme-profile-delete"
+              onClick={() => setPendingDelete(entry.theme)}
+              tabIndex={-1}
+              title={t('settings.customThemeDelete')}
+              type="button"
+            >
+              <Icon name="trash" size={12} />
+            </button>
+          ) : null}
+          </div>
         );
       })}
+      {pendingDelete ? (
+        <ThemeMiniDialog
+          cancelLabel={t('settings.customThemeCancel')}
+          confirmLabel={t('settings.customThemeDeleteConfirm')}
+          danger
+          dialogId="theme-delete-dialog"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            deleteUserTheme(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+          title={t('settings.customThemeDeleteTitle', {
+            name: pendingDelete.name || t('settings.customThemeUntitled'),
+          })}
+        >
+          <p className="theme-mini-dialog-body">{t('settings.customThemeDeleteBody')}</p>
+        </ThemeMiniDialog>
+      ) : null}
     </div>
   );
 }

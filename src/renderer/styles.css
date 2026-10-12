@@ -18073,27 +18073,6 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   border-top: 1px solid var(--ui-border-divider);
 }
 
-.app-settings-custom-theme-save-label {
-  flex: none;
-  color: var(--ui-content-primary);
-  font-size: var(--ui-font-size-label);
-  white-space: nowrap;
-}
-
-.app-settings-custom-theme-save .app-settings-custom-theme-save-input {
-  flex: 1 1 160px;
-  max-width: 260px;
-  margin: 0;
-}
-
-.app-settings-custom-theme-active {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--ui-space-2);
-  margin-bottom: var(--ui-space-2);
-}
-
 /* a92: settings content must not scroll while dragging a slider. Measured in
    Electron: each slider update jumped .app-settings-content by +125px with no
    JS scroll call and no element size change — Chromium scroll anchoring
@@ -18140,8 +18119,14 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   --island-border: var(--ui-island-border);
 }
 
-:root[style*="--ui-island-card:"] .app-shell[data-shell-layout="islands"] .asset-card:is(*, #a93-island) {
+:root[style*="--ui-island-card:"] .app-shell[data-shell-layout="islands"] .asset-card:is(*, #a93-island),
+:root[style*="--ui-island-card:"] .app-shell[data-shell-layout="islands"] .asset-card .asset-caption:is(*, #a93-island) {
   background-color: var(--ui-island-card);
+}
+
+/* a94: 强调色（柔和）= the selection wash (nav row, …) when pinned. */
+:root[style*="--ui-island-select:"] .app-shell[data-shell-layout="islands"]:is(*, #a93-island) {
+  --island-select: var(--ui-island-select);
 }
 
 /* ── a93: custom-theme editor preview — accurate islands miniature ────────
@@ -18180,12 +18165,12 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 .tp-nav-row i { flex: none; width: 9px; height: 9px; border-radius: calc(3px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
 .tp-nav-row b { flex: 1; height: 4px; border-radius: calc(2px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
 .tp-nav-row b.is-short { flex: 0 0 55%; }
-.tp-nav-row.is-active { background: var(--ui-action-accent-soft); }
+.tp-nav-row.is-active { background: var(--tp-select, var(--ui-action-accent-soft)); }
 .tp-nav-row.is-active i, .tp-nav-row.is-active b { background: var(--ui-action-accent); }
 .tp-nav-label { width: 40%; height: 3px; margin: 8px 6px 2px; border-radius: calc(2px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 10%, transparent); }
 
 .tp-main { display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 8px; background: var(--tp-canvas, var(--ui-surface-raised)); }
-.tp-toolstrip { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; border-radius: calc(7px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent); }
+.tp-toolstrip { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; border-radius: calc(7px * var(--ui-radius-scale, 1)); background: var(--tp-tool, color-mix(in oklab, var(--ui-content-primary) 4%, transparent)); }
 .tp-pill { width: 34px; height: 12px; border-radius: 999px; background: var(--tp-line); }
 .tp-pill.is-accent { background: var(--ui-action-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-action-accent) 35%, transparent); }
 .tp-toolstrip-spacer { flex: 1; }
@@ -18222,22 +18207,152 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 .tp-stars { display: flex; gap: 3px; margin-top: 3px; }
 .tp-stars i { width: 9px; height: 9px; background: var(--tp-line); clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 .tp-stars i.is-on { background: var(--ui-action-accent); }
-.tp-description { padding: 6px 7px; border-radius: calc(6px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent); color: var(--ui-content-secondary); font-size: 10px; line-height: 1.35; }
+.tp-description { padding: 6px 7px; border-radius: calc(6px * var(--ui-radius-scale, 1)); background: var(--tp-field, color-mix(in oklab, var(--ui-content-primary) 4%, transparent)); color: var(--ui-content-secondary); font-size: 10px; line-height: 1.35; }
 
 /* a93: Settings backdrop fades out only while an appearance control is being
-   adjusted (pointer/drag/input): ~180ms out, back in after ~600ms idle
-   (timer in use-appearance-adjusting.ts) with a 600ms ease. blur(0px)
+   adjusted (pointer/drag/input): ~360ms out, back in after ~1200ms idle (a94: doubled)
+   (timer in use-appearance-adjusting.ts) with a 1200ms ease. blur(0px)
    instead of none keeps backdrop-filter interpolable. */
 .dialog-backdrop.app-settings-backdrop {
   transition:
-    background-color 600ms ease,
-    -webkit-backdrop-filter 600ms ease,
-    backdrop-filter 600ms ease;
+    background-color 1200ms ease,
+    -webkit-backdrop-filter 1200ms ease,
+    backdrop-filter 1200ms ease;
 }
 
 .dialog-backdrop.app-settings-backdrop.is-adjusting:is(*, #a93-adjusting) {
   background-color: transparent;
   -webkit-backdrop-filter: blur(0px);
   backdrop-filter: blur(0px);
-  transition-duration: 180ms;
+  transition-duration: 360ms;
+}
+
+/* ── a94: wallpaper veil uses the window backdrop colour in islands ────────
+   With an image, the inverse-opacity veil is tinted with --island-backdrop
+   (the 窗口背景 field) instead of the Inputs surface. */
+:root[data-bg-image="on"] .app-shell[data-shell-layout="islands"] {
+  --ui-a94-veil: color-mix(
+    in srgb,
+    var(--island-backdrop) calc((1 - var(--ui-background-image-opacity, 0.8)) * 100%),
+    transparent
+  );
+  --ui-backdrop-image: linear-gradient(var(--ui-a94-veil), var(--ui-a94-veil)), var(--ui-background-image, none);
+}
+
+/* a94: the document canvas behind the shell (window resize / overscroll /
+   macOS title-bar region before first paint) follows 窗口背景 too. */
+:root[style*="--ui-island-backdrop:"] {
+  background-color: var(--ui-island-backdrop);
+}
+
+/* ── a94: theme grid cells — hover-revealed delete on custom themes ─────── */
+.app-settings-theme-profile-cell {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  height: var(--theme-card-row, 100px);
+  scroll-snap-align: start;
+}
+.app-settings-theme-profile-cell > .app-settings-theme-profile {
+  width: 100%;
+}
+.app-settings-theme-profile-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
+  background: var(--ui-surface-raised);
+  color: var(--ui-content-secondary);
+  box-shadow: 0 1px 3px color-mix(in oklab, black 18%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+.app-settings-theme-profile-cell:hover > .app-settings-theme-profile-delete,
+.app-settings-theme-profile-cell:focus-within > .app-settings-theme-profile-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+.app-settings-theme-profile-delete:hover {
+  background: color-mix(in oklab, var(--ui-status-danger) 14%, var(--ui-surface-raised));
+  color: var(--ui-status-danger);
+}
+
+/* a94: gear = unsaved custom modifications on the current theme. */
+.app-settings-theme-modified-badge {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--ui-radius-pill);
+  background: color-mix(in oklab, var(--ui-action-accent) 16%, transparent);
+  color: var(--ui-content-accent, var(--ui-action-accent));
+  vertical-align: middle;
+}
+.app-settings-theme-preview-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-settings-custom-theme-save {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* a94: small modal stacked over Settings (new theme name / delete confirm). */
+.theme-mini-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, black 22%, transparent);
+  animation: theme-mini-fade 140ms ease-out both;
+}
+.theme-mini-dialog-backdrop > .theme-mini-dialog {
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 48px));
+  padding: 0;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
+  background: var(--ui-surface-raised);
+  color: var(--ui-content-primary);
+  box-shadow: 0 18px 48px -12px color-mix(in oklab, black 45%, transparent);
+}
+.theme-mini-dialog h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: var(--ui-font-weight-semibold, 600);
+}
+.theme-mini-dialog-body {
+  margin: 0;
+  color: var(--ui-content-secondary);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.theme-mini-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+@keyframes theme-mini-fade {
+  from { opacity: 0; }
+}
+.theme-mini-dialog.ui-dialog-shell > [data-dialog-header="true"],
+.theme-mini-dialog.ui-dialog-shell > [data-dialog-footer="true"] {
+  border: 0;
+}
+.theme-mini-dialog.ui-dialog-shell > [data-dialog-content="true"] {
+  padding-top: 0;
+  padding-bottom: 0;
 }

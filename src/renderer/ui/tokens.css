@@ -53,6 +53,13 @@
   --ui-backdrop-size: 100% 100%, var(--ui-background-size, cover);
 }
 
+/* a94: no wallpaper → no veil. The veil (20% surface-canvas) used to tint the
+   window backdrop even with no image, so a custom 窗口背景 never rendered
+   as chosen (it was pulled toward the Inputs colour). */
+:root:not([data-bg-image="on"]) {
+  --ui-backdrop-image: none;
+}
+
 :root,
 :root[data-theme="dark"],
 [data-theme="dark"] {

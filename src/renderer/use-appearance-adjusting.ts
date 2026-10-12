@@ -16,7 +16,7 @@ export const APPEARANCE_CONTROL_SELECTOR = [
 ].join(", ");
 
 /** Delay before the backdrop fades back in after the last interaction. */
-export const APPEARANCE_ADJUST_SETTLE_MS = 600;
+export const APPEARANCE_ADJUST_SETTLE_MS = 1200;
 
 export function isAppearanceControl(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
