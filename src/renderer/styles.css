@@ -16886,11 +16886,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a66: vertically center tag chip text ================================
-   a65 silhouette/radii + a63 contrast kept. Earlier islands rule set
-   line-height:22px (same as chip height), so the name strut filled the chip
-   and CJK glyphs sat optically low. Tighten line-height, flex-center label/×,
-   +0.5px optical nudge. */
+/* ==== a67: vertically center tag remove × ================================
+   a66 label centering kept (name translateY 0.5px). Remove × with the same
+   0.5px down sat optically low in the tip — flip to translateY(-0.5px).
+   a65 radii + a63 contrast + single mask unchanged. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
@@ -16985,7 +16984,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   margin-right: -8px;
   line-height: 0;
   opacity: 0.7;
-  transform: translateY(0.5px);
+  /* Opposite of label nudge: Lucide × in the tip reads low at +0.5px */
+  transform: translateY(-0.5px);
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-remove .icon {
+  display: block;
+  flex: 0 0 auto;
 }
 .app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
   opacity: 1;
@@ -17014,7 +17018,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .filter-tag-chip button {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-right: -4px;
+  line-height: 0;
+  transform: translateY(-0.5px);
 }
 .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
   --tag-fill-solid: color-mix(in srgb, var(--accent) 10%, var(--island-surface-soft));
