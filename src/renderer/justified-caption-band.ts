@@ -10,9 +10,9 @@
  */
 
 /** Padding on justified captions (base `.asset-caption` uses the same 10px on islands). */
-export const JUSTIFIED_CAPTION_PAD_TOP_PX = 10;
-export const JUSTIFIED_CAPTION_PAD_BOTTOM_PX = 10;
-export const JUSTIFIED_CAPTION_GAP_PX = 4;
+export const JUSTIFIED_CAPTION_PAD_TOP_PX = 14;
+export const JUSTIFIED_CAPTION_PAD_BOTTOM_PX = 14;
+export const JUSTIFIED_CAPTION_GAP_PX = 5;
 
 /** `.asset-dimensions`: 11px / line-height 1.2 */
 export const JUSTIFIED_CAPTION_DIMENSIONS_LINE_PX = Math.ceil(11 * 1.2);

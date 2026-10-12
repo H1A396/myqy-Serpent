@@ -32,7 +32,7 @@ describe("resolveJustifiedCaptionBandPx (Serpent-omn)", () => {
         JUSTIFIED_CAPTION_DIMENSIONS_LINE_PX +
         JUSTIFIED_CAPTION_PAD_BOTTOM_PX,
     );
-    expect(band).toBe(34);
+    expect(band).toBe(42);
   });
 
   it("matches the compact ~54px default (dimensions + name + meta)", () => {
@@ -52,8 +52,8 @@ describe("resolveJustifiedCaptionBandPx (Serpent-omn)", () => {
     );
     // The compact caption keeps the measured three-line content while trimming
     // the bottom breathing room.
-    expect(band).toBeGreaterThanOrEqual(68);
-    expect(band).toBe(68);
+    expect(band).toBeGreaterThanOrEqual(78);
+    expect(band).toBe(78);
   });
 
   it("grows when more lines are enabled", () => {
@@ -82,6 +82,6 @@ describe("resolveJustifiedCaptionBandPx (Serpent-omn)", () => {
     const large = resolveJustifiedCaptionBandPx(lines, 1.12);
 
     expect(large).toBeGreaterThan(base);
-    expect(large).toBe(79);
+    expect(large).toBe(90);
   });
 });

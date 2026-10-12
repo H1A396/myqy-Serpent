@@ -13399,6 +13399,7 @@ function AppInner() {
       <section className="workspace">
         <div
           className={`workspace-toolstrip${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}`}
+          data-chrome="unified"
         >
         <div
           className={`workspace-bar${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}`}

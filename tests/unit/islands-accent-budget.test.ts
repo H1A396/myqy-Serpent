@@ -17,23 +17,28 @@ function lastAssignment(source: string, prop: string): string | null {
   return matches.length ? matches.at(-1)![1].trim() : null;
 }
 
-describe("islands accent budget + Codex transfer tokens (a27)", () => {
+describe("islands accent budget + Codex transfer tokens (a27/a28)", () => {
+  it("ships the bold a28 redesign block", () => {
+    expect(css).toMatch(/\/\* ==== a28:/);
+  });
+
   it("defines loud / soft / neutral-on accent budget tokens", () => {
     expect(lastAssignment(a27, "--island-accent-loud")).toBe("var(--ui-action-accent)");
+    // a28 demotes soft accent to content secondary (accent almost only loud roles).
     expect(lastAssignment(a27, "--island-accent-soft")).toMatch(
-      /var\(--ui-action-accent\)|var\(--island-accent-loud\)/,
+      /var\(--ui-action-accent\)|var\(--island-accent-loud\)|var\(--ui-content-secondary\)/,
     );
     expect(lastAssignment(a27, "--island-pressed-wash")).toMatch(/ui-content-primary|white/);
   });
 
-  it("uses ink-alpha hairlines around 8–12%", () => {
-    expect(lastAssignment(a27, "--island-hairline-w")).toBe("0.5px");
-    expect(lastAssignment(a27, "--island-border")).toMatch(/12%/);
-    expect(lastAssignment(a27, "--island-hairline")).toMatch(/8%/);
+  it("uses ink-alpha hairlines around 9–14% (a28 flat materials)", () => {
+    expect(lastAssignment(a27, "--island-hairline-w")).toMatch(/^(0\.5|1)px$/);
+    expect(lastAssignment(a27, "--island-border")).toMatch(/1[24]%/);
+    expect(lastAssignment(a27, "--island-hairline")).toMatch(/[89]%/);
   });
 
-  it("defines 94/6 soft surface for chips and secondary plates", () => {
-    expect(lastAssignment(a27, "--island-surface-soft")).toMatch(/94%/);
+  it("defines a soft surface mix for chips and secondary plates", () => {
+    expect(lastAssignment(a27, "--island-surface-soft")).toMatch(/88%|90%|94%/);
   });
 
   it("keeps selected card ring on loud accent (not pressed-wash)", () => {

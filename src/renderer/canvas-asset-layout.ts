@@ -80,9 +80,9 @@ export type CanvasAssetLayoutIndex = {
   forEachAll: (visit: (item: CanvasAssetLayoutRect) => void) => void;
 };
 
-export const MASONRY_CAPTION_BAND_PX = 50;
+export const MASONRY_CAPTION_BAND_PX = 59;
 /** Three caption rows: resolution, filename, and size/date. */
-export const MASONRY_DIMENSIONS_CAPTION_BAND_PX = 68;
+export const MASONRY_DIMENSIONS_CAPTION_BAND_PX = 78;
 
 const publishedLayouts = new WeakMap<HTMLElement, readonly CanvasAssetLayoutRect[]>();
 const publishedLayoutIndexes = new WeakMap<HTMLElement, CanvasAssetLayoutIndex>();

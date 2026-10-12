@@ -94,16 +94,16 @@ describe("distributed masonry", () => {
       (item) => heights[item]!,
     );
 
-    // Shortest-load packing → [a] | [b,d,e] | [c].
+    // Shortest-load packing with ASSET_GRID_GAP_PX=22 → [a] | [b,d] | [c,e].
     expect(columns.map((column) => column.items)).toEqual([
       ["a"],
-      ["b", "d", "e"],
-      ["c"],
+      ["b", "d"],
+      ["c", "e"],
     ]);
     expect(columns.map((column) => column.estimatedHeightPx)).toEqual([
       300,
-      230,
-      200,
+      180,
+      250,
     ]);
   });
 
@@ -173,12 +173,12 @@ describe("layoutJustifiedRows", () => {
       ],
       900,
       120,
-      14,
+      ASSET_GRID_GAP_PX,
     );
     expect(rows).toHaveLength(1);
     const row = rows[0]!;
     const widths = row.items.map((item) => item.width);
-    const gaps = 14 * (row.items.length - 1);
+    const gaps = ASSET_GRID_GAP_PX * (row.items.length - 1);
     expect(widths.every((width) => Number.isInteger(width))).toBe(true);
     expect(Number.isInteger(row.height)).toBe(true);
     expect(widths.reduce((sum, w) => sum + w, 0) + gaps).toBe(900);
@@ -208,7 +208,7 @@ describe("layoutJustifiedRows", () => {
       [{ id: "solo", aspectRatio: 1 }],
       800,
       100,
-      14,
+      ASSET_GRID_GAP_PX,
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]!.height).toBe(100);

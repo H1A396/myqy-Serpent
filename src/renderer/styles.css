@@ -16339,3 +16339,345 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-size: calc(11px * var(--ui-font-scale));
   line-height: calc(13px * var(--ui-font-scale));
 }
+
+/* ==== a28: BOLD Codex islands redesign — 人有多大胆，地有多大产 ==============
+   Near-flat hairline materials, stronger surface ladder, denser chrome
+   (~26–28px), monochrome CTAs, accent ONLY on selection + applied filters,
+   gallery much airier. Keep L/R on --island-side. */
+
+.app-shell[data-shell-layout="islands"] {
+  /* Structure: tighter shell, flatter, clearer ladder */
+  --island-gap: 8px;
+  --island-radius: 16px;
+  --island-card-radius: 10px;
+  --island-group-gap: 12px;
+  --island-hairline-w: 1px;
+  --island-border: color-mix(in srgb, var(--ui-content-primary) 14%, transparent);
+  --island-hairline: color-mix(in srgb, var(--ui-content-primary) 9%, transparent);
+  --island-shadow: none;
+
+  /* Stronger surface ladder: deep backdrop → opaque sides → bright canvas */
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 82%, var(--ui-content-primary));
+  --island-side: var(--ui-surface-pane);
+  --island-canvas: var(--ui-surface-raised);
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-pane) 55%, var(--ui-surface-raised));
+  --island-tab-fill: var(--island-toolstrip-bg);
+  --island-surface-soft: color-mix(in srgb, var(--ui-surface-raised) 90%, var(--ui-content-primary));
+  --island-surface-recess: color-mix(in srgb, var(--ui-content-primary) 6%, var(--ui-surface-raised));
+
+  /* Accent almost only on selection + applied filters */
+  --island-accent-loud: var(--ui-action-accent);
+  --island-accent-soft: var(--ui-content-secondary); /* demote soft accent → ink secondary */
+  --island-select: color-mix(in srgb, var(--ui-content-primary) 7%, transparent); /* NAV: neutral, not accent */
+  --island-pressed-wash: color-mix(in srgb, var(--ui-content-primary) 7%, transparent);
+  --island-hover-wash: color-mix(in srgb, var(--ui-content-primary) 4%, transparent);
+
+  --island-segment-track: var(--island-surface-recess);
+  --island-segment-hover: color-mix(in srgb, var(--ui-content-primary) 6%, transparent);
+  --island-segment-pill: var(--ui-surface-raised);
+  --island-segment-pill-shadow: none;
+
+  background-color: var(--island-backdrop);
+}
+
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-border: color-mix(in srgb, white 14%, transparent);
+  --island-hairline: color-mix(in srgb, white 9%, transparent);
+  --island-shadow: none;
+  --island-backdrop: color-mix(in srgb, black 45%, var(--ui-surface-canvas));
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-pane) 70%, black);
+  --island-tab-fill: var(--island-toolstrip-bg);
+  --island-surface-soft: color-mix(in srgb, var(--ui-surface-raised) 88%, white);
+  --island-surface-recess: color-mix(in srgb, white 7%, transparent);
+  --island-select: color-mix(in srgb, white 8%, transparent);
+  --island-pressed-wash: color-mix(in srgb, white 8%, transparent);
+  --island-hover-wash: color-mix(in srgb, white 5%, transparent);
+  --island-segment-track: color-mix(in srgb, white 6%, transparent);
+  --island-segment-hover: color-mix(in srgb, white 9%, transparent);
+  --island-segment-pill: color-mix(in srgb, var(--ui-surface-raised) 92%, white);
+  --island-accent-soft: var(--ui-content-secondary);
+}
+
+/* Flat islands: hairline only, no drop shadow */
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
+  margin: 0 var(--island-gap) var(--island-gap);
+  border: var(--island-hairline-w) solid var(--island-border);
+  border-radius: var(--island-radius);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
+.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
+.app-shell[data-shell-layout="islands"] > .workspace {
+  background: var(--island-canvas);
+}
+
+/* L/R identical opaque side (reassert last word) */
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane {
+  background: var(--island-side);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* ---- Dense chrome ------------------------------------------------------ */
+.app-shell[data-shell-layout="islands"] .navigation-scroll {
+  padding: 8px 8px 12px;
+}
+.app-shell[data-shell-layout="islands"] .nav-section-heading {
+  height: 18px;
+  margin: 0 0 2px;
+  padding: 0 8px;
+  font-size: calc(10.5px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ui-content-tertiary);
+}
+.app-shell[data-shell-layout="islands"] .nav-row {
+  min-height: 26px;
+  border-radius: 6px;
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 450;
+}
+.app-shell[data-shell-layout="islands"] .nav-tree-row {
+  border-radius: 6px;
+}
+.app-shell[data-shell-layout="islands"] .nav-row .nav-entity-glyph .icon,
+.app-shell[data-shell-layout="islands"] .nav-row .icon {
+  width: 14px;
+  height: 14px;
+}
+/* Nav selection: neutral wash only — no accent glyphs */
+.app-shell[data-shell-layout="islands"] .nav-row.is-active,
+.app-shell[data-shell-layout="islands"] .nav-row[aria-current="page"],
+.app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) {
+  background: var(--island-select);
+  color: var(--ui-content-primary);
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph,
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .icon {
+  color: var(--ui-content-primary);
+}
+
+/* Unified dense toolstrip: title + filters on ONE row (bold a28) */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 30px;
+  padding: 0 10px;
+  background: var(--island-toolstrip-bg);
+  border-bottom: var(--island-hairline-w) solid var(--island-hairline);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
+  flex: 1 1 220px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+}
+.app-shell[data-shell-layout="islands"] .workspace-title .scope-crumb-label.is-current {
+  font-size: calc(13px * var(--ui-font-scale));
+  font-weight: 600;
+}
+.app-shell[data-shell-layout="islands"] .item-count {
+  font-size: calc(11px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button,
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button {
+  min-height: 26px;
+  min-width: 26px;
+  border-radius: 6px;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims {
+  gap: 1px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--island-segment-track);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn {
+  min-height: 24px;
+  border-radius: 5px;
+  font-size: calc(11px * var(--ui-font-scale));
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+}
+/* Applied filter: LOUD accent — the rare splash */
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled),
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active[aria-pressed="true"] {
+  background: var(--island-accent-loud);
+  color: var(--ui-content-inverse);
+  font-weight: 600;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active .icon {
+  color: var(--ui-content-inverse);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled) {
+  background: var(--island-accent-loud);
+  color: var(--ui-content-inverse);
+}
+
+/* Pressed open filter (not applied): neutral pill */
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"]:not(.is-active) {
+  background: var(--island-segment-pill);
+  color: var(--ui-content-primary);
+  box-shadow: inset 0 0 0 1px var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"]:not(.is-active) .icon {
+  color: var(--ui-content-primary);
+}
+
+/* Selection ring: LOUD — only other accent splash */
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  border-color: var(--island-accent-loud);
+  border-width: 2px;
+  box-shadow: none;
+  outline: none;
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  box-shadow: none;
+}
+
+/* Flat cards */
+.app-shell[data-shell-layout="islands"] .asset-card {
+  border-radius: var(--island-card-radius);
+  border: var(--island-hairline-w) solid var(--island-hairline);
+  box-shadow: none;
+  background: var(--island-canvas);
+}
+.app-shell[data-shell-layout="islands"] .asset-card:hover {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--ui-content-primary) 18%, transparent);
+}
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-card-media,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-thumbnail {
+  border-radius: calc(var(--island-card-radius) - 1px) calc(var(--island-card-radius) - 1px) 0 0;
+}
+
+/* ---- Airier gallery ---------------------------------------------------- */
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  padding: 22px 26px 36px;
+  background: var(--island-canvas);
+}
+.app-shell[data-shell-layout="islands"] .justified-row {
+  /* Match ASSET_GRID_GAP_PX = 22 */
+  margin-bottom: 22px !important;
+}
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
+  padding: 14px 14px;
+  gap: 5px;
+  background: var(--island-canvas);
+}
+.app-shell[data-shell-layout="islands"] .asset-caption strong {
+  font-size: calc(13px * var(--ui-font-scale));
+  line-height: calc(16px * var(--ui-font-scale));
+  font-weight: 560;
+  letter-spacing: -0.02em;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > span {
+  font-size: calc(11.5px * var(--ui-font-scale));
+  line-height: calc(14px * var(--ui-font-scale));
+  color: var(--ui-content-tertiary);
+}
+
+/* Soft chips stay monochrome */
+.app-shell[data-shell-layout="islands"] .tag-chip,
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: var(--island-surface-soft);
+  color: var(--ui-content-secondary);
+  border: var(--island-hairline-w) solid var(--island-hairline);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+/* Inspector denser + flat */
+.app-shell[data-shell-layout="islands"] .inspector-content {
+  padding: 12px 14px 20px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-section-label,
+.app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
+  font-size: calc(10.5px * var(--ui-font-scale));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--ui-content-tertiary);
+}
+.app-shell[data-shell-layout="islands"] .inspector-quick-row,
+.app-shell[data-shell-layout="islands"] .inspector-quick-row + .editor-field,
+.app-shell[data-shell-layout="islands"] .inspector-tech-bar {
+  border-top: var(--island-hairline-w) solid var(--island-hairline);
+}
+
+/* Monochrome CTAs — ink pills everywhere in islands chrome */
+.app-shell[data-shell-layout="islands"] .primary-button,
+.app-shell[data-shell-layout="islands"] .empty-library .primary-button,
+.app-shell[data-shell-layout="islands"] .empty-state .primary-button,
+.app-shell[data-shell-layout="islands"] .dialog-actions .primary-button {
+  background: var(--ui-content-primary);
+  color: var(--ui-content-inverse);
+  border: none;
+  border-radius: 9999px;
+  box-shadow: none;
+  min-height: 32px;
+  padding-inline: 16px;
+  font-weight: 560;
+}
+.app-shell[data-shell-layout="islands"] .primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-content-primary) 82%, var(--ui-content-inverse));
+  color: var(--ui-content-inverse);
+}
+.app-shell[data-shell-layout="islands"] .secondary-button,
+.app-shell[data-shell-layout="islands"] .ghost-button {
+  background: transparent;
+  color: var(--ui-content-primary);
+  border: var(--island-hairline-w) solid var(--island-border);
+  border-radius: 9999px;
+  box-shadow: none;
+  min-height: 32px;
+  padding-inline: 16px;
+}
+
+/* Links: secondary ink, not accent soft */
+.app-shell[data-shell-layout="islands"] a:not(.tool-button):not(.nav-row):not(.dimension-filter-btn) {
+  color: var(--ui-content-secondary);
+  text-decoration-color: color-mix(in srgb, var(--ui-content-primary) 25%, transparent);
+}
+.app-shell[data-shell-layout="islands"] a:not(.tool-button):not(.nav-row):hover {
+  color: var(--ui-content-primary);
+}
+
+/* Active workspace tab fuses with unified toolstrip */
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
+  --canvas: var(--island-tab-fill);
+}
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active .workspace-tab-select > .icon,
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active .workspace-tab-select > .nav-entity-glyph {
+  color: var(--ui-content-primary);
+}
