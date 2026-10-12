@@ -17601,3 +17601,47 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   --island-backdrop: color-mix(in oklab, var(--ui-surface-pane) 83%, black);
   background-color: var(--island-backdrop);
 }
+
+/* ==== a86: asset card drop shadow (Elevation shadows) ======================
+   Scales with --elev-size / --elev-intensity; none at data-elevation="0".
+   Smaller than the island shadow. Many later blocks reset card box-shadow to
+   none (incl. selected / selected:hover at 0,7,0 specificity), so the
+   :is(...) arm lifts these rules above all of them. box-shadow follows the
+   card's border-radius; selection stays the 1px accent border (unchanged).
+   At max the shadow reaches ~6px — inside .workspace-canvas padding
+   (10/8/18px) and slots are overflow:visible, so it is not clipped.
+   Hover "lifts" by deepening the shadow (no transform: keeps virtualized
+   layout / marquee hit-testing stable). */
+.app-shell[data-shell-layout="islands"] {
+  --card-shadow:
+    0 calc(0.5px * var(--elev-size)) calc(1.5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.07 * var(--elev-intensity))),
+    0 calc(2px * var(--elev-size)) calc(5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.09 * var(--elev-intensity)));
+  --card-shadow-hover:
+    0 calc(1px * var(--elev-size)) calc(2px * var(--elev-size))
+      rgb(0 0 0 / calc(0.09 * var(--elev-intensity))),
+    0 calc(3px * var(--elev-size)) calc(8px * var(--elev-size))
+      rgb(0 0 0 / calc(0.14 * var(--elev-intensity)));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --card-shadow:
+    0 calc(0.5px * var(--elev-size)) calc(1.5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.25 * var(--elev-intensity))),
+    0 calc(2px * var(--elev-size)) calc(5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.30 * var(--elev-intensity)));
+  --card-shadow-hover:
+    0 calc(1px * var(--elev-size)) calc(2px * var(--elev-size))
+      rgb(0 0 0 / calc(0.30 * var(--elev-intensity))),
+    0 calc(3px * var(--elev-size)) calc(8px * var(--elev-size))
+      rgb(0 0 0 / calc(0.42 * var(--elev-intensity)));
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:is(.is-selected.is-selected:hover:focus-visible, *) {
+  box-shadow: var(--card-shadow);
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:is(.is-selected.is-selected:hover:focus-visible, *):hover {
+  box-shadow: var(--card-shadow-hover);
+}
+:root[data-elevation="0"] .app-shell[data-shell-layout="islands"] .asset-card:is(.is-selected.is-selected:hover:focus-visible, *) {
+  box-shadow: none;
+}
