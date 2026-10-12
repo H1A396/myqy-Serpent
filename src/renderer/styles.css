@@ -17588,3 +17588,16 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 .app-shell[data-shell-layout="islands"] .inspector-section-label > .inspector-ai-badge-inline {
   margin: 0;
 }
+
+/* ==== a85: island/backdrop contrast ====================================
+   Backdrop anchored to the side-panel surface so every theme gets the same
+   small step (was ≈4 L* light / ≈3 L* dark; vscode & onedark dark were ~0
+   or inverted). Now ≈ +1.5–2 L* more separation. */
+.app-shell[data-shell-layout="islands"] {
+  --island-backdrop: color-mix(in oklab, var(--ui-surface-pane) 95%, black);
+  background-color: var(--island-backdrop);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-backdrop: color-mix(in oklab, var(--ui-surface-pane) 83%, black);
+  background-color: var(--island-backdrop);
+}
