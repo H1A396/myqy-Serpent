@@ -16,12 +16,12 @@ function snapCssPx(cssPx: number): number {
 }
 
 /**
- * Single-geometry chrome for the active tab: one SVG path paints both fill and
- * stroke (open bottom into the toolstrip). No CSS scoop fills / border rings.
+ * Single-geometry chrome for the active tab: one SVG path paints fill + stroke.
  *
- * Stroke ink/weight match island panel borders (--island-border +
- * --island-hairline-w). Publishes --tab-seam-hole-left/right so the workspace
- * top border is interrupted under the chrome with the same ink/width.
+ * Scoop tips sit on the center island's top pixel centerline so the 1px SVG
+ * stroke lands on the same device row as the panel-top seam gradients (identical
+ * --island-border ink). Publishes --tab-seam-hole-* to interrupt that seam
+ * under the chrome — no divider across the tab face.
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -45,25 +45,34 @@ export function WorkspaceTabOutline(): ReactNode {
         FALLBACK_SCOOP,
       );
       const radius = readPx(cs.borderTopLeftRadius, FALLBACK_RADIUS);
-      const padBottom = readPx(cs.paddingBottom, 0);
       const rect = tab.getBoundingClientRect();
-      const faceH = Math.max(rect.height - padBottom, scoop + 1);
-      // Integer device pixels → viewBox matches CSS px grid (DPR=1 or 2).
+
+      const workspace = tab
+        .closest(".app-shell")
+        ?.querySelector(":scope > .workspace") as HTMLElement | null;
+
+      // 1px stroke is centered on the path. Baseline = panel-top pixel center
+      // (snapped top edge + 0.5) so it shares the seam gradient's device row.
+      let faceH: number;
+      if (workspace) {
+        const wr = workspace.getBoundingClientRect();
+        const topEdge = snapCssPx(wr.top - rect.top);
+        faceH = Math.max(topEdge + 0.5, scoop + 1);
+      } else {
+        const padBottom = readPx(cs.paddingBottom, 0);
+        faceH = Math.max(snapCssPx(rect.height - padBottom), scoop + 1);
+      }
+
       setBox({
         w: snapCssPx(rect.width),
-        h: snapCssPx(faceH),
+        h: faceH,
         scoop: snapCssPx(scoop),
         radius: snapCssPx(radius),
       });
 
-      // Tabs live in the toolbar; the island they join is a sibling .workspace.
-      const workspace = tab
-        .closest(".app-shell")
-        ?.querySelector(":scope > .workspace") as HTMLElement | null;
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
-        // Pull the seam hole 0.5px inward so each tip sits under the panel
-        // border segment — buries butt-cap AA without a second geometry.
+        // Hole spans tip-to-tip; 0.5px inset buries butt AA under seam ink.
         const tipInset = 0.5;
         const leftTip = rect.left - scoop - wr.left + tipInset;
         const rightTip = rect.right + scoop - wr.left - tipInset;
