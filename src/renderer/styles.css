@@ -15708,17 +15708,34 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
 .app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
-  padding: 10px 12px 12px;
+  /* Must fit the band reserved by justified-caption-band.ts / asset-caption-band.ts:
+     8px pad + name 13px + 3px gap + meta 12px (+ dims 14px) + 8px pad. */
+  padding: 8px 10px;
   gap: 3px;
 }
 .app-shell[data-shell-layout="islands"] .asset-caption strong {
-  font-size: calc(12.5px * var(--ui-font-scale));
+  font-size: calc(12px * var(--ui-font-scale));
+  line-height: calc(13px * var(--ui-font-scale));
   font-weight: 510;
   letter-spacing: -0.015em;
 }
 .app-shell[data-shell-layout="islands"] .asset-caption > span {
   color: var(--tertiary);
-  font-size: calc(11px * var(--ui-font-scale));
+  font-size: calc(10.5px * var(--ui-font-scale));
+  line-height: calc(12px * var(--ui-font-scale));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* Very narrow thumbnails: the source badge would cover the image. */
+.app-shell[data-shell-layout="islands"] .asset-card {
+  container-type: inline-size;
+}
+@container (max-width: 96px) {
+  .app-shell[data-shell-layout="islands"] .asset-source-badge {
+    display: none;
+  }
 }
 
 /* ---- Inspector: frosted Info panel -------------------------------------- */
