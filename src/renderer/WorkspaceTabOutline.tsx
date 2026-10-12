@@ -55,8 +55,11 @@ export function WorkspaceTabOutline(): ReactNode {
         ?.querySelector(":scope > .workspace") as HTMLElement | null;
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
-        const leftTip = rect.left - scoop - wr.left;
-        const rightTip = rect.right + scoop - wr.left;
+        // Pull the seam hole 0.5px inward so each tip sits under the hairline
+        // segment — buries butt-cap AA without a second geometry.
+        const tipInset = 0.5;
+        const leftTip = rect.left - scoop - wr.left + tipInset;
+        const rightTip = rect.right + scoop - wr.left - tipInset;
         workspace.style.setProperty(
           "--tab-seam-hole-left",
           `${Math.max(0, leftTip)}px`,

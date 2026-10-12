@@ -16772,19 +16772,18 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* ==== a41: single SVG chrome for active tab (fill + stroke, one path) =====
-   Replaces a39 dual geometry (CSS scoop fills + separate SVG stroke overlay).
-   WorkspaceTabOutline paints fill and stroke from workspaceTabOutlinePath —
-   open bottom into the toolstrip. Idle tabs stay borderless. No scoop
-   ::before/::after. */
+/* ==== a42: soft tab chrome stroke on current islands surfaces =============
+   Keep a41 single-path fill+stroke. Retune ink to the soft hairline language
+   (not the heavier panel --island-border) so the outline sits on the muted
+   toolstrip/tab-fill without floating. Seam segments share the same stroke
+   token so tips stay continuous. */
 
 .app-shell[data-shell-layout="islands"] {
-  /* Same ink as island hairline so scoop tips meet the workspace top border
-     as one continuous edge, not a second alpha. */
-  --island-tab-stroke: var(--island-border);
+  /* Subtle internal-edge ink — same family as toolstrip/card hairlines. */
+  --island-tab-stroke: var(--island-hairline);
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: var(--island-border);
+  --island-tab-stroke: var(--island-hairline);
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab,
@@ -16821,17 +16820,19 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   fill: var(--island-tab-fill);
   stroke: var(--island-tab-stroke);
   stroke-width: 1px;
+  /* Fill covers the inner half of the centered stroke → edge reads outside-only,
+     less muddy AA against the soft tab face. */
+  paint-order: stroke fill;
+  shape-rendering: geometricPrecision;
 }
 
-/* Chrome-style: island top hairline interrupted under active tab chrome.
-   WorkspaceTabOutline sets --tab-seam-hole-left/right (px from island left).
-   Left/right gradient segments paint the border; the hole is owned by the SVG scoops. */
+/* Chrome-style seam: same ink as tab stroke (not the heavier panel border). */
 .app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace {
   border-top-color: transparent;
   background-color: var(--island-canvas);
   background-image:
-    linear-gradient(var(--island-border), var(--island-border)),
-    linear-gradient(var(--island-border), var(--island-border));
+    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke)),
+    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke));
   background-size:
     var(--tab-seam-hole-left, 100%) var(--island-hairline-w),
     calc(100% - var(--tab-seam-hole-right, 100%)) var(--island-hairline-w);
