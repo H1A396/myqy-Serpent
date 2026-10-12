@@ -16771,3 +16771,85 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   border-radius: var(--island-radius);
   box-shadow: none;
 }
+
+/* ==== a38: active tab continuous outline (idle bare) ======================
+   ONLY .is-active gets a stroke. Top+sides via real borders (bottom width 0 so
+   side strokes meet scoop tops flush). Scoop ::before/::after paint a thin arc
+   ring that continues the same ink-alpha into the tongue feet. No drop-shadow
+   (would halo glyphs). Soft ~12% stroke — clean, not harsh. */
+
+.app-shell[data-shell-layout="islands"] .workspace-tab:not(.is-active),
+.app-shell[data-shell-layout="islands"] .workspace-tab:not(.is-active):hover {
+  border: none;
+  border-width: 0;
+  box-shadow: none;
+  filter: none;
+}
+
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
+  --canvas: var(--island-tab-fill);
+  --island-tab-stroke: color-mix(in srgb, var(--ui-content-primary) 12%, transparent);
+  background: var(--island-tab-fill);
+  color: var(--ui-content-primary);
+  /* Top + sides; bottom width 0 (not transparent 1px — that gapped scoops) */
+  border-style: solid;
+  border-color: var(--island-tab-stroke);
+  border-width: 1px 1px 0;
+  border-radius: var(--workspace-tab-curve, 14px) var(--workspace-tab-curve, 14px) 0 0;
+  margin-bottom: -2px;
+  padding-bottom: 2px;
+  /* Tongue fuses into toolstrip under the open bottom */
+  box-shadow: 0 3px 0 0 var(--island-tab-fill);
+  filter: none;
+  outline: none;
+  z-index: 2;
+}
+
+/* Scoop feet: fill + 1px arc stroke continuous with side borders.
+   Overlap the 1px side border so the arc meets the outer stroke edge. */
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active::before,
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active::after {
+  width: var(--workspace-tab-scoop, 18px);
+  height: var(--workspace-tab-scoop, 18px);
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  left: auto;
+  margin-right: -1px; /* sit on outer face of left border */
+  /* Single radial: transparent → 1px stroke → fill (no gap between ring and foot) */
+  background: radial-gradient(
+    circle at 0 0,
+    transparent calc(var(--workspace-tab-scoop, 18px) - 1.25px),
+    var(--island-tab-stroke) calc(var(--workspace-tab-scoop, 18px) - 1px),
+    var(--island-tab-stroke) calc(var(--workspace-tab-scoop, 18px) - 0.5px),
+    var(--island-tab-fill) calc(var(--workspace-tab-scoop, 18px) - 0.5px)
+  );
+}
+
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  right: auto;
+  margin-left: -1px;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent calc(var(--workspace-tab-scoop, 18px) - 1.25px),
+    var(--island-tab-stroke) calc(var(--workspace-tab-scoop, 18px) - 1px),
+    var(--island-tab-stroke) calc(var(--workspace-tab-scoop, 18px) - 0.5px),
+    var(--island-tab-fill) calc(var(--workspace-tab-scoop, 18px) - 0.5px)
+  );
+}
+
+/* List must not clip scoop feet / overlap */
+.app-shell[data-shell-layout="islands"] .workspace-tabs-list {
+  padding-bottom: 2px;
+  margin-bottom: -2px;
+  overflow-y: visible;
+}
