@@ -17405,3 +17405,30 @@ html.serpent-window-square {
   min-width: 0;
   max-width: 100%;
 }
+
+/* ==== a80: subtle island drop shadow, driven by Settings → Elevation shadows
+   (shadow-preferences.ts, level 0–3 → --elev-size / --elev-intensity).
+   Level 0 keeps islands flat (data-elevation="0"). box-shadow follows each
+   island's own border-radius (incl. --window-corner-radius outer corners) and
+   is painted outside the island, so its overflow:hidden doesn't clip it.
+   Offsets/blur are kept tight (negative spread) so the shadow stays within
+   --island-outer-gap at the window edge, where .app-shell clips. */
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] {
+  --island-shadow:
+    0 calc(0.5px * var(--elev-size)) calc(1.5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.06 * var(--elev-intensity))),
+    0 calc(1.5px * var(--elev-size)) calc(4px * var(--elev-size))
+      calc(-3px * var(--elev-size))
+      rgb(0 0 0 / calc(0.10 * var(--elev-intensity)));
+}
+:root[data-theme="dark"]:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] {
+  --island-shadow:
+    0 calc(0.5px * var(--elev-size)) calc(1.5px * var(--elev-size))
+      rgb(0 0 0 / calc(0.22 * var(--elev-intensity))),
+    0 calc(1.5px * var(--elev-size)) calc(4px * var(--elev-size))
+      calc(-3px * var(--elev-size))
+      rgb(0 0 0 / calc(0.32 * var(--elev-intensity)));
+}
+:root[data-elevation="0"] .app-shell[data-shell-layout="islands"] {
+  --island-shadow: none;
+}
