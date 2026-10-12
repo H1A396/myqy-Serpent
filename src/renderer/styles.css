@@ -16883,28 +16883,27 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a56: tag chips use icon silhouette, no dots =========================
-   Replace a55 hard clip-path tip. Chip chrome = soft Lucide-like tag mask
-   derived from Icons.tsx `tag` path (rounded tip + string hole + rounded
-   body), tip-left. -webkit-mask-box-image 9-slices so tip/hole stay round
-   while the body stretches. Color via soft tint (--tag-chip-color), no dots. */
+/* ==== a57: flip tag tip right, × on tip, alt icon =========================
+   New stubby soft price-tag mask (not a56 Lucide tip-left+hole): rounded flat
+   body on the LEFT, short soft tip on the RIGHT. Text starts immediately in
+   the body; remove × sits in the tip zone. No color dots; soft tint retained. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   border: 0;
   border-radius: 0;
-  /* Left slice covers tip+hole; right covers rounded end; middle stretches */
-  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%2724%27%20viewBox%3D%270%200%2096%2024%27%3E%3Cpath%20fill%3D%27black%27%20fill-rule%3D%27evenodd%27%20d%3D%27M26%201.2H84A8%208%200%200%201%2092%209.2V14.8A8%208%200%200%201%2084%2022.8H26C14.5%2022.8%206.5%2019.2%202.2%2012C6.5%204.8%2014.5%201.2%2026%201.2ZM13.2%2012m-3%200a3%203%200%201%200%206%200a3%203%200%201%200-6%200Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 48 fill / 0 16px 0 32px / 0 stretch;
-  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%2724%27%20viewBox%3D%270%200%2096%2024%27%3E%3Cpath%20fill%3D%27black%27%20fill-rule%3D%27evenodd%27%20d%3D%27M26%201.2H84A8%208%200%200%201%2092%209.2V14.8A8%208%200%200%201%2084%2022.8H26C14.5%2022.8%206.5%2019.2%202.2%2012C6.5%204.8%2014.5%201.2%2026%201.2ZM13.2%2012m-3%200a3%203%200%201%200%206%200a3%203%200%201%200-6%200Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 48 fill / 0 16px 0 32px / 0 stretch;
-  /* Clear the hole / tip so label starts in the body */
-  padding-left: 24px;
-  padding-right: 8px;
+  /* Left slice = rounded flat end; right slice = short tip; middle stretches */
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M8%202H40C49%202%2055.5%206.2%2060.5%2012C55.5%2017.8%2049%2022%2040%2022H8A6%206%200%200%201%202%2016V8A6%206%200%200%201%208%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 14 fill / 0 18px 0 10px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M8%202H40C49%202%2055.5%206.2%2060.5%2012C55.5%2017.8%2049%2022%2040%2022H8A6%206%200%200%201%202%2016V8A6%206%200%200%201%208%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 14 fill / 0 18px 0 10px / 0 stretch;
+  /* Short left pad (body); room on right for tip + × */
+  padding-left: 8px;
+  padding-right: 14px;
   filter: drop-shadow(
     0 0 0.55px color-mix(in srgb, var(--ui-content-primary) 28%, transparent)
   );
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip {
-  gap: 4px;
+  gap: 2px;
   min-height: 22px;
   padding-top: 0;
   padding-bottom: 0;
@@ -16931,19 +16930,40 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   display: none;
 }
 
+/* × lives in the right tip: pull into tip padding, keep hit target usable */
 .app-shell[data-shell-layout="islands"] .tag-chip-remove {
-  margin-right: -1px;
+  order: 3;
+  width: 14px;
+  height: 14px;
+  margin-left: 0;
+  /* Pull × into the pointed tip so it reads as “on the tip” */
+  margin-right: -10px;
+  opacity: 0.8;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
+  opacity: 1;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-name {
+  order: 2;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-dot,
+.app-shell[data-shell-layout="islands"] .inspector-ai-badge-inline {
+  order: 1;
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   height: var(--shell-chip-height);
-  padding-right: 5px;
+  padding-left: 8px;
+  padding-right: 14px;
   background: color-mix(
     in srgb,
     var(--ui-content-primary) 6%,
     var(--island-surface-soft)
   );
   color: var(--ui-content-secondary);
+}
+.app-shell[data-shell-layout="islands"] .filter-tag-chip button {
+  margin-right: -4px;
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
