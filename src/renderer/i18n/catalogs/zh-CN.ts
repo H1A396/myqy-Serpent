@@ -1493,9 +1493,12 @@ export const zhCN = {
     themePreviewInspector: "Inspector",
     elevationSection: "层级投影",
     elevationHint:
-      "为顶栏、标签页、侧栏、资产预览投下淡阴影以强化层级。0 为关闭（不绘制层级投影），1–3 由弱到强；拖动或点击刻度切换，立即生效。",
+      "为面板、标签页与资产卡片投下淡阴影以强化层级。在触控板上拖动：向右更大，向上更强；左下角为关闭。方向键可微调，立即生效。",
     elevationOff: "关闭",
     elevationStrong: "最强",
+    elevationSize: "大小",
+    elevationIntensity: "强度",
+    elevationValue: "大小 {size} · 强度 {intensity}",
     elevationLevelValue: "等级 {level}",
     cornerRadiusSection: "圆角",
     cornerRadiusHint:

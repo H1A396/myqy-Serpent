@@ -17645,3 +17645,160 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 :root[data-elevation="0"] .app-shell[data-shell-layout="islands"] .asset-card:is(.is-selected.is-selected:hover:focus-visible, *) {
   box-shadow: none;
 }
+
+/* ==== a87: Elevation shadows 2D pad =======================================
+   X = size, Y = intensity. Bottom-left off zone. Preview card in the pad
+   uses the picked values directly (--pad-elev-*). */
+.elevation-pad-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+}
+.elevation-pad-body {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.elevation-pad-axis {
+  color: var(--ui-content-tertiary, var(--tertiary));
+  font-size: calc(10.5px * var(--ui-font-scale));
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+.elevation-pad-axis-y {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 12px;
+}
+.elevation-pad {
+  --pad-bg: color-mix(in srgb, var(--ui-surface-pane, var(--pane)) 70%, var(--ui-surface-canvas, var(--canvas)));
+  position: relative;
+  flex: 1 1 auto;
+  height: 168px;
+  border: 1px solid var(--ui-border-subtle, var(--divider-soft));
+  border-radius: var(--ui-radius-surface, 12px);
+  background:
+    /* off corner */
+    linear-gradient(to top right, color-mix(in srgb, var(--ui-content-primary, black) 7%, transparent) 0 0) left bottom / var(--pad-off-zone) var(--pad-off-zone) no-repeat,
+    /* intensity wash: stronger toward the top */
+    linear-gradient(to top, transparent, color-mix(in srgb, var(--ui-content-primary, black) 4%, transparent)),
+    var(--pad-bg);
+  cursor: crosshair;
+  touch-action: none;
+  overflow: hidden;
+  user-select: none;
+}
+.elevation-pad-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--ui-content-primary, black) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to top, color-mix(in srgb, var(--ui-content-primary, black) 6%, transparent) 1px, transparent 1px);
+  background-size: 25% 25%;
+  background-position: -1px 100%;
+  pointer-events: none;
+}
+.elevation-pad-preview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.elevation-pad-preview > span {
+  width: 56px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--ui-surface-raised, var(--raised));
+  border: 1px solid color-mix(in srgb, var(--ui-content-primary, black) 6%, transparent);
+  box-shadow:
+    0 calc(1px * var(--pad-elev-size)) calc(3px * var(--pad-elev-size))
+      rgb(0 0 0 / calc(0.10 * var(--pad-elev-intensity))),
+    0 calc(4px * var(--pad-elev-size)) calc(16px * var(--pad-elev-size))
+      rgb(0 0 0 / calc(0.20 * var(--pad-elev-intensity)));
+}
+.elevation-pad-preview > span + span {
+  width: 40px;
+}
+:root[data-theme="dark"] .elevation-pad-preview > span {
+  border-color: color-mix(in srgb, white 7%, transparent);
+  box-shadow:
+    0 calc(1px * var(--pad-elev-size)) calc(3px * var(--pad-elev-size))
+      rgb(0 0 0 / calc(0.32 * var(--pad-elev-intensity))),
+    0 calc(4px * var(--pad-elev-size)) calc(16px * var(--pad-elev-size))
+      rgb(0 0 0 / calc(0.50 * var(--pad-elev-intensity)));
+}
+.elevation-pad.is-off .elevation-pad-preview > span {
+  box-shadow: none;
+}
+.elevation-pad-thumb {
+  position: absolute;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid var(--ui-surface-raised, white);
+  border-radius: 50%;
+  background: var(--ui-action-accent, var(--accent));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  cursor: grab;
+  outline: none;
+}
+.elevation-pad-thumb:focus-visible {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 0 0 3px color-mix(in srgb, var(--ui-action-accent, var(--accent)) 35%, transparent);
+}
+.elevation-pad:active .elevation-pad-thumb {
+  cursor: grabbing;
+}
+.elevation-pad.is-off .elevation-pad-thumb {
+  background: var(--ui-content-tertiary, var(--tertiary));
+}
+.elevation-pad-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 18px;
+  color: var(--ui-content-tertiary, var(--tertiary));
+  font-size: calc(10.5px * var(--ui-font-scale));
+}
+.elevation-pad-off-label {
+  margin-right: auto;
+}
+.elevation-pad-axis-x {
+  margin-right: auto;
+}
+.elevation-pad-readout {
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-content-secondary, var(--secondary));
+}
+
+/* ==== a87: vertically center card info block ================================
+   Slot captions get a fixed band (justified/masonry caption-band height) but
+   `.justified-card-slot .asset-caption { justify-content: flex-start }`
+   (feedback block) pinned the text to the top, so cards with fewer lines
+   (e.g. MD: no dimensions line) sat high with a big bottom gap. Center the
+   block in the band with symmetric padding, for every card type. */
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-caption {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > :first-child {
+  margin-top: 0;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > :last-child {
+  margin-bottom: 0;
+}

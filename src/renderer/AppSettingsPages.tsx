@@ -9,6 +9,7 @@ import {
 import type { AiUiPreferences } from "./ai-ui-preferences";
 import type { CanvasCaptionAlign, CanvasPreferences } from "./canvas-preferences";
 import { useElevation } from "./ElevationProvider";
+import { ElevationPad } from "./ElevationPad";
 import { useRadius } from "./RadiusProvider";
 import { useInspectorCardFeel } from "./InspectorCardFeelProvider";
 import {
@@ -45,11 +46,6 @@ import {
 } from "./font-size-preferences";
 import { useFontSize } from "./FontSizeProvider";
 import {
-  SHADOW_LEVEL_MAX,
-  SHADOW_LEVEL_MIN,
-  clampShadowLevel,
-} from "./shadow-preferences";
-import {
   RADIUS_LEVEL_MAX,
   RADIUS_LEVEL_MIN,
   clampRadiusLevel,
@@ -70,7 +66,6 @@ import {
 } from "./theme/ThemeAppearanceControls";
 import { ThemeColorSettings } from "./theme/ThemeColorSettings";
 
-const SHADOW_LEVEL_TICKS = [0, 1, 2, 3] as const;
 const RADIUS_LEVEL_TICKS = [0, 1, 2, 3] as const;
 const MENU_ACRYLIC_LEVEL_TICKS = [0, 1, 2, 3] as const;
 const FONT_SIZE_LABEL_KEYS: Record<FontSizePreference, string> = {
@@ -380,7 +375,7 @@ export function AssetsSettingsPage({
 export function AppearanceSettingsPage(): ReactNode {
   const t = useT();
   const { preferences: fontSizePrefs, setPreference: setFontSizePreference } = useFontSize();
-  const { preferences: shadowPrefs, setLevel: setShadowLevel } = useElevation();
+  const { preferences: shadowPrefs, setValues: setShadowValues } = useElevation();
   const { preferences: radiusPrefs, setLevel: setRadiusLevel } = useRadius();
   const { preferences: menuAcrylicPrefs, setLevel: setMenuAcrylicLevel } =
     useMenuAcrylic();
@@ -460,42 +455,18 @@ export function AppearanceSettingsPage(): ReactNode {
           <strong>{t("settings.elevationSection")}</strong>
           <span>{t("settings.elevationHint")}</span>
         </div>
-        <div className="app-settings-elevation-scale">
-        <div className="app-settings-elevation-rail">
-          <Slider
-            aria-label={t("settings.elevationSection")}
-            className="app-settings-elevation-slider"
-            max={SHADOW_LEVEL_MAX}
-            min={SHADOW_LEVEL_MIN}
-            onValueChange={(value) => setShadowLevel(clampShadowLevel(value))}
-            step={1}
-            value={shadowPrefs.level}
-          />
-          <div aria-hidden="true" className="app-settings-elevation-ticks">
-            {SHADOW_LEVEL_TICKS.map((tick) => (
-              <button
-                className={
-                  shadowPrefs.level === tick
-                    ? "app-settings-elevation-tick is-active"
-                    : "app-settings-elevation-tick"
-                }
-                key={tick}
-                onClick={() => setShadowLevel(tick)}
-                type="button"
-              >
-                <span className="app-settings-elevation-tick-mark" />
-                <span className="app-settings-elevation-tick-label">
-                  {tick}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div aria-hidden="true" className="app-settings-elevation-ends">
-          <span>{t("settings.elevationOff")}</span>
-          <span>{t("settings.elevationStrong")}</span>
-        </div>
-        </div>
+        <ElevationPad
+          labels={{
+            pad: t("settings.elevationSection"),
+            size: t("settings.elevationSize"),
+            intensity: t("settings.elevationIntensity"),
+            off: t("settings.elevationOff"),
+            valueText: (size, intensity) =>
+              t("settings.elevationValue", { size, intensity }),
+          }}
+          onChange={setShadowValues}
+          preferences={shadowPrefs}
+        />
       </div>
       <div className="app-settings-card-divider" />
       <div className="app-settings-row app-settings-row-stack">
