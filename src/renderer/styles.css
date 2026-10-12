@@ -15415,6 +15415,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --island-group-gap: 20px;
   --island-card-radius: 14px;
   --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-raised) 72%, transparent);
+  /* Opaque equivalent of the toolstrip over the canvas island: the active tab
+     must be exactly this so it fuses with the toolstrip it attaches to. */
+  --island-tab-fill: color-mix(in srgb, var(--ui-surface-raised) 72%, var(--ui-surface-canvas));
 }
 :root[data-theme="dark"] {
   --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 78%, black);
@@ -15423,6 +15426,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --island-select: color-mix(in srgb, var(--accent) 28%, transparent);
   --island-hairline: rgb(255 255 255 / 8%);
   --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-raised) 55%, transparent);
+  --island-tab-fill: color-mix(in srgb, var(--ui-surface-raised) 55%, var(--ui-surface-canvas));
 }
 
 .app-shell[data-shell-layout="islands"] {
@@ -15750,7 +15754,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   scrollbar-gutter: stable both-edges;
 }
 .app-shell[data-shell-layout="islands"] .justified-row {
-  margin-bottom: 22px !important;
+  /* Matches the 14px horizontal card gap (ASSET_GRID_GAP_PX). */
+  margin-bottom: 14px !important;
 }
 .app-shell[data-shell-layout="islands"] .asset-card {
   border-radius: var(--island-card-radius);
@@ -15899,4 +15904,48 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   border-radius: 10px;
   background: var(--raised);
   color: var(--tertiary);
+}
+
+
+/* ---- a18: workspace tabs fuse with the toolstrip; icon-only filter segments ---- */
+/* The active tab + its scoops paint var(--canvas); rebinding it on the tab
+   (not self-referential: value comes from the island token) makes tab, scoops
+   and toolstrip one continuous surface in both themes. */
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
+  --canvas: var(--island-tab-fill);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 26px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The tab overlaps the canvas island by 1px to hide its top hairline; the
+   toolbar row must stack above the workspace island for that to work. */
+.app-shell[data-shell-layout="islands"] > .app-toolbar {
+  position: relative;
+  z-index: 3;
+}
+/* .workspace-tabs-list scrolls horizontally (overflow-x:auto ⇒ y clips), which
+   cut off the active tab's 1px overlap; extend its box by that 1px. */
+.app-shell[data-shell-layout="islands"] .workspace-tabs-list {
+  padding-bottom: 1px;
+  margin-bottom: -1px;
+}
+/* Sort trigger keeps its text (it shows the current sort key). */
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims .sort-mode-control .dimension-filter-btn {
+  width: auto;
+  min-width: 0;
+  padding: 0 10px;
+  gap: 4px;
 }

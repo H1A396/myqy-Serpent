@@ -205,13 +205,14 @@ function DimensionButton({
     <button
       aria-expanded={open || undefined}
       aria-pressed={active === undefined ? undefined : active}
+      title={label}
       className={`dimension-filter-btn${active ? " is-active" : ""}${open ? " is-open" : ""}${excluding ? " is-excluding" : ""}`}
       disabled={disabled}
       onClick={onClick}
       type="button"
     >
       <Icon name={icon} size={14} />
-      <span>{label}</span>
+      <span className="dimension-filter-btn-label">{label}</span>
     </button>
   );
 }
