@@ -16886,10 +16886,11 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a65: slightly larger tag corner radii ===============================
-   a64 single ::before + mask-border silhouette kept (no body+tip double fill).
-   Left R 3→4, tip shoulder fillets 1.5→2, tip nose A1.05→1.2 (convex sweep=1).
-   Mask slice left 3→4px; tip-right + a63 contrast unchanged. */
+/* ==== a66: vertically center tag chip text ================================
+   a65 silhouette/radii + a63 contrast kept. Earlier islands rule set
+   line-height:22px (same as chip height), so the name strut filled the chip
+   and CJK glyphs sat optically low. Tighten line-height, flex-center label/×,
+   +0.5px optical nudge. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
@@ -16911,7 +16912,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 var(--tag-tip-w) 0 8px;
+  height: 22px;
   min-height: 22px;
+  line-height: 1;
   filter: drop-shadow(
     0 0 0.5px color-mix(in srgb, var(--ui-content-primary) var(--tag-hairline), transparent)
   );
@@ -16973,17 +16976,26 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 .app-shell[data-shell-layout="islands"] .tag-chip-remove {
   order: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 14px;
   height: 14px;
   margin-left: 0;
   margin-right: -8px;
+  line-height: 0;
   opacity: 0.7;
+  transform: translateY(0.5px);
 }
 .app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
   opacity: 1;
 }
 .app-shell[data-shell-layout="islands"] .tag-chip-name {
   order: 2;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  transform: translateY(0.5px);
 }
 .app-shell[data-shell-layout="islands"] .tag-chip-dot,
 .app-shell[data-shell-layout="islands"] .inspector-ai-badge-inline {
