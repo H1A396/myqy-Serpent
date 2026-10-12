@@ -166,7 +166,7 @@ export function ThemeColorSettings(): ReactNode {
               className="app-settings-theme-modified-badge"
               role="img"
               aria-label={t('settings.customThemeModified')}
-              title={t('settings.customThemeModified')}
+              data-hover-tip={t('settings.customThemeModified')}
             >
               <Icon name="settings" size={11} />
             </span>

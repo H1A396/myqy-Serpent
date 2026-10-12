@@ -147,18 +147,20 @@ export function MediaJobsDialog({
               </button>
             </div>
             <div
+              className="media-jobs-list"
               style={{
                 maxHeight: 330,
                 overflow: "auto",
-                borderTop: "1px solid var(--border)",
+
               }}
             >
               {mediaJobs.jobs.length ? (
                 mediaJobs.jobs.map((job) => (
                   <div
+                    className="media-jobs-row"
                     key={job.jobId}
                     style={{
-                      borderBottom: "1px solid var(--border)",
+
                       padding: "6px 2px",
                     }}
                   >
@@ -183,7 +185,7 @@ export function MediaJobsDialog({
                       <strong className="media-jobs-grid-cell">{job.status}</strong>
                       <span
                         className="media-jobs-grid-cell"
-                        title={job.errorCode ?? undefined}
+                        data-hover-tip={job.errorCode ?? undefined}
                       >
                         {job.errorDetail ??
                           job.errorCode ??
@@ -219,8 +221,9 @@ export function MediaJobsDialog({
             </div>
             {aiJobs && (
               <section
+                className="media-jobs-section"
                 style={{
-                  borderTop: "1px solid var(--border)",
+
                   marginTop: 16,
                   paddingTop: 12,
                 }}
@@ -321,7 +324,7 @@ export function MediaJobsDialog({
                         <strong className="media-jobs-grid-cell">{job.status}</strong>
                         <span
                           className="media-jobs-grid-cell"
-                          title={job.errorCode ?? undefined}
+                          data-hover-tip={job.errorCode ?? undefined}
                         >
                           {displayAiJobFailure(job.errorCode, job.errorDetail, locale) || "—"}
                         </span>
@@ -338,8 +341,9 @@ export function MediaJobsDialog({
             )}
             {pluginJobs && (
               <section
+                className="media-jobs-section"
                 style={{
-                  borderTop: "1px solid var(--border)",
+
                   marginTop: 16,
                   paddingTop: 12,
                 }}
@@ -377,16 +381,16 @@ export function MediaJobsDialog({
                                 "minmax(160px, 1.4fr) minmax(90px, 0.8fr) 90px minmax(140px, 1.4fr)",
                             }}
                           >
-                            <span title={job.ownerPluginId}>
+                            <span data-hover-tip={job.ownerPluginId}>
                               {job.ownerPluginId}
                             </span>
-                            <span title={job.pluginHandlerId}>
+                            <span data-hover-tip={job.pluginHandlerId}>
                               {job.pluginHandlerId}
                             </span>
                             <strong>
                               {t(`dialog.mediaJobs.pluginJobStatus.${job.status}`)}
                             </strong>
-                            <span title={job.errorCode ?? undefined}>
+                            <span data-hover-tip={job.errorCode ?? undefined}>
                               {formatPluginJobError(job.errorDetail, job.errorCode) ||
                                 progressSummary}
                             </span>
@@ -394,7 +398,7 @@ export function MediaJobsDialog({
                           {progressMessage && (
                             <div
                               className="plugin-job-progress-message"
-                              title={progressMessage}
+                              data-hover-tip={progressMessage}
                             >
                               {progressMessage}
                             </div>

@@ -9834,8 +9834,8 @@ select.ai-config-input.ai-config-languages {
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.65rem 0.75rem;
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--surface-elevated, var(--surface)) 88%, var(--border));
+  border-radius: var(--ui-radius-surface);
+  background: var(--ui-surface-raised-subtle);
 }
 
 .plugin-trust-prompt-list strong {
@@ -18309,15 +18309,6 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 }
 
 /* a94: small modal stacked over Settings (new theme name / delete confirm). */
-.theme-mini-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
-  background: color-mix(in oklab, black 22%, transparent);
-  animation: theme-mini-fade 140ms ease-out both;
-}
 .theme-mini-dialog-backdrop > .theme-mini-dialog {
   box-sizing: border-box;
   width: min(340px, calc(100vw - 48px));
@@ -18330,13 +18321,13 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 }
 .theme-mini-dialog h2 {
   margin: 0;
-  font-size: 14px;
-  font-weight: var(--ui-font-weight-semibold, 600);
+  font-size: var(--ui-font-size-title);
+  font-weight: var(--ui-font-weight-semibold);
 }
 .theme-mini-dialog-body {
   margin: 0;
   color: var(--ui-content-secondary);
-  font-size: 12.5px;
+  font-size: var(--ui-font-size-body);
   line-height: 1.45;
 }
 .theme-mini-dialog-actions {

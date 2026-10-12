@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { createShellPortal } from '../ui/ShellStyleScope';
 
 import { DialogShell } from '../ui/patterns';
 import { Button } from '../ui/primitives';
@@ -41,7 +41,9 @@ export function ThemeMiniDialog({
   // would close Settings underneath. Window capture runs first: Escape here
   // closes only this dialog.
   const cancelRef = useRef(onCancel);
-  cancelRef.current = onCancel;
+  useLayoutEffect(() => {
+    cancelRef.current = onCancel;
+  }, [onCancel]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.isComposing) return;
@@ -53,9 +55,9 @@ export function ThemeMiniDialog({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, []);
   if (typeof document === 'undefined') return null;
-  return createPortal(
+  return createShellPortal(
     <div
-      className="theme-mini-dialog-backdrop"
+      className="dialog-backdrop theme-mini-dialog-backdrop"
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === 'Enter' && !confirmDisabled) {

@@ -164,7 +164,7 @@ export function ThemeProfilePicker(): ReactNode {
             role="radio"
             style={style}
             tabIndex={index === selectedIndex ? 0 : -1}
-            title={label}
+            data-hover-tip={label}
             type="button"
             ref={(element) => {
               buttonRefs.current[index] = element;
@@ -190,7 +190,7 @@ export function ThemeProfilePicker(): ReactNode {
                   aria-label={t('settings.customThemeModified')}
                   className="app-settings-theme-modified-badge"
                   role="img"
-                  title={t('settings.customThemeModified')}
+                  data-hover-tip={t('settings.customThemeModified')}
                 >
                   <Icon name="settings" size={11} />
                 </span>
@@ -203,7 +203,7 @@ export function ThemeProfilePicker(): ReactNode {
               className="app-settings-theme-profile-delete"
               onClick={() => setPendingDelete(entry.theme)}
               tabIndex={-1}
-              title={t('settings.customThemeDelete')}
+              data-hover-tip={t('settings.customThemeDelete')}
               type="button"
             >
               <Icon name="trash" size={12} />
@@ -271,7 +271,7 @@ export function ThemeAccentPicker(): ReactNode {
               onClick={() => setThemeAccent(preset.hex)}
               role="radio"
               style={{ background: preset.hex }}
-              title={label}
+              data-hover-tip={label}
               type="button"
             />
           );
@@ -309,7 +309,7 @@ export function ThemeModePicker(): ReactNode {
           key={mode.value}
           onClick={() => setTheme(mode.value)}
           role="radio"
-          title={mode.label}
+          data-hover-tip={mode.label}
           type="button"
         >
           <span aria-hidden="true" className="app-settings-theme-mode-disc-surface" />

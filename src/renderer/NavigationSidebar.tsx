@@ -189,7 +189,7 @@ function NavRow({
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
         style={{ paddingLeft: 7 }}
-        title={hoverTitle}
+        data-hover-tip={hoverTitle}
         type="button"
       >
         <AppearanceGlyph

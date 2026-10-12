@@ -491,7 +491,7 @@ export function LibrarySettingsDialog({
                       aria-expanded={helpOpen}
                       className="library-settings-help-button"
                       onClick={() => setHelpOpen((current) => !current)}
-                      title={t("settings.gitignoreSyntax")}
+                      data-hover-tip={t("settings.gitignoreSyntax")}
                       type="button"
                     >
                       ?

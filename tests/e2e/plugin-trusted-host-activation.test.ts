@@ -48,15 +48,11 @@ test('activates the fixed trusted Host probe and writes library storage', async 
     await expect(enableToggle).toBeEnabled();
     await expect(enableToggle).not.toBeChecked();
     await expect(dialog.getByText(/插件处于非受限模式，拥有完全的Node\.js能力/)).toHaveCount(0);
-    const consentDialog = window.waitForEvent('dialog').then(async (consent) => {
-      expect(consent.message()).toContain('Trusted Host Probe');
-      expect(consent.message()).toContain('非受限模式');
-      await consent.accept();
-    });
-    await Promise.all([
-      consentDialog,
-      dialog.locator('label.plugin-settings-enable-toggle').click({ force: true }),
-    ]);
+    await dialog.locator('label.plugin-settings-enable-toggle').click({ force: true });
+    const consentDialog = window.locator('#local-confirmation-dialog');
+    await expect(consentDialog).toContainText('Trusted Host Probe');
+    await expect(consentDialog).toContainText('非受限模式');
+    await consentDialog.locator('.ui-button--primary').click();
     await expect(enableToggle).toBeChecked();
     await expect(dialog.getByText(/插件处于非受限模式，拥有完全的Node\.js能力/)).toBeVisible();
     await dialog.getByRole('button', { name: '关闭' }).click();

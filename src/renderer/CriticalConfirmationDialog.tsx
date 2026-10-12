@@ -9,9 +9,13 @@ import { DialogShell } from "./ui/patterns";
 export function CriticalConfirmationDialog({
   request,
   onDecide,
+  confirmVariant = "danger",
+  dialogId = "critical-confirmation-dialog",
 }: {
   request: CriticalConfirmationPrompt | null;
   onDecide: (decision: CriticalConfirmationDecision) => void;
+  confirmVariant?: "danger" | "primary";
+  dialogId?: string;
 }) {
   if (!request) return null;
   const confirmIsDefault = request.initialFocus === "confirm";
@@ -20,7 +24,7 @@ export function CriticalConfirmationDialog({
       <DialogShell
         className="create-dialog"
         description={request.message}
-        dialogId="critical-confirmation-dialog"
+        dialogId={dialogId}
         headerActions={(
           <button
             className="dialog-close"
@@ -35,7 +39,7 @@ export function CriticalConfirmationDialog({
         style={{ padding: 0 }}
         title={request.heading}
       >
-        <p className="dialog-body-copy">{request.detail}</p>
+        {request.detail ? <p className="dialog-body-copy">{request.detail}</p> : null}
         <div className="dialog-actions">
           <button
             className="secondary-button"
@@ -46,7 +50,7 @@ export function CriticalConfirmationDialog({
             {request.cancelLabel}
           </button>
           <button
-            className="ui-button ui-button--danger"
+            className={`ui-button ui-button--${confirmVariant}`}
             onClick={() => onDecide("confirm")}
             type="button"
             {...(confirmIsDefault

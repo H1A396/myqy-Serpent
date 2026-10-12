@@ -13,7 +13,6 @@ import {
   _electron as electron,
   expect,
   test,
-  type Dialog,
   type ElectronApplication,
   type Page,
 } from '@playwright/test';
@@ -285,11 +284,10 @@ test('removes a linked folder without touching sources, then force-deletes it wi
     await linkedRow.click({ button: 'right' });
     const removeMenu = window.getByRole('menu', { name: '文件夹操作：source', exact: true });
     await expect(removeMenu).toBeVisible();
-    const acceptDialogs = (dialog: Dialog) => void dialog.accept();
-    window.on('dialog', acceptDialogs);
     await removeMenu.getByRole('menuitem', { name: '移除链接文件夹' }).click();
+    await window.locator('#local-confirmation-dialog .ui-button--primary').click();
     await expect(linkedRow).toHaveCount(0, { timeout: 15_000 });
-    window.off('dialog', acceptDialogs);
+
 
     for (const name of ['a.png', 'b.png', 'c.png']) {
       expect(existsSync(path.join(sourceRoot, name))).toBe(true);

@@ -160,7 +160,7 @@ export function FolderInspectorBody({
         </div>
         <div className="inspector-folder-heading">
           <AppearanceGlyph appearance={single ? appearance : null} fallback="folder" size={15} />
-          <strong className="inspector-hero-title" title={title}>
+          <strong className="inspector-hero-title" data-hover-tip={title}>
             {filenameParts ? (
               <>
                 <span className="asset-filename-prefix">{filenameParts.prefix}</span>

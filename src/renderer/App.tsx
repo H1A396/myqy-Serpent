@@ -1,3 +1,4 @@
+import { LocalConfirmationHost, useLocalConfirmation, requestConfirmation } from "./local-confirmation";
 import {
   useCallback,
   useEffect,
@@ -325,6 +326,7 @@ import { MediaJobsDialog } from "./MediaJobsDialog";
 import { PluginJobActivityBanner } from "./PluginJobActivityBanner";
 import { AiConnectionFailureDialog } from "./AiConnectionFailureDialog";
 import { FatalAlertDialog } from "./FatalAlertDialog";
+import { APP_SHELL_LAYOUT } from "./ui/ShellStyleScope";
 import { CriticalConfirmationDialog } from "./CriticalConfirmationDialog";
 import { useCriticalConfirmationPrompt } from "./use-critical-confirmation-prompt";
 import { useAiConnectionFailure } from "./use-ai-connection-failure";
@@ -818,6 +820,7 @@ function ToolButton({
 }
 
 function AppInner() {
+  const localConfirmation = useLocalConfirmation();
   const t = useT();
   const { locale } = useLocale();
   const rawLibraryApi = (window as RendererWindow).serpent?.library;
@@ -1927,7 +1930,7 @@ function AppInner() {
     Extract<ReadAppLogResult, { ok: false }>["code"] | null
   >(null);
 
-  function confirmLibrarySwitch(): boolean {
+  async function confirmLibrarySwitch(keepDestinationChoice = false): Promise<boolean> {
     const activity = activeLibrarySwitchActivity({
       uiState: uiStateRef.current,
       importProgress: importProgressRef.current,
@@ -1935,7 +1938,11 @@ function AppInner() {
       syncProgress: syncProgressRef.current,
       writeOperationInFlight: libraryWriteInFlightRef.current,
     });
-    return activity === null || window.confirm(t("shell.librarySwitchWarning"));
+    const sourceLibraryId = libraryRef.current?.libraryId;
+    const confirmed = activity === null || await requestConfirmation(
+      t("shell.librarySwitchWarning"), false, { scopeBound: !keepDestinationChoice },
+    );
+    return confirmed && (keepDestinationChoice || libraryRef.current?.libraryId === sourceLibraryId);
   }
 
   function openLibraryChooserFromError(): void {
@@ -5744,7 +5751,7 @@ function AppInner() {
     // an empty id; if it was left behind after a failed destination, allow retry
     // instead of trapping the user on "validating…".
     if (importProgress?.importId) return;
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) return;
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) return;
     setImportProgress(null);
     setDialog(null);
     const inspect = await runInlineLibraryOpening(
@@ -5797,7 +5804,7 @@ function AppInner() {
   async function openBillfishLibrary() {
     if (!api) return;
     if (importProgress?.importId) return;
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) return;
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) return;
     setImportProgress(null);
     setDialog(null);
     const inspect = await runInlineLibraryOpening(
@@ -5897,7 +5904,7 @@ function AppInner() {
     if (!api) return;
     // A second library choice is safe to queue behind the current transition;
     // silently dropping it made a fast switch look like a frozen switcher.
-    if (!openOptions?.skipSwitchConfirm && !confirmLibrarySwitch()) return;
+    if (!openOptions?.skipSwitchConfirm && !(await confirmLibrarySwitch(true))) return;
     // Opening, closing, and deleting a library all replace the renderer's
     // active identity. Keep their request, UI teardown, and ref updates in one
     // order; otherwise a close clicked while an open is resolving can close
@@ -7775,7 +7782,8 @@ function AppInner() {
     }
   }
 
-  function requestDeleteCollection(collectionId: string, name: string) {
+  async function requestDeleteCollection(collectionId: string, name: string) {
+    const sourceLibraryId = libraryRef.current?.libraryId;
     const collection = collections.find(
       (candidate) => candidate.collectionId === collectionId,
     );
@@ -7784,12 +7792,13 @@ function AppInner() {
       (collection?.childCollectionCount ?? 0) > 0;
     if (
       hasContents &&
-      !window.confirm(
+      !await requestConfirmation(
         t("command.collection.deleteConfirm", { name }),
       )
     ) {
       return;
     }
+    if (libraryRef.current?.libraryId !== sourceLibraryId) return;
     void deleteCollection(collectionId);
   }
 
@@ -9485,11 +9494,12 @@ function AppInner() {
     if (!api || !library || !convertLinkedDialog.folderId) return;
     const dialogState = convertLinkedDialog;
     if (
-      !confirm(
+      !await requestConfirmation(
         t("toast.convertLinkedConfirm", { name: dialogState.name }),
       )
     )
       return;
+    if (libraryRef.current?.libraryId !== library.libraryId) return;
     const startedAt = Date.now();
     setUiState("importing");
     try {
@@ -9515,7 +9525,7 @@ function AppInner() {
 
   async function closeLibrary() {
     if (!api) return;
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) return;
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) return;
     await libraryTransitionLock(async () => {
       const currentLibrary = libraryRef.current;
       if (!currentLibrary) return;
@@ -9542,7 +9552,7 @@ function AppInner() {
 
   async function removeLibrary() {
     if (!api) return;
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) return;
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) return;
     await libraryTransitionLock(async () => {
       const currentLibrary = libraryRef.current;
       if (!currentLibrary) return;
@@ -9679,7 +9689,7 @@ function AppInner() {
 
   async function confirmDeleteLibraryFromDisk() {
     if (!api) return;
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) return;
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) return;
     await libraryTransitionLock(async () => {
       const currentLibrary = libraryRef.current;
       if (!currentLibrary) return;
@@ -10657,7 +10667,7 @@ function AppInner() {
     // The zip import itself is a tracked write. If the user requested a
     // library transition while it was running, do not let its late
     // activation overwrite the library the user chose next.
-    if (libraryTransitionLock.hasTransitionPending() || !confirmLibrarySwitch()) {
+    if (libraryTransitionLock.hasTransitionPending() || !(await confirmLibrarySwitch())) {
       return false;
     }
     let activated = false;
@@ -11256,11 +11266,11 @@ function AppInner() {
         exportProgress &&
           !["complete", "cancelled", "failed"].includes(exportProgress.phase),
       ) ||
-      criticalConfirmation.request !== null,
+      criticalConfirmation.request !== null || localConfirmation !== null,
   );
   useDialogFocusTrap(
     dialogFocusTrapActive,
-    resolveDialogEscapeAction(dialogEscapeSnapshot).kind,
+    localConfirmation?.id ?? criticalConfirmation.request?.requestId ?? resolveDialogEscapeAction(dialogEscapeSnapshot).kind,
   );
 
   useWindowsBrowseShortcutBridge({
@@ -12105,12 +12115,13 @@ function AppInner() {
     // enforces confirm for folder/library scopes).
     if (
       assetIds.length > 1 &&
-      !confirm(
+      !await requestConfirmation(
         t("toast.aiContentClearConfirm", { count: String(assetIds.length) }),
       )
     ) {
       return;
     }
+    if (libraryRef.current?.libraryId !== library.libraryId) return;
     try {
       const result = await api.clearAiContent({
         libraryId: library.libraryId,
@@ -12967,7 +12978,7 @@ function AppInner() {
       />
     ) : null}
     <main
-      data-shell-layout="islands"
+      data-shell-layout={APP_SHELL_LAYOUT}
       className={`app-shell${leftOpen ? "" : " left-collapsed"}${rightOpen ? "" : " right-collapsed"}${panelResizing ? " is-resizing" : ""}`}
       style={panelResizeShellStyle as React.CSSProperties}
     >
@@ -14220,7 +14231,7 @@ function AppInner() {
                     >
                       <div
                         className="asset-preview"
-                        title={
+                        data-hover-tip={
                           showThumbnailFailure
                             ? thumbnailFailures.get(asset.assetId)
                             : undefined
@@ -14355,7 +14366,7 @@ function AppInner() {
                               name: sourceBadgeLabel,
                             })}
                             className="asset-source-badge"
-                            title={t("scope.containingFolder", {
+                            data-hover-tip={t("scope.containingFolder", {
                               name: sourceBadgeLabel,
                             })}
                           >
@@ -14368,7 +14379,7 @@ function AppInner() {
                               name: trashOriginBadgeLabel,
                             })}
                             className="asset-source-badge"
-                            title={asset.trashedFromPath ?? trashOriginBadgeLabel}
+                            data-hover-tip={asset.trashedFromPath ?? trashOriginBadgeLabel}
                           >
                             {trashOriginBadgeLabel}
                           </span>
@@ -14391,7 +14402,7 @@ function AppInner() {
                                 ? t("inspector.dataCorrupt")
                                 : t("inspector.missing")
                             }
-                            title={
+                            data-hover-tip={
                               corruptAsset
                                 ? t("inspector.dataCorrupt")
                                 : t("inspector.missing")
@@ -14520,7 +14531,7 @@ function AppInner() {
                                   ) : null}
                                 </span>
                               ) : (
-                                <strong className="asset-caption-filename" title={asset.displayName}>
+                                <strong className="asset-caption-filename" data-hover-tip={asset.displayName}>
                                   {renderMiddleEllipsisFilename(asset.displayName, searchValue)}
                                 </strong>
                               )}
@@ -15865,6 +15876,7 @@ function AppInner() {
         />
       )}
     </main>
+    <LocalConfirmationHost blocked={criticalConfirmation.request !== null} scopeKey={library?.libraryId} />
     </>
   );
 }
