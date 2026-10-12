@@ -17311,3 +17311,50 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 :root[data-theme="light"] {
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 9%, #ffffff));
 }
+
+/* ==== a77: tighter outer gap, match window corner radii ====================
+   Window chrome (Linux rounded #root / Win11-like) uses 8px
+   (LINUX_WINDOW_CORNER_RADIUS_PX). Outer panel corners that meet the window
+   (nav BL, inspector BR) use the same radius so the seam disappears — Codex.
+   Maximized/square windows zero the outer radius. */
+:root {
+  --window-corner-radius: 8px;
+}
+html.serpent-window-square {
+  --window-corner-radius: 0px;
+}
+
+.app-shell[data-shell-layout="islands"] {
+  --island-gap: 1px;
+}
+
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
+  margin: 0 var(--island-gap) var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
+.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
+.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
+.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
+  margin: 0;
+}
+
+/* Outer corners that meet the window chrome = window radius; other corners
+   keep the island radius so inner seams stay soft. */
+.app-shell[data-shell-layout="islands"] > .navigation-pane {
+  border-radius: var(--island-radius) var(--island-radius) var(--island-radius) var(--window-corner-radius);
+}
+.app-shell[data-shell-layout="islands"] > .inspector-pane {
+  border-radius: var(--island-radius) var(--island-radius) var(--window-corner-radius) var(--island-radius);
+}
+.app-shell[data-shell-layout="islands"] > .workspace {
+  border-radius: var(--island-radius);
+}
+/* Collapsed panes leave the remaining outer corner to the neighbor. */
+.app-shell[data-shell-layout="islands"].left-collapsed > .workspace {
+  border-bottom-left-radius: var(--window-corner-radius);
+}
+.app-shell[data-shell-layout="islands"].right-collapsed > .workspace {
+  border-bottom-right-radius: var(--window-corner-radius);
+}
