@@ -264,7 +264,7 @@ describe('theme profile contract v3', () => {
     expect(quick.accentHex).toBe('#8b5cf6');
     expect(quick.tokens['--ui-action-accent']).toBe('#8b5cf6');
     expect(quick.tokens['--ui-action-accent-soft']).toBe(
-      'color-mix(in srgb, var(--ui-action-accent) 14%, transparent)',
+      'color-mix(in srgb, var(--ui-action-accent) 8%, transparent)',
     );
     expect(quick.tokens['--ui-content-accent']).toBe(
       'color-mix(in srgb, var(--ui-action-accent) 55%, white)',

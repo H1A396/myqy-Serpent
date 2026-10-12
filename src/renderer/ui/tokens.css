@@ -91,7 +91,7 @@
   --ui-action-accent: var(--accent, #3b82f6);
   --ui-action-accent-hover: color-mix(in srgb, var(--ui-action-accent) 86%, white);
   --ui-action-accent-pressed: color-mix(in srgb, var(--ui-action-accent) 78%, black);
-  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 18%, transparent);
+  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 10%, transparent);
   --ui-action-hover: var(--ui-surface-hover);
   --ui-action-pressed: var(--ui-surface-pressed);
   --ui-action-selected: var(--ui-surface-selected);
@@ -231,7 +231,7 @@
   --ui-action-accent: var(--accent, #3b82f6);
   --ui-action-accent-hover: color-mix(in srgb, var(--ui-action-accent) 86%, black);
   --ui-action-accent-pressed: color-mix(in srgb, var(--ui-action-accent) 78%, black);
-  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 16%, #ffffff);
+  --ui-action-accent-soft: color-mix(in srgb, var(--ui-action-accent) 9%, #ffffff);
   --ui-action-hover: var(--ui-surface-hover);
   --ui-action-pressed: var(--ui-surface-pressed);
   --ui-action-selected: var(--ui-surface-selected);

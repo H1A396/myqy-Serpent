@@ -67,8 +67,8 @@ function recomputeDerivedColorTokens(
     setDerived(
       '--ui-action-accent-soft',
       isDark
-        ? 'color-mix(in srgb, var(--ui-action-accent) 14%, transparent)'
-        : 'color-mix(in srgb, var(--ui-action-accent) 18%, #ffffff)',
+        ? 'color-mix(in srgb, var(--ui-action-accent) 8%, transparent)'
+        : 'color-mix(in srgb, var(--ui-action-accent) 10%, #ffffff)',
     );
   }
 

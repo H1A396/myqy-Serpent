@@ -49,7 +49,7 @@
      nav rows, tool buttons, cards and menus. */
   --hover: var(--ui-surface-hover, rgb(255 255 255 / 5.5%));
   --active: var(--ui-surface-pressed, rgb(255 255 255 / 9%));
-  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 18%, transparent));
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 10%, transparent));
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 62%, white));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 55%, transparent);
   /* a70: scores = full theme accent (vivid); never wash with tertiary */
@@ -179,7 +179,7 @@
   --warning: var(--ui-status-warning, #b45309);
   --hover: var(--ui-surface-hover, rgb(0 0 0 / 5.5%));
   --active: var(--ui-surface-pressed, rgb(0 0 0 / 9%));
-  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 16%, #ffffff));
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 9%, #ffffff));
   /* Was hardcoded #1d4ed8 — that froze soft labels to blue after accent change. */
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 72%, black));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 50%, transparent);
@@ -17299,4 +17299,15 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
 .app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
   margin: 0;
+}
+
+
+/* ==== a76: soften accent-soft button fills ================================
+   Accent text on soft accent wash was eye-searing. Quieter soft fills;
+   keep accent-soft-fg readable; keep full --accent for scores (a70). */
+:root {
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 10%, transparent));
+}
+:root[data-theme="light"] {
+  --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 9%, #ffffff));
 }
