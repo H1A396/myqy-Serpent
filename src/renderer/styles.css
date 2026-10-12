@@ -16772,18 +16772,19 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* ==== a39: SVG silhouette stroke for active tab (replaces a38 rings) =====
-   Algorithm (documented in commit + workspace-tab-outline-path.ts):
-   Open path in tab border-box coords — left scoop tip → CCW scoop arc → up
-   left side → top-left radius → across top → top-right radius → down right →
-   CW scoop arc → right tip. No Z (bottom open into toolstrip). Idle: no
-   stroke. Scoop ::before/::after stay fill-only. */
+/* ==== a41: single SVG chrome for active tab (fill + stroke, one path) =====
+   Replaces a39 dual geometry (CSS scoop fills + separate SVG stroke overlay).
+   WorkspaceTabOutline paints fill and stroke from workspaceTabOutlinePath —
+   open bottom into the toolstrip. Idle tabs stay borderless. No scoop
+   ::before/::after. */
 
 .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: color-mix(in srgb, var(--ui-content-primary) 12%, transparent);
+  /* Same ink as island hairline so scoop tips meet the workspace top border
+     as one continuous edge, not a second alpha. */
+  --island-tab-stroke: var(--island-border);
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: color-mix(in srgb, white 14%, transparent);
+  --island-tab-stroke: var(--island-border);
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab,
@@ -16798,7 +16799,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 .app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
   --canvas: var(--island-tab-fill);
-  background: var(--island-tab-fill);
+  /* Transparent face: silhouette fill comes only from the SVG chrome path. */
+  background: transparent;
   color: var(--ui-content-primary);
   margin-bottom: -2px;
   padding-bottom: 2px;
@@ -16806,26 +16808,37 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   z-index: 2;
 }
 
-/* Plain scoop fills only — outline is the SVG path */
 .app-shell[data-shell-layout="islands"] .workspace-tab.is-active::before,
 .app-shell[data-shell-layout="islands"] .workspace-tab.is-active::after {
-  margin: 0;
-  background: radial-gradient(
-    circle at 0 0,
-    transparent calc(var(--workspace-tab-scoop) - 0.6px),
-    var(--island-tab-fill) var(--workspace-tab-scoop)
-  );
-}
-.app-shell[data-shell-layout="islands"] .workspace-tab.is-active::after {
-  background: radial-gradient(
-    circle at 100% 0,
-    transparent calc(var(--workspace-tab-scoop) - 0.6px),
-    var(--island-tab-fill) var(--workspace-tab-scoop)
-  );
+  content: none;
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab-outline {
-  z-index: 3;
+  z-index: 0;
+}
+
+.app-shell[data-shell-layout="islands"] .workspace-tab-outline-path {
+  fill: var(--island-tab-fill);
+  stroke: var(--island-tab-stroke);
+  stroke-width: 1px;
+}
+
+/* Chrome-style: island top hairline interrupted under active tab chrome.
+   WorkspaceTabOutline sets --tab-seam-hole-left/right (px from island left).
+   Left/right gradient segments paint the border; the hole is owned by the SVG scoops. */
+.app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace {
+  border-top-color: transparent;
+  background-color: var(--island-canvas);
+  background-image:
+    linear-gradient(var(--island-border), var(--island-border)),
+    linear-gradient(var(--island-border), var(--island-border));
+  background-size:
+    var(--tab-seam-hole-left, 100%) var(--island-hairline-w),
+    calc(100% - var(--tab-seam-hole-right, 100%)) var(--island-hairline-w);
+  background-position:
+    0 0,
+    var(--tab-seam-hole-right, 100%) 0;
+  background-repeat: no-repeat;
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tabs-list {

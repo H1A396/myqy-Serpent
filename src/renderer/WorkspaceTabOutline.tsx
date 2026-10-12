@@ -10,10 +10,12 @@ function readPx(raw: string, fallback: number): number {
 }
 
 /**
- * Vector outline for the active tab only. Sized to the parent `.workspace-tab`
- * border box; extends horizontally by one scoop on each side so scoop feet are
- * inside the viewBox. Stroke is a single open path — no CSS border, no radial
- * ring hacks.
+ * Single-geometry chrome for the active tab: one SVG path paints both fill and
+ * stroke (open bottom into the toolstrip). No CSS scoop fills / border rings.
+ *
+ * Also publishes --tab-seam-hole-left/right on the workspace island so its top
+ * border is interrupted under the chrome (Chrome-style continuous edge: SVG
+ * scoops own the join; island hairline continues outside the tips only).
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -37,19 +39,47 @@ export function WorkspaceTabOutline(): ReactNode {
         FALLBACK_SCOOP,
       );
       const radius = readPx(cs.borderTopLeftRadius, FALLBACK_RADIUS);
+      const padBottom = readPx(cs.paddingBottom, 0);
       const rect = tab.getBoundingClientRect();
+      const faceH = Math.max(rect.height - padBottom, scoop + 1);
       setBox({
         w: rect.width,
-        h: rect.height,
+        h: faceH,
         scoop,
         radius,
       });
+
+      // Tabs live in the toolbar; the island they join is a sibling .workspace.
+      const workspace = tab
+        .closest(".app-shell")
+        ?.querySelector(":scope > .workspace") as HTMLElement | null;
+      if (workspace) {
+        const wr = workspace.getBoundingClientRect();
+        const leftTip = rect.left - scoop - wr.left;
+        const rightTip = rect.right + scoop - wr.left;
+        workspace.style.setProperty(
+          "--tab-seam-hole-left",
+          `${Math.max(0, leftTip)}px`,
+        );
+        workspace.style.setProperty(
+          "--tab-seam-hole-right",
+          `${Math.max(0, rightTip)}px`,
+        );
+      }
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(tab);
-    return () => ro.disconnect();
+    const workspace = tab
+      .closest(".app-shell")
+      ?.querySelector(":scope > .workspace") as HTMLElement | null;
+    if (workspace) ro.observe(workspace);
+    return () => {
+      ro.disconnect();
+      workspace?.style.removeProperty("--tab-seam-hole-left");
+      workspace?.style.removeProperty("--tab-seam-hole-right");
+    };
   }, [host]);
 
   const S = box?.scoop ?? FALLBACK_SCOOP;
@@ -68,27 +98,8 @@ export function WorkspaceTabOutline(): ReactNode {
       width={box ? vbW : undefined}
       height={box ? h : undefined}
       viewBox={box ? `${-S} 0 ${vbW} ${h}` : undefined}
-      style={{
-        position: "absolute",
-        left: -S,
-        top: 0,
-        width: box ? vbW : undefined,
-        height: box ? h : undefined,
-        overflow: "visible",
-        pointerEvents: "none",
-      }}
     >
-      {box ? (
-        <path
-          d={path}
-          fill="none"
-          stroke="var(--island-tab-stroke, var(--island-border))"
-          strokeWidth={1}
-          strokeLinecap="butt"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      ) : null}
+      {box ? <path className="workspace-tab-outline-path" d={path} /> : null}
     </svg>
   );
 }

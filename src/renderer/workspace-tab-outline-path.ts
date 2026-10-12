@@ -1,18 +1,15 @@
 /**
- * Open SVG path for an active workspace-tab silhouette outline.
+ * Open SVG path for the active workspace-tab chrome silhouette (fill + stroke).
  *
  * Coordinate system: tab border-box, origin = top-left outer corner.
- * Scoop feet sit in [-scoop, 0] × [H−scoop, H] and [W, W+scoop] × [H−scoop, H]
- * matching `.workspace-tab.is-active::before/::after` (radial fill outside a
- * circle centered at the scoop-box outer-top corner).
+ * Scoop feet sit in [-scoop, 0] × [H−scoop, H] and [W, W+scoop] × [H−scoop, H].
  *
- * Path is OPEN along the baseline between scoop tips so the stroke does not
- * close across the toolstrip join.
+ * Path is OPEN along the baseline between scoop tips so:
+ *   - fill auto-closes across that baseline (body + scoop feet from one shape)
+ *   - stroke does NOT draw the closing chord (bottom stays open into the toolstrip)
  *
  * SVG arc sweep note (y-down): the concave scoop edge is the quarter-circle
- * about the outer-top corner of each scoop box. That is sweep=0 on both sides
- * — NOT the alternate center on the tab baseline (which draws a bulbous ear
- * and meets the vertical side with a horizontal tangent / kink).
+ * about the outer-top corner of each scoop box — sweep=0 on both sides.
  */
 export function workspaceTabOutlinePath(
   width: number,
