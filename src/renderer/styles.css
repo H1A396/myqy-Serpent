@@ -18009,99 +18009,6 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   backdrop-filter: blur(30px) saturate(1.3);
 }
 
-/* ── a91: theme preview miniature (islands layout) ──────────────────────── */
-.theme-mini {
-  --mini-window: color-mix(in oklab, var(--theme-preview-canvas) 90%, var(--theme-preview-text));
-  --mini-panel: var(--theme-preview-pane);
-  --mini-line: color-mix(in oklab, var(--theme-preview-text) 22%, transparent);
-  --mini-edge: color-mix(in oklab, var(--theme-preview-text) 10%, transparent);
-  display: grid;
-  grid-template-rows: 7px 1fr;
-  gap: 3px;
-  box-sizing: border-box;
-  height: 56px;
-  padding: 4px 5px 5px;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--mini-window);
-  box-shadow: inset 0 0 0 1px var(--mini-edge);
-}
-
-.theme-mini-tabs {
-  display: flex;
-  gap: 3px;
-  padding-left: 26%;
-}
-
-.theme-mini-tab {
-  width: 18%;
-  height: 7px;
-  border-radius: 3px 3px 2px 2px;
-  background: color-mix(in oklab, var(--mini-panel) 55%, transparent);
-}
-
-.theme-mini-tab.is-active {
-  background: var(--mini-panel);
-}
-
-.theme-mini-islands {
-  display: grid;
-  grid-template-columns: 24% 1fr 20%;
-  gap: 3px;
-  min-height: 0;
-}
-
-.theme-mini-island {
-  display: grid;
-  align-content: start;
-  gap: 3px;
-  min-width: 0;
-  padding: 4px;
-  border-radius: 5px;
-  background: var(--mini-panel);
-  box-shadow:
-    0 0 0 0.5px var(--mini-edge),
-    0 1px 2px color-mix(in oklab, black 12%, transparent);
-}
-
-.theme-mini-island.is-main {
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: 1fr;
-  gap: 3px;
-  background: color-mix(in oklab, var(--theme-preview-canvas) 70%, var(--mini-panel));
-}
-
-.theme-mini-row {
-  display: block;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--mini-line);
-}
-
-.theme-mini-row.is-short {
-  width: 60%;
-}
-
-.theme-mini-row.is-active {
-  background: color-mix(in oklab, var(--theme-preview-accent) 80%, transparent);
-}
-
-.theme-mini-card {
-  display: block;
-  min-height: 0;
-  border-radius: 3px;
-  background: var(--theme-preview-raised);
-  box-shadow: 0 0 0 0.5px var(--mini-edge);
-}
-
-.theme-mini-card.is-accent {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--theme-preview-accent) 70%, var(--theme-preview-raised)) 0 62%,
-    var(--theme-preview-raised) 62%
-  );
-}
-
 /* ── a91: tab icon vertically centred with the title ───────────────────────
    The glyph box (15px) was laid out from the top of the 28px tab button
    while the title centred, leaving the icon ~2px high. Centre both. */
@@ -18155,18 +18062,28 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   backdrop-filter: blur(32px) saturate(1.7);
 }
 
-/* a91: save row at the end of the custom-colours section */
+/* a91/a92: save row — one compact line: label · input · primary · secondary */
 .app-settings-custom-theme-save {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--ui-space-2);
-  margin-top: var(--ui-space-3);
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border-divider);
 }
 
-.app-settings-custom-theme-save .app-settings-custom-theme-name {
-  flex: 1 1 200px;
-  max-width: 280px;
+.app-settings-custom-theme-save-label {
+  flex: none;
+  color: var(--ui-content-primary);
+  font-size: var(--ui-font-size-label);
+  white-space: nowrap;
+}
+
+.app-settings-custom-theme-save .app-settings-custom-theme-save-input {
+  flex: 1 1 160px;
+  max-width: 260px;
+  margin: 0;
 }
 
 .app-settings-custom-theme-active {
@@ -18176,3 +18093,333 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   gap: var(--ui-space-2);
   margin-bottom: var(--ui-space-2);
 }
+
+/* ── a92: custom-theme editor preview — a live islands miniature ──────────
+   Window backdrop, three floating rounded panels with soft shadow, app-like
+   accent use (solid accent only on emphasis, soft fills elsewhere), real
+   button classes, a pointed tag chip, input and slider. Everything is drawn
+   from the live theme tokens, so edits above repaint it instantly. */
+.app-settings-theme-preview .tp-window {
+  --tp-backdrop: color-mix(in oklab, var(--ui-surface-pane) 92%, var(--ui-content-primary));
+  --tp-panel: var(--ui-surface-pane);
+  --tp-canvas: var(--ui-surface-canvas);
+  --tp-card: var(--ui-surface-raised);
+  --tp-line: color-mix(in oklab, var(--ui-content-primary) 18%, transparent);
+  --tp-edge: color-mix(in oklab, var(--ui-content-primary) 9%, transparent);
+  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 1px 2px color-mix(in oklab, black 8%, transparent),
+    0 6px 18px -6px color-mix(in oklab, black 18%, transparent);
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 210px;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--tp-backdrop);
+  box-shadow: inset 0 0 0 1px var(--tp-edge);
+  color: var(--ui-content-primary);
+  font-size: 11px;
+}
+
+:root[data-theme="dark"] .app-settings-theme-preview .tp-window {
+  --tp-backdrop: color-mix(in oklab, var(--ui-surface-pane) 80%, black);
+  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 6px 18px -6px color-mix(in oklab, black 45%, transparent);
+}
+
+.tp-island {
+  min-width: 0;
+  border-radius: 11px;
+  background: var(--tp-panel);
+  box-shadow: var(--tp-shadow);
+}
+
+.tp-nav {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 10px 8px;
+}
+
+.tp-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+}
+
+.tp-nav-row i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--tp-line);
+}
+
+.tp-nav-row b {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tp-line);
+}
+
+.tp-nav-row b.is-short { flex: 0 0 55%; }
+
+.tp-nav-row.is-active {
+  background: color-mix(in oklab, var(--ui-action-accent) 12%, transparent);
+}
+
+.tp-nav-row.is-active i,
+.tp-nav-row.is-active b {
+  background: var(--ui-action-accent);
+}
+
+.tp-nav-label {
+  width: 40%;
+  height: 3px;
+  margin: 8px 6px 2px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--ui-content-primary) 12%, transparent);
+}
+
+.tp-main {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  padding: 8px;
+  background: var(--tp-canvas);
+}
+
+.tp-toolstrip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent);
+}
+
+.tp-pill {
+  width: 34px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--tp-line);
+}
+
+.tp-pill.is-accent {
+  background: color-mix(in oklab, var(--ui-action-accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-action-accent) 30%, transparent);
+}
+
+.tp-toolstrip-spacer { flex: 1; }
+
+.tp-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--tp-line);
+}
+
+.tp-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  gap: 8px;
+}
+
+.tp-card {
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--tp-card);
+  box-shadow: 0 0 0 0.5px var(--tp-edge), 0 2px 6px -2px color-mix(in oklab, black 14%, transparent);
+}
+
+.tp-card.is-selected {
+  box-shadow: 0 0 0 2px var(--ui-action-accent), 0 4px 10px -3px color-mix(in oklab, var(--ui-action-accent) 35%, transparent);
+}
+
+.tp-card-media {
+  aspect-ratio: 4 / 3;
+  background:
+    radial-gradient(circle at 30% 35%, color-mix(in oklab, var(--ui-action-accent) 55%, white) 0 18%, transparent 19%),
+    linear-gradient(160deg, color-mix(in oklab, var(--ui-action-accent) 35%, var(--tp-card)), color-mix(in oklab, var(--ui-content-primary) 14%, var(--tp-card)));
+}
+
+.tp-card-media.is-alt {
+  background: linear-gradient(160deg, color-mix(in oklab, var(--ui-content-primary) 10%, var(--tp-card)), color-mix(in oklab, var(--ui-content-primary) 22%, var(--tp-card)));
+}
+
+.tp-card-caption {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px 8px;
+  min-width: 0;
+}
+
+.tp-card-caption strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-card-caption span {
+  color: var(--ui-content-tertiary);
+  font-size: 10px;
+}
+
+.tp-card-caption b,
+.tp-card-caption i {
+  display: block;
+  height: 5px;
+  width: 70%;
+  border-radius: 3px;
+  background: var(--tp-line);
+}
+
+.tp-card-caption i { width: 45%; height: 4px; opacity: 0.7; }
+
+.tp-inspector {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+}
+
+.tp-inspector-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tp-inspector-heading strong { font-size: 12px; font-weight: 600; }
+.tp-inspector-heading span { color: var(--ui-content-tertiary); font-size: 10px; }
+
+.tp-selected {
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--ui-action-accent) 12%, transparent);
+  color: var(--ui-content-accent, var(--ui-action-accent));
+  font-weight: 600;
+}
+
+.tp-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.tp-fields dt { color: var(--ui-content-tertiary); font-size: 10px; }
+.tp-fields dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ui-content-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-tag {
+  --tp-tag-color: var(--ui-action-accent);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 14px 0 7px;
+  color: var(--ui-content-primary);
+  font-size: 10.5px;
+  isolation: isolate;
+  filter: drop-shadow(0 0 0.5px color-mix(in oklab, black 25%, transparent));
+}
+
+.tp-tag::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--tp-tag-color) 12%, var(--tp-card));
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 12px 0 6px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 12px 0 6px / 0 stretch;
+}
+
+.tp-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tp-tag-color);
+}
+
+.tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tp-actions .tp-button {
+  pointer-events: none;
+}
+
+.tp-input {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--ui-border-control, var(--tp-edge));
+  border-radius: 7px;
+  background: var(--tp-canvas);
+  color: var(--ui-content-tertiary);
+}
+
+.tp-slider {
+  position: relative;
+  height: 4px;
+  margin: 6px 2px 2px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--ui-content-primary) 12%, transparent);
+}
+
+.tp-slider-fill {
+  position: absolute;
+  inset: 0 40% 0 0;
+  border-radius: inherit;
+  background: var(--ui-action-accent);
+}
+
+.tp-slider-thumb {
+  position: absolute;
+  top: 50%;
+  left: 60%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, black 25%, transparent), 0 1px 3px color-mix(in oklab, black 25%, transparent);
+  translate: -50% -50%;
+}
+
+/* a92: no dim/blur behind Settings while on Appearance — live theme, shadow
+   and background edits must be visible on the real app. */
+.dialog-backdrop.app-settings-backdrop.is-live-preview:is(*, #a92-live) {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* a92: settings content must not scroll while dragging a slider. Measured in
+   Electron: each slider update jumped .app-settings-content by +125px with no
+   JS scroll call and no element size change — Chromium scroll anchoring
+   re-anchoring on the live restyle (root inline token rewrite). Settings
+   pages are static, so anchoring is disabled here. */
+.app-settings-content,
+.app-settings-content * {
+  overflow-anchor: none;
+}
+
+.app-settings-theme-preview .tp-window { grid-template-columns: 100px minmax(0, 1fr) 236px; }
+.tp-actions { flex-wrap: nowrap; }
+.tp-actions .tp-button { min-width: 0; white-space: nowrap; }
+.tp-card-caption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

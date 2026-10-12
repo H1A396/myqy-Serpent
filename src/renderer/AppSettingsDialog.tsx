@@ -163,7 +163,9 @@ export function AppSettingsDialog({
 
   return (
     <div
-      className="dialog-backdrop"
+      // On the Appearance tab the app behind the dialog is the live preview,
+      // so the backdrop drops its dim + blur (a92).
+      className={`dialog-backdrop app-settings-backdrop${!showingPluginSettings && activeCategory === "appearance" ? " is-live-preview" : ""}`}
       role="presentation"
     >
       <DialogShell

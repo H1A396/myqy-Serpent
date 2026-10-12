@@ -15,3 +15,13 @@ describe('a91 acrylic menus + wallpaper panels', () => {
     expect(css).toMatch(/:root\[data-bg-main-panel="on"\] \.app-shell\[data-shell-layout="islands"\] > :is\(\.navigation-pane, \.workspace, \.inspector-pane\) \{[^}]*var\(--ui-panel-opacity/);
   });
 });
+
+describe('a92 settings live preview', () => {
+  it('disables scroll anchoring in settings content (slider drag jump)', () => {
+    expect(css).toMatch(/\.app-settings-content,\s*\.app-settings-content \* \{\s*overflow-anchor: none;/);
+  });
+
+  it('drops the backdrop dim/blur on the Appearance tab', () => {
+    expect(css).toMatch(/\.dialog-backdrop\.app-settings-backdrop\.is-live-preview[^{]*\{[^}]*background: transparent;[^}]*backdrop-filter: none;/);
+  });
+});

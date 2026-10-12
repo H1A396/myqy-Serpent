@@ -81,39 +81,6 @@ function asPreviewStyle(
   } as CSSProperties;
 }
 
-/**
- * Miniature of the islands layout: window backdrop, a tab strip, and three
- * floating rounded panels (sidebar, asset grid, inspector) with a hint of
- * the accent. Colours come from the --theme-preview-* custom properties.
- */
-function ThemePreviewMiniature(): ReactNode {
-  return (
-    <span aria-hidden="true" className="theme-mini">
-      <span className="theme-mini-tabs">
-        <span className="theme-mini-tab is-active" />
-        <span className="theme-mini-tab" />
-      </span>
-      <span className="theme-mini-islands">
-        <span className="theme-mini-island is-side">
-          <span className="theme-mini-row is-active" />
-          <span className="theme-mini-row" />
-          <span className="theme-mini-row is-short" />
-        </span>
-        <span className="theme-mini-island is-main">
-          <span className="theme-mini-card is-accent" />
-          <span className="theme-mini-card" />
-          <span className="theme-mini-card" />
-          <span className="theme-mini-card" />
-        </span>
-        <span className="theme-mini-island is-side">
-          <span className="theme-mini-row is-short" />
-          <span className="theme-mini-row" />
-        </span>
-      </span>
-    </span>
-  );
-}
-
 type PickerEntry =
   | { readonly kind: 'user'; readonly key: string; readonly theme: UserTheme }
   | { readonly kind: 'preset'; readonly key: string; readonly preset: ThemeProfileId };
@@ -196,7 +163,14 @@ export function ThemeProfilePicker(): ReactNode {
               buttonRefs.current[index] = element;
             }}
           >
-            <ThemePreviewMiniature />
+            <span aria-hidden="true" className="app-settings-theme-profile-preview">
+              <span className="app-settings-theme-profile-preview-sidebar" />
+              <span className="app-settings-theme-profile-preview-content">
+                <span className="app-settings-theme-profile-preview-line is-long" />
+                <span className="app-settings-theme-profile-preview-line" />
+                <span className="app-settings-theme-profile-preview-card" />
+              </span>
+            </span>
             <span className="app-settings-theme-profile-label">
               <span className="app-settings-theme-profile-name">{label}</span>
               {entry.kind === 'user' ? (

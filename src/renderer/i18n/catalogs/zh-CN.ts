@@ -1457,7 +1457,7 @@ export const zhCN = {
     backgroundModeTile: "平铺",
     backgroundReplaceImage: "替换背景图片",
     backgroundRemoveImage: "移除图片",
-    backgroundOpacity: "不透明度",
+    backgroundOpacity: "背景不透明度",
     backgroundSaveError: "背景无法保存，图片可能超过本地存储容量。",
     backgroundImageUnsupported: "请选择支持的栅格图片（PNG、JPEG、WebP、GIF、BMP 或 AVIF）。",
     backgroundProcessing: "正在压缩图片…",

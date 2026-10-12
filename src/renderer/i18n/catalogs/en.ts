@@ -1476,7 +1476,7 @@ export const en = {
     backgroundModeTile: "Tile",
     backgroundReplaceImage: "Replace background image",
     backgroundRemoveImage: "Remove image",
-    backgroundOpacity: "Opacity",
+    backgroundOpacity: "Background opacity",
     backgroundSaveError: "The background could not be saved. The image may be too large for local storage.",
     backgroundImageUnsupported: "Choose a supported raster image (PNG, JPEG, WebP, GIF, BMP, or AVIF).",
     backgroundProcessing: "Compressing image…",
