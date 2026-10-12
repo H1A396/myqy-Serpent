@@ -17106,3 +17106,197 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .search-control-wrap:focus-within {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--island-hairline));
 }
+
+/* ==== a75: filter wrap, create-lib radii, quieter sort, card truncate/title,
+   browser padding, selected hover, card top flush, restore card type sizes ===
+   Keep a70 accents, a72 borders, a65–a67 tags. */
+
+/* 1) Filter bar wraps on narrow widths (Windows too) */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  flex-wrap: wrap;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  flex: 1 1 220px;
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 2) Create-library: smaller radii — not 999px capsules */
+.app-shell[data-shell-layout="islands"] .create-dialog .primary-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .secondary-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .ghost-button,
+.app-shell[data-shell-layout="islands"] .create-library-dialog .primary-button,
+.app-shell[data-shell-layout="islands"] .create-library-dialog .secondary-button,
+.app-shell[data-shell-layout="islands"] .create-library-dialog .ghost-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .dialog-actions .primary-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .dialog-actions .secondary-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .empty-actions .primary-button,
+.app-shell[data-shell-layout="islands"] .create-dialog .empty-actions .secondary-button {
+  border-radius: 8px;
+}
+.app-shell[data-shell-layout="islands"] .create-dialog .text-field,
+.app-shell[data-shell-layout="islands"] .create-library-dialog .text-field {
+  border-radius: 8px;
+}
+
+/* 3) Sort: quieter than full accent filter highlight */
+.app-shell[data-shell-layout="islands"] .sort-mode-control .dimension-filter-btn.is-active:not(:disabled),
+.app-shell[data-shell-layout="islands"] .sort-mode-control .dimension-filter-btn.is-active[aria-pressed="true"] {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+  font-weight: 510;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .sort-mode-control .dimension-filter-btn.is-active .icon {
+  color: var(--ui-content-secondary);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .sort-mode-control .dimension-filter-btn.is-active:not(:disabled) {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+}
+.app-shell[data-shell-layout="islands"] .sort-mode-option.is-active {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+}
+
+/* 4) Asset card text truncation — clean ellipsis */
+.app-shell[data-shell-layout="islands"] .asset-caption {
+  min-width: 0;
+  overflow: hidden;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption strong,
+.app-shell[data-shell-layout="islands"] .asset-caption strong.asset-caption-filename {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption strong.asset-caption-filename {
+  display: flex;
+  text-overflow: clip;
+}
+.app-shell[data-shell-layout="islands"] .asset-filename-prefix {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 5 + 9) Restore original card title weight + type sizes (main/dev: 11/500 + 9) */
+.app-shell[data-shell-layout="islands"] .asset-caption strong {
+  font-size: calc(11px * var(--ui-font-scale));
+  line-height: calc(14px * var(--ui-font-scale));
+  font-weight: var(--ui-font-weight-medium);
+  letter-spacing: 0.01em;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > span {
+  font-size: calc(9px * var(--ui-font-scale));
+  line-height: calc(12px * var(--ui-font-scale));
+}
+
+/* 6) Asset browser L/R padding — less empty gutter */
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  padding: 10px 8px 18px;
+}
+
+/* 7) Selected card hover keeps accent selection stroke (not gray) */
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected:hover,
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected:focus-visible,
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected:hover:focus-visible {
+  border-color: var(--accent);
+  /* Ring is the 1px border only — no outer shadow that doubles/gaps the top. */
+  box-shadow: none;
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected:hover,
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected:focus-visible {
+  box-shadow: none;
+}
+
+/* 8) Card top flush with selection outline — no gap/crop
+   Selection ring = 1px accent border. Selected card fill is accent so any
+   sub-pixel frame between border and media reads as the ring (not canvas).
+   Media uses the card radius and is clipped by overflow:hidden. */
+.app-shell[data-shell-layout="islands"] .asset-card {
+  border-width: 1px;
+  border-style: solid;
+  background-clip: border-box;
+  overflow: hidden;
+}
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  border-width: 1px;
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: none;
+  outline: none;
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected:hover,
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected .asset-caption,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible .asset-caption {
+  background: var(--island-canvas);
+}
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview {
+  margin: 0;
+  border-radius: var(--island-card-radius) var(--island-card-radius) 0 0;
+}
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-card-media,
+.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-thumbnail {
+  border-radius: inherit;
+}
+.app-shell[data-shell-layout="islands"] .justified-row,
+.app-shell[data-shell-layout="islands"] .justified-card-slot,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot {
+  overflow: visible;
+}
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  /* Keep a little top air so a 1px selection stroke is not chewed by the toolstrip seam */
+  padding-top: 10px;
+}
+
+/* 10) Panels closer to window edges — smaller outer island inset (Codex/macOS) */
+.app-shell[data-shell-layout="islands"] {
+  --island-gap: 4px;
+}
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
+  margin: 0 var(--island-gap) var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
+.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
+.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
+.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
+  margin: 0;
+}
