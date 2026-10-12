@@ -16117,3 +16117,225 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .workspace-bar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent) .icon {
   color: var(--ui-content-secondary);
 }
+
+/* ==== a27: Codex transfer plan top 5 =====================================
+   Accent budget (loud / soft / neutral-on), ink-alpha hairlines (~8–12%),
+   94/6 soft surfaces, neutral primary CTAs, denser chrome vs airier gallery.
+   Guarded by tests/unit/islands-accent-budget.test.ts. */
+
+.app-shell[data-shell-layout="islands"] {
+  /* --- Accent budget ----------------------------------------------------
+     loud:  selected card ring, applied filter segments (+ true CTAs stay ink)
+     soft:  links / optional icon tint (profile accent, diluted)
+     on:    aria-pressed / secondary tool toggles = ink wash only */
+  --island-accent-loud: var(--ui-action-accent);
+  --island-accent-soft: color-mix(in srgb, var(--ui-action-accent) 62%, var(--ui-content-primary));
+  --island-pressed-wash: color-mix(in srgb, var(--ui-content-primary) 8%, transparent);
+  --island-hover-wash: color-mix(in srgb, var(--ui-content-primary) 5%, transparent);
+
+  /* --- Ink-alpha hairlines (Codex ~12% outline / ~8% hairline) ---------- */
+  --island-hairline-w: 0.5px;
+  --island-border: color-mix(in srgb, var(--ui-content-primary) 12%, transparent);
+  --island-hairline: color-mix(in srgb, var(--ui-content-primary) 8%, transparent);
+
+  /* --- Soft surface = 94% raised + 6% ink (Codex diff-surface) ---------- */
+  --island-surface-soft: color-mix(in srgb, var(--ui-surface-raised) 94%, var(--ui-content-primary));
+
+  /* Selection wash stays soft accent, not loud paint on glyphs. */
+  --island-select: color-mix(in srgb, var(--island-accent-loud) 10%, transparent);
+}
+
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-border: color-mix(in srgb, white 12%, transparent);
+  --island-hairline: color-mix(in srgb, white 8%, transparent);
+  --island-surface-soft: color-mix(in srgb, var(--ui-surface-raised) 94%, white);
+  --island-pressed-wash: color-mix(in srgb, white 8%, transparent);
+  --island-hover-wash: color-mix(in srgb, white 5%, transparent);
+  --island-select: color-mix(in srgb, var(--island-accent-loud) 18%, transparent);
+  --island-accent-soft: color-mix(in srgb, var(--island-accent-loud) 55%, white);
+}
+
+/* Hairline width on island shells + toolstrip seam. */
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
+  border-width: var(--island-hairline-w);
+  border-style: solid;
+  border-color: var(--island-border);
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  border-bottom-width: var(--island-hairline-w);
+  border-bottom-style: solid;
+  border-bottom-color: var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .asset-card {
+  border-color: var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .inspector-quick-row,
+.app-shell[data-shell-layout="islands"] .inspector-quick-row + .editor-field,
+.app-shell[data-shell-layout="islands"] .inspector-tech-bar {
+  border-top-width: var(--island-hairline-w);
+  border-top-color: var(--island-hairline);
+}
+
+/* Loud accent: selected / focused card ring. */
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  border-color: var(--island-accent-loud);
+  box-shadow: 0 0 0 1px var(--island-accent-loud);
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  box-shadow: 0 0 0 1px var(--island-accent-loud);
+}
+
+/* Loud accent: applied filter segment. */
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled),
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--island-accent-loud) 14%, var(--island-segment-pill));
+  color: color-mix(in srgb, var(--island-accent-loud) 82%, var(--ui-content-primary));
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--island-accent-loud) 30%, transparent),
+    0 0.5px 1px rgb(0 0 0 / 6%);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active .icon {
+  color: var(--island-accent-loud);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled) {
+  background: color-mix(in srgb, var(--island-accent-loud) 24%, transparent);
+  color: color-mix(in srgb, var(--island-accent-loud) 55%, white);
+}
+
+/* Soft accent: text links inside islands chrome. */
+.app-shell[data-shell-layout="islands"] a:not(.tool-button):not(.nav-row):not(.dimension-filter-btn) {
+  color: var(--island-accent-soft);
+}
+
+/* Neutral-on: pressed secondary chrome uses pressed-wash token. */
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button[aria-pressed="true"]:not(:disabled),
+.app-shell[data-shell-layout="islands"] .app-toolbar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button.is-active:not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button.is-active:not(.is-accent),
+.app-shell[data-shell-layout="islands"] .app-toolbar .tool-button.is-active:not(.is-accent) {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Soft surfaces: chips, filter summary, empty plates. */
+.app-shell[data-shell-layout="islands"] .tag-chip {
+  background: var(--island-surface-soft);
+  color: var(--ui-content-secondary);
+  border: var(--island-hairline-w) solid var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:hover {
+  background: color-mix(in srgb, var(--island-surface-soft) 88%, var(--ui-content-primary));
+}
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: var(--island-surface-soft);
+  color: var(--ui-content-secondary);
+  border: var(--island-hairline-w) solid var(--island-hairline);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .empty-orbit,
+.app-shell[data-shell-layout="islands"] .inspector-empty-frame,
+.app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
+.app-shell[data-shell-layout="islands"] .inspector-empty > svg {
+  background: var(--island-surface-soft);
+  border-color: var(--island-hairline);
+  color: var(--ui-content-tertiary);
+}
+
+/* Hover rows: 5% ink wash (not accent). */
+.app-shell[data-shell-layout="islands"] .nav-row:hover:not(:disabled):not(.is-active) {
+  background: var(--island-hover-wash);
+  box-shadow: none;
+}
+
+/* --- Neutral primary CTAs (ink fill; accent stays off button paint) ------ */
+.app-shell[data-shell-layout="islands"] .empty-library .primary-button,
+.app-shell[data-shell-layout="islands"] .empty-state .primary-button,
+.app-shell[data-shell-layout="islands"] .inspector-empty .primary-button,
+.app-shell[data-shell-layout="islands"] .dialog-actions .primary-button,
+.app-shell[data-shell-layout="islands"] .workspace-canvas .primary-button {
+  background: var(--ui-content-primary);
+  color: var(--ui-content-inverse);
+  border-color: transparent;
+  border-radius: 9999px;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .empty-library .primary-button:hover:not(:disabled),
+.app-shell[data-shell-layout="islands"] .empty-state .primary-button:hover:not(:disabled),
+.app-shell[data-shell-layout="islands"] .inspector-empty .primary-button:hover:not(:disabled),
+.app-shell[data-shell-layout="islands"] .dialog-actions .primary-button:hover:not(:disabled),
+.app-shell[data-shell-layout="islands"] .workspace-canvas .primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-content-primary) 88%, var(--ui-content-inverse));
+  color: var(--ui-content-inverse);
+}
+.app-shell[data-shell-layout="islands"] .empty-library .ghost-button,
+.app-shell[data-shell-layout="islands"] .empty-state .ghost-button,
+.app-shell[data-shell-layout="islands"] .dialog-actions .ghost-button,
+.app-shell[data-shell-layout="islands"] .dialog-actions .secondary-button {
+  background: transparent;
+  color: var(--ui-content-primary);
+  border: var(--island-hairline-w) solid var(--island-border);
+  border-radius: 9999px;
+  box-shadow: none;
+}
+
+/* --- Denser chrome (~28–30px) ------------------------------------------- */
+.app-shell[data-shell-layout="islands"] .nav-row {
+  min-height: 28px;
+  font-size: calc(12px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
+  height: 36px;
+  padding: 0 14px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  padding: 4px 14px 8px;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn {
+  min-height: 28px;
+  font-size: calc(12px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button,
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button {
+  min-height: 28px;
+}
+.app-shell[data-shell-layout="islands"] .nav-section-heading,
+.app-shell[data-shell-layout="islands"] .inspector-section-label,
+.app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
+  font-size: calc(11px * var(--ui-font-scale));
+  color: var(--ui-content-tertiary);
+}
+
+/* --- Airier gallery (content breathes; chrome stays tight) -------------- */
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  padding: 16px 20px 28px;
+}
+.app-shell[data-shell-layout="islands"] .justified-row {
+  margin-bottom: 16px !important;
+}
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
+  /* Keep in sync with JUSTIFIED_CAPTION_PAD_* / MASONRY_CAPTION_PAD_* (10px). */
+  padding: 10px 12px;
+  gap: 4px;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption strong {
+  font-size: calc(12.5px * var(--ui-font-scale));
+  line-height: calc(15px * var(--ui-font-scale));
+  font-weight: 510;
+}
+.app-shell[data-shell-layout="islands"] .asset-caption > span {
+  font-size: calc(11px * var(--ui-font-scale));
+  line-height: calc(13px * var(--ui-font-scale));
+}
