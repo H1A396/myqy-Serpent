@@ -15992,460 +15992,6 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: color-mix(in srgb, var(--ui-action-accent) 40%, white);
 }
 
-.app-shell[data-shell-layout="islands"] > .navigation-pane,
-.app-shell[data-shell-layout="islands"] > .inspector-pane,
-.app-shell[data-shell-layout="islands"] > .workspace {
-  margin: 0 var(--island-gap) var(--island-gap);
-  border: 1px solid var(--island-border);
-  border-radius: var(--island-radius);
-  box-shadow: var(--island-shadow);
-  overflow: hidden;
-}
-.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
-.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
-
-.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
-.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
-  margin: 0;
-  border-width: 0;
-  box-shadow: none;
-}
-.app-shell[data-shell-layout="islands"] > .navigation-pane::before,
-.app-shell[data-shell-layout="islands"] > .inspector-pane::before {
-  content: none;
-}
-
-/* ---- Sidebar: macOS Photos / Finder ------------------------------------ */
-.app-shell[data-shell-layout="islands"] .navigation-scroll {
-  /* Equal L/R inset; selection spans the full tree-row so the disclosure
-     gutter does not leave a one-sided blank. */
-  padding: 12px 12px 16px;
-}
-.app-shell[data-shell-layout="islands"] .nav-tree-row {
-  border-radius: 10px;
-}
-.app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) {
-  background: var(--island-select);
-}
-.app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) > .nav-row.is-active {
-  background: transparent;
-  box-shadow: none;
-}
-.app-shell[data-shell-layout="islands"] .nav-section-heading {
-  padding-left: 12px;
-  padding-right: 12px;
-}
-.app-shell[data-shell-layout="islands"] .nav-section {
-  margin-top: var(--island-group-gap);
-}
-.app-shell[data-shell-layout="islands"] .nav-section-heading {
-  height: 20px;
-  margin: 0 0 4px;
-  padding: 0 12px;
-  color: var(--tertiary);
-  font-size: calc(11px * var(--ui-font-scale));
-  font-weight: 590;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.app-shell[data-shell-layout="islands"] .nav-row {
-  min-height: 30px;
-  border-radius: 10px;
-  border-color: transparent;
-  box-shadow: none;
-  font-size: calc(13px * var(--ui-font-scale));
-  font-weight: 450;
-}
-.app-shell[data-shell-layout="islands"] .nav-row .nav-entity-glyph .icon,
-.app-shell[data-shell-layout="islands"] .nav-row .icon {
-  width: 16px;
-  height: 16px;
-}
-.app-shell[data-shell-layout="islands"] .nav-row:hover:not(:disabled):not(.is-active) {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  box-shadow: none;
-}
-.app-shell[data-shell-layout="islands"] .nav-row.is-active {
-  background: var(--island-select);
-  color: var(--text);
-  box-shadow: none;
-  border-color: transparent;
-  font-weight: 510;
-}
-.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph,
-.app-shell[data-shell-layout="islands"] .nav-row.is-active .icon {
-  color: var(--accent);
-}
-.app-shell[data-shell-layout="islands"] .nav-empty {
-  margin: 2px 0 6px;
-  padding: 2px 8px 2px 50px;
-  color: var(--tertiary);
-  font-size: calc(11px * var(--ui-font-scale));
-}
-
-/* ---- Canvas toolstrip (inside island) — Photos-like unified chrome ------ */
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  background: var(--island-toolstrip-bg);
-  border-bottom: 1px solid var(--island-hairline);
-}
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip.is-viewing {
-  display: none;
-}
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar,
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
-  border-bottom: none;
-  background: transparent;
-}
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
-  height: 44px;
-  padding: 0 18px;
-}
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
-  padding: 6px 18px 12px;
-}
-.app-shell[data-shell-layout="islands"] .workspace-title {
-  gap: 8px;
-}
-.app-shell[data-shell-layout="islands"] .workspace-title .scope-crumb-label.is-current {
-  font-size: calc(15px * var(--ui-font-scale));
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.app-shell[data-shell-layout="islands"] .item-count {
-  color: var(--tertiary);
-  font-size: calc(12px * var(--ui-font-scale));
-  font-weight: 450;
-}
-
-/* SF-style segmented filter track — soft Apple materials */
-.app-shell[data-shell-layout="islands"] {
-  --island-segment-track: color-mix(in srgb, var(--text) 5%, transparent);
-  --island-segment-hover: color-mix(in srgb, var(--text) 7%, transparent);
-  --island-segment-pill: var(--raised);
-  --island-segment-pill-shadow: 0 0.5px 1px rgb(0 0 0 / 6%), 0 0 0 0.5px rgb(0 0 0 / 4%);
-}
-:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-segment-track: rgb(255 255 255 / 8%);
-  --island-segment-hover: rgb(255 255 255 / 11%);
-  --island-segment-pill: color-mix(in srgb, var(--ui-surface-raised) 88%, white);
-  --island-segment-pill-shadow: 0 0.5px 1px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 8%);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-dims {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--island-segment-track);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn {
-  min-height: 26px;
-  padding: 0 11px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--secondary);
-  font-size: calc(12px * var(--ui-font-scale));
-  font-weight: 450;
-  box-shadow: none;
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn:hover:not(:disabled) {
-  background: var(--island-segment-hover);
-  color: var(--text);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] {
-  background: var(--island-segment-pill);
-  color: var(--text);
-  font-weight: 510;
-  box-shadow: var(--island-segment-pill-shadow);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] .icon {
-  color: var(--accent);
-}
-/* Active (filter applied) segment: accent-tinted pill + accent label. */
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled),
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--accent) 14%, var(--island-segment-pill));
-  color: color-mix(in srgb, var(--accent) 82%, var(--text));
-  font-weight: 560;
-  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent),
-    0 0.5px 1px rgb(0 0 0 / 6%);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active .icon {
-  color: var(--accent);
-}
-:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
-  color: color-mix(in srgb, var(--accent) 55%, white);
-}
-
-/* Tag chips (inspector + filter summary): refined tinted capsules. */
-.app-shell[data-shell-layout="islands"] .tag-chips-container {
-  gap: 6px;
-}
-.app-shell[data-shell-layout="islands"] .tag-chip,
-.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
-  gap: 5px;
-  min-height: 22px;
-  padding: 0 8px 0 9px;
-  border: 0;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  color: var(--text);
-  font-size: calc(11.5px * var(--ui-font-scale));
-  font-weight: 480;
-  line-height: 22px;
-  letter-spacing: -0.005em;
-}
-.app-shell[data-shell-layout="islands"] .tag-chip:hover,
-.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all):hover {
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-}
-.app-shell[data-shell-layout="islands"] .tag-chip-dot {
-  width: 7px;
-  height: 7px;
-}
-.app-shell[data-shell-layout="islands"] .tag-chip-remove {
-  width: 15px;
-  height: 15px;
-  margin-right: -3px;
-  opacity: 0.7;
-}
-.app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
-  opacity: 1;
-}
-.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
-  background: color-mix(in srgb, var(--accent) 11%, transparent);
-  color: color-mix(in srgb, var(--accent) 80%, var(--text));
-}
-:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: color-mix(in srgb, var(--accent) 50%, white);
-}
-
-/* Selected ring: must beat the islands .asset-card border-color rule so the
-   accent stroke replaces the hairline (no gap) and follows border-radius. */
-/* Ring = the card's own 1px border painted accent + 1px outer shadow, so the
-   stroke hugs the media with no light sliver of card background between. */
-.app-shell[data-shell-layout="islands"] .asset-card.is-selected,
-.app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
-  border-color: var(--accent);
-  outline: none;
-  border-radius: var(--island-card-radius);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
-:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-/* ---- Gallery: Photos air + softer card chrome --------------------------- */
-.app-shell[data-shell-layout="islands"] .workspace-canvas {
-  /* Equal L/R; stable gutter so the scrollbar does not steal only the right inset. */
-  padding: 14px 18px 24px;
-  scrollbar-gutter: stable both-edges;
-}
-.app-shell[data-shell-layout="islands"] .justified-row {
-  /* Matches the 14px horizontal card gap (ASSET_GRID_GAP_PX). */
-  margin-bottom: 14px !important;
-}
-.app-shell[data-shell-layout="islands"] .asset-card {
-  border-radius: var(--island-card-radius);
-  border-color: color-mix(in srgb, var(--divider) 55%, transparent);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
-  background: var(--raised);
-}
-.app-shell[data-shell-layout="islands"] .asset-card:hover {
-  box-shadow: 0 2px 8px -2px rgb(0 0 0 / 10%);
-}
-/* Concentric corners: the card clips its own content, and the media layers sit
-   1px inside the card border, so their radius is card radius - border width.
-   (Was 14px inside a 14px/1px card → corners flattened with a sliver gap.) */
-.app-shell[data-shell-layout="islands"] .asset-card {
-  overflow: hidden;
-  isolation: isolate;
-  background-clip: padding-box;
-}
-.app-shell[data-shell-layout="islands"] .asset-card .asset-preview,
-.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-card-media,
-.app-shell[data-shell-layout="islands"] .asset-card .asset-preview .asset-thumbnail {
-  border-radius: calc(var(--island-card-radius) - 1px) calc(var(--island-card-radius) - 1px) 0 0;
-}
-.app-shell[data-shell-layout="islands"] .asset-preview {
-  margin: 0;
-  box-shadow: none;
-}
-/* Justified slots already match the image aspect (±rounding, or the 0.66
-   min-slot clamp). "contain" left 1–2px letterbox slivers under the rounded
-   top edge, so the picture's corners read as flattened. Fill the slot instead. */
-.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-card .asset-thumbnail {
-  object-fit: cover;
-}
-.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
-.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
-  /* Must fit the band reserved by justified-caption-band.ts / asset-caption-band.ts:
-     8px pad + name 13px + 3px gap + meta 12px (+ dims 14px) + 8px pad. */
-  padding: 8px 10px;
-  gap: 3px;
-}
-.app-shell[data-shell-layout="islands"] .asset-caption strong {
-  font-size: calc(12px * var(--ui-font-scale));
-  line-height: calc(13px * var(--ui-font-scale));
-  font-weight: 510;
-  letter-spacing: -0.015em;
-}
-.app-shell[data-shell-layout="islands"] .asset-caption > span {
-  color: var(--tertiary);
-  font-size: calc(10.5px * var(--ui-font-scale));
-  line-height: calc(12px * var(--ui-font-scale));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-/* Very narrow thumbnails: the source badge would cover the image. */
-.app-shell[data-shell-layout="islands"] .asset-card {
-  container-type: inline-size;
-}
-@container (max-width: 96px) {
-  .app-shell[data-shell-layout="islands"] .asset-source-badge {
-    display: none;
-  }
-}
-
-/* ---- Inspector: frosted Info panel -------------------------------------- */
-.app-shell[data-shell-layout="islands"] > .inspector-pane {
-  background: color-mix(in srgb, var(--ui-surface-raised) 78%, transparent);
-  backdrop-filter: blur(28px) saturate(1.35);
-  -webkit-backdrop-filter: blur(28px) saturate(1.35);
-}
-.app-shell[data-shell-layout="islands"] .inspector-content {
-  padding: 16px 18px 24px;
-}
-.app-shell[data-shell-layout="islands"] .inspector-section-label,
-.app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
-  color: var(--tertiary);
-  font-family: var(--font-ui);
-  font-size: calc(11px * var(--ui-font-scale));
-  font-weight: 560;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.app-shell[data-shell-layout="islands"] .inspector-content .editor-field {
-  margin-top: 14px;
-}
-.app-shell[data-shell-layout="islands"] .inspector-quick-row {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--island-hairline);
-}
-.app-shell[data-shell-layout="islands"] .inspector-quick-row + .editor-field {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--island-hairline);
-}
-.app-shell[data-shell-layout="islands"] .inspector-tech-bar {
-  margin-top: 16px;
-  padding: 12px 0 4px;
-  border-top: 1px solid var(--island-hairline);
-  gap: 8px 10px;
-}
-.app-shell[data-shell-layout="islands"] .inspector-raw-tech-label { color: var(--tertiary); }
-.app-shell[data-shell-layout="islands"] .inspector-raw-tech-value {
-  color: var(--secondary);
-  font-variant-numeric: tabular-nums;
-}
-.app-shell[data-shell-layout="islands"] .inspector-hero-preview {
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* Empty states — quiet squircle */
-.app-shell[data-shell-layout="islands"] .empty-orbit {
-  width: 52px;
-  height: 52px;
-  margin-bottom: 14px;
-  border: 1px solid var(--divider-soft);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent) 6%, var(--raised));
-  box-shadow: none;
-  color: color-mix(in srgb, var(--accent) 78%, var(--text));
-}
-.app-shell[data-shell-layout="islands"] .empty-library h1 {
-  margin: 0 0 6px;
-  font-size: calc(18px * var(--ui-font-scale));
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.app-shell[data-shell-layout="islands"] .empty-library p {
-  max-width: 340px;
-  color: var(--tertiary);
-  font-size: calc(12px * var(--ui-font-scale));
-}
-.app-shell[data-shell-layout="islands"] .inspector-empty-frame {
-  border: 1px solid var(--divider-soft);
-  border-radius: 10px;
-  background: var(--raised);
-}
-.app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
-.app-shell[data-shell-layout="islands"] .inspector-empty > svg {
-  box-sizing: content-box;
-  padding: 10px;
-  margin-bottom: 12px;
-  border: 1px solid var(--divider-soft);
-  border-radius: 10px;
-  background: var(--raised);
-  color: var(--tertiary);
-}
-
-
-/* ---- a18: workspace tabs fuse with the toolstrip; icon-only filter segments ---- */
-/* The active tab + its scoops paint var(--canvas); rebinding it on the tab
-   (not self-referential: value comes from the island token) makes tab, scoops
-   and toolstrip one continuous surface in both themes. */
-.app-shell[data-shell-layout="islands"] .workspace-tab.is-active {
-  --canvas: var(--island-tab-fill);
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn {
-  width: 30px;
-  min-width: 30px;
-  height: 26px;
-  padding: 0;
-  justify-content: center;
-  gap: 0;
-}
-.app-shell[data-shell-layout="islands"] .dimension-filter-dims .dimension-filter-btn-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-/* The tab overlaps the canvas island by 1px to hide its top hairline; the
-   toolbar row must stack above the workspace island for that to work. */
-.app-shell[data-shell-layout="islands"] > .app-toolbar {
-  position: relative;
-  z-index: 3;
-}
-/* .workspace-tabs-list scrolls horizontally (overflow-x:auto ⇒ y clips), which
-   cut off the active tab's 1px overlap; extend its box by that 1px. */
-.app-shell[data-shell-layout="islands"] .workspace-tabs-list {
-  padding-bottom: 1px;
-  margin-bottom: -1px;
-}
-/* Sort trigger keeps its text (it shows the current sort key). */
-.app-shell[data-shell-layout="islands"] .dimension-filter-dims .sort-mode-control .dimension-filter-btn {
-  width: auto;
-  min-width: 0;
-  padding: 0 10px;
-  gap: 4px;
-}
-
-
 /* ==== a24: sidebar + inspector share ONE profile-derived surface ===========
    Guarded by tests/unit/islands-side-panels-css.test.ts. */
 .app-shell[data-shell-layout="islands"] > .navigation-pane,
@@ -16453,4 +15999,94 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   background: var(--island-side);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* ==== a25: quieter secondary accents — strong accent only on primary ======
+   Keep: selected card ring, applied filter segment, nav selection wash,
+   primary CTAs. Mute: chrome icons, empty-state tint, filter-summary chip
+   wash, active-nav glyph tint, secondary focus rings, tag-chip loudness. */
+.app-shell[data-shell-layout="islands"] {
+  --island-select: color-mix(in srgb, var(--ui-action-accent) 10%, transparent);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-select: color-mix(in srgb, var(--ui-action-accent) 18%, transparent);
+}
+
+/* Active nav: wash stays; label/icon use primary text, not accent paint. */
+.app-shell[data-shell-layout="islands"] .nav-row.is-active,
+.app-shell[data-shell-layout="islands"] .nav-row[aria-current="page"] {
+  color: var(--ui-content-primary);
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph,
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .icon {
+  color: var(--ui-content-secondary);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .nav-row.is-active,
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .nav-row[aria-current="page"] {
+  color: var(--ui-content-primary);
+}
+
+/* Active workspace-tab glyph: soft secondary, not accent. */
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active .workspace-tab-select > .icon,
+.app-shell[data-shell-layout="islands"] .workspace-tab.is-active .workspace-tab-select > .nav-entity-glyph {
+  color: var(--ui-content-secondary);
+}
+
+/* Filter summary chip ("标签 · …"): neutral pill, not accent wash. */
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: color-mix(in srgb, var(--ui-content-primary) 6%, transparent);
+  color: var(--ui-content-secondary);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: color-mix(in srgb, white 8%, transparent);
+  color: var(--ui-content-secondary);
+}
+
+/* Empty-state squircle: neutral chrome. */
+.app-shell[data-shell-layout="islands"] .empty-orbit {
+  background: color-mix(in srgb, var(--ui-content-primary) 4%, var(--ui-surface-raised));
+  color: var(--ui-content-tertiary);
+  border-color: var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .inspector-empty > .icon {
+  color: var(--ui-content-tertiary);
+}
+
+/* Tag chips: quieter fill; dots stay but at lower opacity. */
+.app-shell[data-shell-layout="islands"] .tag-chip {
+  background: color-mix(in srgb, var(--ui-content-primary) 5%, transparent);
+  color: var(--ui-content-secondary);
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-dot {
+  opacity: 0.72;
+}
+
+/* Secondary toolstrip / toolbar icon buttons: no accent tint when pressed. */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button.is-active:not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button.is-active:not(.is-accent),
+.app-shell[data-shell-layout="islands"] .app-toolbar .tool-button.is-active:not(.is-accent) {
+  color: var(--ui-content-primary);
+  background: color-mix(in srgb, var(--ui-content-primary) 7%, transparent);
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button.is-active:not(.is-accent) .icon,
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button.is-active:not(.is-accent) .icon {
+  color: var(--ui-content-primary);
+}
+
+/* Secondary focus: soft hairline, not accent ring. */
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn:focus-visible:not(.is-active),
+.app-shell[data-shell-layout="islands"] .tool-button:focus-visible:not(.is-accent),
+.app-shell[data-shell-layout="islands"] .nav-row:focus-visible:not(.is-active),
+.app-shell[data-shell-layout="islands"] .search-control-wrap:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ui-content-primary) 18%, transparent);
+}
+
+/* Rating stars: keep filled gold but mute empty/track. */
+.app-shell[data-shell-layout="islands"] .inspector-rating .icon:not(.is-filled),
+.app-shell[data-shell-layout="islands"] .rating-control .icon:not(.is-filled) {
+  color: color-mix(in srgb, var(--ui-content-tertiary) 70%, transparent);
+  opacity: 0.85;
 }
