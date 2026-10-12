@@ -41,6 +41,10 @@ const PROFILE_LABELS = {
   mono: 'settings.themeProfileMono',
   blush: 'settings.themeProfileBlush',
   olive: 'settings.themeProfileOlive',
+  charcoal: 'settings.themeProfileCharcoal',
+  silver: 'settings.themeProfileSilver',
+  graphite: 'settings.themeProfileGraphite',
+  smoke: 'settings.themeProfileSmoke',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
