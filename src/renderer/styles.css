@@ -16858,3 +16858,21 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   margin-bottom: -2px;
   overflow-y: visible;
 }
+
+/* ==== a44b: slightly deeper islands backdrop (subtle) =====================
+   Owner: 背景稍微暗一点点. Nudge only --island-backdrop; leave canvas/sides/
+   toolstrip ladder alone so island contrast stays readable. */
+.app-shell[data-shell-layout="islands"] {
+  --island-backdrop: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ui-surface-pane) 78%, var(--ui-surface-canvas)) 97%,
+    var(--ui-content-primary)
+  );
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-backdrop: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--ui-surface-pane) 55%, var(--ui-surface-canvas)) 96%,
+    black
+  );
+}
