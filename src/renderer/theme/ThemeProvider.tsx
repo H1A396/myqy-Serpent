@@ -80,6 +80,9 @@ type ThemeContextValue = {
   readonly createUserTheme: (name: string) => string;
   readonly renameUserTheme: (id: string, name: string) => void;
   readonly deleteUserTheme: (id: string) => void;
+  /** Anonymous, unsaved colour edits layered on the current theme. */
+  readonly customOverlay: CustomTheme;
+  readonly saveOverlayToActiveUserTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -135,9 +138,16 @@ export function ThemeProvider({
     () => (activeUserTheme ? { ...baseThemeProfile, preset: activeUserTheme.base } : baseThemeProfile),
     [activeUserTheme, baseThemeProfile],
   );
+  // Effective overrides: the active named theme (if any) with the anonymous,
+  // unsaved overlay (serpent.custom-theme.v1) on top. Editing colours only
+  // ever writes the overlay, so changes are live without naming anything.
   const customTheme = useMemo<CustomTheme>(
     () => (activeUserTheme
-      ? { ...baseCustomTheme, light: activeUserTheme.light, dark: activeUserTheme.dark }
+      ? {
+          ...baseCustomTheme,
+          light: { ...activeUserTheme.light, ...baseCustomTheme.light },
+          dark: { ...activeUserTheme.dark, ...baseCustomTheme.dark },
+        }
       : baseCustomTheme),
     [activeUserTheme, baseCustomTheme],
   );
@@ -201,26 +211,28 @@ export function ThemeProvider({
     [storage],
   );
 
+  /** Replace the anonymous overlay (live, unsaved edits). */
   const setCustomTheme = useCallback((next: CustomTheme) => {
-    if (activeUserTheme) {
-      commitUserThemes(updateUserTheme(userThemes, activeUserTheme.id, {
-        light: next.light,
-        dark: next.dark,
-      }));
-      return;
-    }
     saveCustomTheme(next, storage);
     setCustomThemeState(next);
-  }, [activeUserTheme, commitUserThemes, storage, userThemes]);
+  }, [storage]);
 
+  /** Drop the anonymous overlay; the current (named or built-in) theme shows as saved. */
   const resetCustomTheme = useCallback(() => {
-    if (activeUserTheme) {
-      commitUserThemes(updateUserTheme(userThemes, activeUserTheme.id, { light: {}, dark: {} }));
-      return;
-    }
     clearCustomTheme(storage);
     setCustomThemeState(loadCustomTheme(storage));
-  }, [activeUserTheme, commitUserThemes, storage, userThemes]);
+  }, [storage]);
+
+  /** Fold the overlay into the active named theme. */
+  const saveOverlayToActiveUserTheme = useCallback(() => {
+    if (!activeUserTheme) return;
+    commitUserThemes(updateUserTheme(userThemes, activeUserTheme.id, {
+      light: { ...customTheme.light },
+      dark: { ...customTheme.dark },
+    }));
+    clearCustomTheme(storage);
+    setCustomThemeState(loadCustomTheme(storage));
+  }, [activeUserTheme, commitUserThemes, customTheme, storage, userThemes]);
 
   const selectUserTheme = useCallback((id: string) => {
     if (!userThemes.themes.some((theme) => theme.id === id)) return;
@@ -235,8 +247,11 @@ export function ThemeProvider({
       dark: { ...customTheme.dark },
     });
     commitUserThemes(state);
+    // The overlay now lives in the saved theme.
+    clearCustomTheme(storage);
+    setCustomThemeState(loadCustomTheme(storage));
     return theme.id;
-  }, [commitUserThemes, customTheme, themeProfile.preset, userThemes]);
+  }, [commitUserThemes, customTheme, storage, themeProfile.preset, userThemes]);
 
   const renameUserTheme = useCallback((id: string, name: string) => {
     commitUserThemes(updateUserTheme(userThemes, id, { name }));
@@ -268,15 +283,22 @@ export function ThemeProvider({
     // A quick color is an intentional shortcut for the accent only. Remove
     // the advanced accent override so clicking a swatch always takes effect;
     // every other advanced color remains untouched.
-    const nextCustomTheme: CustomTheme = {
-      ...customTheme,
-      light: { ...customTheme.light },
-      dark: { ...customTheme.dark },
+    const nextOverlay: CustomTheme = {
+      ...baseCustomTheme,
+      light: { ...baseCustomTheme.light },
+      dark: { ...baseCustomTheme.dark },
     };
-    delete nextCustomTheme.light['--ui-action-accent'];
-    delete nextCustomTheme.dark['--ui-action-accent'];
-    setCustomTheme(nextCustomTheme);
-  }, [customTheme, setCustomTheme, storage]);
+    delete nextOverlay.light['--ui-action-accent'];
+    delete nextOverlay.dark['--ui-action-accent'];
+    setCustomTheme(nextOverlay);
+    if (activeUserTheme && (activeUserTheme.light['--ui-action-accent'] || activeUserTheme.dark['--ui-action-accent'])) {
+      const light = { ...activeUserTheme.light };
+      const dark = { ...activeUserTheme.dark };
+      delete light['--ui-action-accent'];
+      delete dark['--ui-action-accent'];
+      commitUserThemes(updateUserTheme(userThemes, activeUserTheme.id, { light, dark }));
+    }
+  }, [activeUserTheme, baseCustomTheme, commitUserThemes, setCustomTheme, storage, userThemes]);
 
   const setBackgroundPreferences = useCallback((next: BackgroundPreferences) => {
     const saved = saveBackgroundPreferences(next, storage);
@@ -305,8 +327,10 @@ export function ThemeProvider({
       createUserTheme,
       renameUserTheme,
       deleteUserTheme,
+      customOverlay: baseCustomTheme,
+      saveOverlayToActiveUserTheme,
     }),
-    [activeUserTheme, createUserTheme, deleteUserTheme, renameUserTheme, selectUserTheme, userThemes, backgroundPreferences, customTheme, preference, resetCustomTheme, resolved, setBackgroundPreferences, setCustomTheme, setTheme, setThemeAccent, setThemeProfile, themeAccentHex, themeProfile, themeRevision],
+    [baseCustomTheme, saveOverlayToActiveUserTheme, activeUserTheme, createUserTheme, deleteUserTheme, renameUserTheme, selectUserTheme, userThemes, backgroundPreferences, customTheme, preference, resetCustomTheme, resolved, setBackgroundPreferences, setCustomTheme, setTheme, setThemeAccent, setThemeProfile, themeAccentHex, themeProfile, themeRevision],
   );
 
   return (

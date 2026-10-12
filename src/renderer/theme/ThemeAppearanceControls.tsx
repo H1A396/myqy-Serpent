@@ -6,6 +6,7 @@ import { BackgroundImagePanel } from './BackgroundImageControls';
 import {
   BACKGROUND_DISPLAY_MODES,
   isSafeBackgroundImageDataUrl,
+  MIN_PANEL_OPACITY,
   type BackgroundDisplayMode,
 } from './background-preferences';
 import { compressBackgroundImage, formatBackgroundBytes } from './background-image-compression';
@@ -78,6 +79,39 @@ function asPreviewStyle(
     '--theme-preview-accent': pick('--ui-action-accent'),
     '--theme-preview-text': pick('--ui-content-primary'),
   } as CSSProperties;
+}
+
+/**
+ * Miniature of the islands layout: window backdrop, a tab strip, and three
+ * floating rounded panels (sidebar, asset grid, inspector) with a hint of
+ * the accent. Colours come from the --theme-preview-* custom properties.
+ */
+function ThemePreviewMiniature(): ReactNode {
+  return (
+    <span aria-hidden="true" className="theme-mini">
+      <span className="theme-mini-tabs">
+        <span className="theme-mini-tab is-active" />
+        <span className="theme-mini-tab" />
+      </span>
+      <span className="theme-mini-islands">
+        <span className="theme-mini-island is-side">
+          <span className="theme-mini-row is-active" />
+          <span className="theme-mini-row" />
+          <span className="theme-mini-row is-short" />
+        </span>
+        <span className="theme-mini-island is-main">
+          <span className="theme-mini-card is-accent" />
+          <span className="theme-mini-card" />
+          <span className="theme-mini-card" />
+          <span className="theme-mini-card" />
+        </span>
+        <span className="theme-mini-island is-side">
+          <span className="theme-mini-row is-short" />
+          <span className="theme-mini-row" />
+        </span>
+      </span>
+    </span>
+  );
 }
 
 type PickerEntry =
@@ -162,14 +196,7 @@ export function ThemeProfilePicker(): ReactNode {
               buttonRefs.current[index] = element;
             }}
           >
-            <span aria-hidden="true" className="app-settings-theme-profile-preview">
-              <span className="app-settings-theme-profile-preview-sidebar" />
-              <span className="app-settings-theme-profile-preview-content">
-                <span className="app-settings-theme-profile-preview-line is-long" />
-                <span className="app-settings-theme-profile-preview-line" />
-                <span className="app-settings-theme-profile-preview-card" />
-              </span>
-            </span>
+            <ThemePreviewMiniature />
             <span className="app-settings-theme-profile-label">
               <span className="app-settings-theme-profile-name">{label}</span>
               {entry.kind === 'user' ? (
@@ -391,6 +418,21 @@ export function BackgroundSettings(): ReactNode {
           valueText={`${Math.round(backgroundPreferences.imageOpacity * 100)}%`}
         />
       </div>
+      {backgroundPreferences.showInMainPanel && backgroundPreferences.imageDataUrl !== null ? (
+        <div className="app-settings-background-opacity app-settings-background-panel-opacity">
+          <Slider
+            aria-label={t('settings.backgroundPanelOpacity')}
+            label={t('settings.backgroundPanelOpacity')}
+            max={1}
+            min={MIN_PANEL_OPACITY}
+            onValueChange={(value) => update({ panelOpacity: value })}
+            showValue
+            step={0.02}
+            value={backgroundPreferences.panelOpacity}
+            valueText={`${Math.round(backgroundPreferences.panelOpacity * 100)}%`}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

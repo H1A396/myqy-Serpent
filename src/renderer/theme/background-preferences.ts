@@ -48,6 +48,10 @@ const SAFE_RASTER_MIME_TYPES = new Set([
 ]);
 const DATA_URL_PATTERN = /^data:([^;,\s]+);base64,([a-z0-9+/]*={0,2})$/iu;
 
+/** Panel tint over the wallpaper; floor keeps text legible. */
+export const MIN_PANEL_OPACITY = 0.3;
+export const DEFAULT_PANEL_OPACITY = 0.72;
+
 const defaultPreferences = (): BackgroundPreferences => ({
   version: BACKGROUND_PREFERENCES_VERSION,
   imageDataUrl: null,
@@ -55,6 +59,7 @@ const defaultPreferences = (): BackgroundPreferences => ({
   mode: 'cover',
   imageOpacity: 0.8,
   showInMainPanel: false,
+  panelOpacity: DEFAULT_PANEL_OPACITY,
 });
 
 export const DEFAULT_BACKGROUND_PREFERENCES: BackgroundPreferences =
@@ -125,6 +130,8 @@ export const backgroundPreferencesSchema = z.strictObject({
   imageOpacity: z.number().finite().min(0).max(1),
   /** Also paint the wallpaper behind the centre (main) panel. Default off. */
   showInMainPanel: z.boolean().default(false),
+  /** Opacity of the three panels when they show the wallpaper. */
+  panelOpacity: z.number().finite().min(MIN_PANEL_OPACITY).max(1).default(DEFAULT_PANEL_OPACITY),
 });
 
 /** Accepts records saved before `showInMainPanel` existed. */
@@ -207,6 +214,9 @@ export function normalizeBackgroundPreferences(
       record.overlayOpacity,
     ),
     showInMainPanel: record.showInMainPanel === true,
+    panelOpacity: typeof record.panelOpacity === 'number' && Number.isFinite(record.panelOpacity)
+      ? Math.min(1, Math.max(MIN_PANEL_OPACITY, record.panelOpacity))
+      : DEFAULT_PANEL_OPACITY,
   };
 
   return backgroundPreferencesSchema.parse(normalized);
@@ -336,6 +346,7 @@ export function applyBackgroundPreferences(
     normalized.mode === 'tile' ? 'auto' : normalized.mode === 'fill' ? '100% 100%' : 'cover',
   );
   root.style.setProperty('--ui-background-position', 'center');
+  root.style.setProperty('--ui-panel-opacity', `${Math.round(normalized.panelOpacity * 100)}%`);
   if (normalized.showInMainPanel && normalized.imageDataUrl !== null) {
     root.setAttribute?.('data-bg-main-panel', 'on');
   } else {

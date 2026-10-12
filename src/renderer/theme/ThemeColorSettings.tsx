@@ -3,7 +3,6 @@ import { useRef, useState, type ReactNode } from 'react';
 import { useT } from '../i18n';
 import { SettingsDisclosure } from '../ui/patterns';
 import { Button, Slider, TextField } from '../ui/primitives';
-import { PROFILE_LABELS } from './ThemeAppearanceControls';
 import { useTheme } from './ThemeProvider';
 import { THEME_PROFILE_PRESETS } from './theme-profiles';
 import { USER_THEME_NAME_MAX } from './user-themes';
@@ -33,11 +32,13 @@ export function ThemeColorSettings(): ReactNode {
   const {
     activeUserTheme,
     createUserTheme,
+    customOverlay,
     customTheme,
     deleteUserTheme,
     renameUserTheme,
     resetCustomTheme,
     resolved,
+    saveOverlayToActiveUserTheme,
     setCustomTheme,
     themeProfile,
   } = useTheme();
@@ -45,19 +46,20 @@ export function ThemeColorSettings(): ReactNode {
   const [draftName, setDraftName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const baseTokens = THEME_PROFILE_PRESETS[themeProfile.preset].tokens[resolved] as Partial<Record<string, string>>;
+  const hasOverlay = Object.values(customOverlay.light).some(Boolean)
+    || Object.values(customOverlay.dark).some(Boolean);
 
+  // Edits are anonymous and live: they go to the unsaved overlay on top of
+  // whatever theme is selected (built-in or named).
   function setCustomColor(token: EditorToken, value: string) {
-    if (!HEX6.test(value) || !activeUserTheme) return;
+    if (!HEX6.test(value)) return;
     setCustomTheme({
-      ...customTheme,
-      [resolved]: {
-        ...customTheme[resolved],
-        [token]: value,
-      },
+      ...customOverlay,
+      [resolved]: { ...customOverlay[resolved], [token]: value },
     });
   }
 
-  function create() {
+  function saveAsTheme() {
     createUserTheme(draftName.trim() || t('settings.customThemeUntitled'));
     setDraftName('');
     setConfirmDelete(false);
@@ -68,111 +70,71 @@ export function ThemeColorSettings(): ReactNode {
       hint={t('settings.customThemesHint')}
       title={t('settings.advancedColors')}
     >
-      <div className="app-settings-custom-theme-header">
-        {activeUserTheme ? (
-          <>
-            <TextField
-              aria-label={t('settings.customThemeName')}
-              label={t('settings.customThemeName')}
-              maxLength={USER_THEME_NAME_MAX}
-              onChange={(event) => renameUserTheme(activeUserTheme.id, event.target.value)}
-              placeholder={t('settings.customThemeUntitled')}
-              value={activeUserTheme.name}
-              wrapperClassName="app-settings-custom-theme-name"
-            />
-            <span className="app-settings-custom-theme-meta">
-              {t('settings.customThemeBase', { name: t(PROFILE_LABELS[activeUserTheme.base]) })}
-              {' · '}
-              {t('settings.customThemeEditingMode', {
-                mode: t(resolved === 'dark' ? 'settings.customThemeModeDark' : 'settings.customThemeModeLight'),
-              })}
-            </span>
-          </>
-        ) : (
-          <>
-            <TextField
-              aria-label={t('settings.customThemeName')}
-              label={t('settings.customThemeName')}
-              maxLength={USER_THEME_NAME_MAX}
-              onChange={(event) => setDraftName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') create();
-              }}
-              placeholder={t('settings.customThemeUntitled')}
-              value={draftName}
-              wrapperClassName="app-settings-custom-theme-name"
-            />
-            <span className="app-settings-custom-theme-meta">
-              {t('settings.customThemeEmpty')}
-            </span>
-          </>
-        )}
-      </div>
       {activeUserTheme ? (
-        <div className="app-settings-custom-theme-grid">
-          {CUSTOM_THEME_EDITOR_FIELDS.map((field) => {
-            const baseValue = baseTokens[field.token];
-            const current = customTheme[resolved][field.token]
-              ?? (baseValue && HEX6.test(baseValue) ? baseValue : field[resolved]);
-            return (
-              <label className="app-settings-custom-theme-row" key={field.token}>
-                <span className="app-settings-custom-theme-label">
-                  {t(field.labelKey)}
-                </span>
-                <input
-                  aria-label={t(field.labelKey)}
-                  className="app-settings-custom-theme-swatch"
-                  onChange={(event) => setCustomColor(field.token, event.target.value)}
-                  onFocus={() => {
-                    editStartValues.current[field.token] = current;
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Escape') return;
-                    const original = editStartValues.current[field.token];
-                    if (original !== undefined) setCustomColor(field.token, original);
-                    event.currentTarget.blur();
-                  }}
-                  onBlur={() => {
-                    delete editStartValues.current[field.token];
-                  }}
-                  type="color"
-                  value={current}
-                />
-              </label>
-            );
-          })}
+        <div className="app-settings-custom-theme-active">
+          <TextField
+            aria-label={t('settings.customThemeName')}
+            label={t('settings.customThemeActive')}
+            maxLength={USER_THEME_NAME_MAX}
+            onChange={(event) => renameUserTheme(activeUserTheme.id, event.target.value)}
+            placeholder={t('settings.customThemeUntitled')}
+            value={activeUserTheme.name}
+            wrapperClassName="app-settings-custom-theme-name"
+          />
+          <Button
+            onBlur={() => setConfirmDelete(false)}
+            onClick={() => {
+              if (!confirmDelete) {
+                setConfirmDelete(true);
+                return;
+              }
+              setConfirmDelete(false);
+              deleteUserTheme(activeUserTheme.id);
+            }}
+            size="sm"
+            variant="danger"
+          >
+            {confirmDelete ? t('settings.customThemeDeleteConfirm') : t('settings.customThemeDelete')}
+          </Button>
         </div>
       ) : null}
-      <div className="app-settings-theme-actions">
-        {activeUserTheme ? (
-          <>
-            <Button onClick={create} size="sm">
-              {t('settings.customThemeDuplicate')}
-            </Button>
-            <Button className="app-settings-theme-reset" onClick={resetCustomTheme} size="sm">
-              {t('settings.customThemeRevert')}
-            </Button>
-            <Button
-              onBlur={() => setConfirmDelete(false)}
-              onClick={() => {
-                if (!confirmDelete) {
-                  setConfirmDelete(true);
-                  return;
-                }
-                setConfirmDelete(false);
-                deleteUserTheme(activeUserTheme.id);
-              }}
-              size="sm"
-              variant="danger"
-            >
-              {confirmDelete ? t('settings.customThemeDeleteConfirm') : t('settings.customThemeDelete')}
-            </Button>
-          </>
-        ) : (
-          <Button onClick={create} size="sm" variant="primary">
-            {t('settings.customThemeCreate')}
-          </Button>
-        )}
+      <span className="app-settings-custom-theme-meta">
+        {t('settings.customThemeEditingMode', {
+          mode: t(resolved === 'dark' ? 'settings.customThemeModeDark' : 'settings.customThemeModeLight'),
+        })}
+      </span>
+      <div className="app-settings-custom-theme-grid">
+        {CUSTOM_THEME_EDITOR_FIELDS.map((field) => {
+          const baseValue = baseTokens[field.token];
+          const current = customTheme[resolved][field.token]
+            ?? (baseValue && HEX6.test(baseValue) ? baseValue : field[resolved]);
+          return (
+            <label className="app-settings-custom-theme-row" key={field.token}>
+              <span className="app-settings-custom-theme-label">
+                {t(field.labelKey)}
+              </span>
+              <input
+                aria-label={t(field.labelKey)}
+                className="app-settings-custom-theme-swatch"
+                onChange={(event) => setCustomColor(field.token, event.target.value)}
+                onFocus={() => {
+                  editStartValues.current[field.token] = current;
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape') return;
+                  const original = editStartValues.current[field.token];
+                  if (original !== undefined) setCustomColor(field.token, original);
+                  event.currentTarget.blur();
+                }}
+                onBlur={() => {
+                  delete editStartValues.current[field.token];
+                }}
+                type="color"
+                value={current}
+              />
+            </label>
+          );
+        })}
       </div>
       <div
         aria-label={t('settings.customThemePreview')}
@@ -254,6 +216,38 @@ export function ThemeColorSettings(): ReactNode {
               />
             </div>
           </div>
+        </div>
+      </div>
+      <div className="app-settings-custom-theme-save">
+        <TextField
+          aria-label={t('settings.customThemeName')}
+          label={t('settings.customThemeName')}
+          maxLength={USER_THEME_NAME_MAX}
+          onChange={(event) => setDraftName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') saveAsTheme();
+          }}
+          placeholder={t('settings.customThemeUntitled')}
+          value={draftName}
+          wrapperClassName="app-settings-custom-theme-name"
+        />
+        <div className="app-settings-theme-actions">
+          <Button onClick={saveAsTheme} size="sm" variant="primary">
+            {t('settings.customThemeCreate')}
+          </Button>
+          {activeUserTheme && hasOverlay ? (
+            <Button onClick={saveOverlayToActiveUserTheme} size="sm">
+              {t('settings.customThemeUpdate', { name: activeUserTheme.name || t('settings.customThemeUntitled') })}
+            </Button>
+          ) : null}
+          <Button
+            className="app-settings-theme-reset"
+            disabled={!hasOverlay}
+            onClick={resetCustomTheme}
+            size="sm"
+          >
+            {t('settings.customThemeReset')}
+          </Button>
         </div>
       </div>
     </SettingsDisclosure>

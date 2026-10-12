@@ -51,6 +51,7 @@ describe('background preferences contract v3', () => {
       mode: 'cover',
       imageOpacity: 0.8,
       showInMainPanel: false,
+      panelOpacity: 0.72,
     });
     expect(backgroundPreferencesSchema.parse(DEFAULT_BACKGROUND_PREFERENCES)).toEqual(
       DEFAULT_BACKGROUND_PREFERENCES,
@@ -187,6 +188,7 @@ describe('background preferences contract v3', () => {
       mode: 'fill' as const,
       imageOpacity: 0.8,
       showInMainPanel: false,
+      panelOpacity: 0.72,
     };
     expect(backgroundPreferencesSchema.parse(preferences)).toEqual(preferences);
     expect(validateBackgroundPreferences(preferences)).toBe(true);
@@ -217,6 +219,7 @@ describe('background preferences contract v3', () => {
       mode: 'tile' as const,
       imageOpacity: 0.65,
       showInMainPanel: true,
+      panelOpacity: 0.5,
     };
 
     expect(saveBackgroundPreferences(preferences, storage)).toBe(true);
@@ -390,5 +393,14 @@ describe('background in main panel (a90)', () => {
     expect(mod.normalizeBackgroundPreferences({}).showInMainPanel).toBe(false);
     expect(mod.normalizeBackgroundPreferences({ showInMainPanel: 'yes' }).showInMainPanel).toBe(false);
     expect(mod.normalizeBackgroundPreferences({ showInMainPanel: true }).showInMainPanel).toBe(true);
+  });
+});
+
+describe('panel opacity (a91)', () => {
+  it('defaults to 0.72 and clamps to the legibility floor', async () => {
+    const mod = await import('../../src/renderer/theme/background-preferences');
+    expect(mod.normalizeBackgroundPreferences({}).panelOpacity).toBe(0.72);
+    expect(mod.normalizeBackgroundPreferences({ panelOpacity: 0.05 }).panelOpacity).toBe(mod.MIN_PANEL_OPACITY);
+    expect(mod.normalizeBackgroundPreferences({ panelOpacity: 3 }).panelOpacity).toBe(1);
   });
 });

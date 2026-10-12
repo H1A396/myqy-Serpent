@@ -17969,29 +17969,210 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   gap: var(--ui-space-2);
 }
 
-/* ── a90: background image in the main (centre) panel ─────────────────────
-   The app shell already paints the wallpaper. With the option on, the
-   centre island swaps its opaque fill for a pane-coloured tint so the same
-   (aligned) image shows through, while cards keep their own solid surface.
-   The tint is denser in light mode, where bright photos hurt legibility. */
-:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace {
-  --main-panel-tint: 78%;
-  background-color: color-mix(in oklab, var(--island-canvas, var(--ui-surface-pane)) var(--main-panel-tint), transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(1.05);
-  backdrop-filter: blur(16px) saturate(1.05);
+/* ── a90/a91: background image in the panels ──────────────────────────────
+   The app shell paints the wallpaper. With "面板显示背景图" on, all three
+   islands (sidebar, main, inspector) swap their opaque fill for a tint at
+   --ui-panel-opacity (own setting, independent of the window-image opacity),
+   so the same aligned image shows through. Cards keep solid surfaces.
+   With the acrylic setting on, the panels also blur what is beneath. */
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > :is(.navigation-pane, .workspace, .inspector-pane) {
+  --panel-fill: var(--ui-surface-pane);
+  background-color: color-mix(in oklab, var(--panel-fill) var(--ui-panel-opacity, 72%), transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-/* Inner canvas layers must not repaint an opaque fill over the tint. */
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace {
+  --panel-fill: var(--island-canvas, var(--ui-surface-pane));
+}
+
 :root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace .workspace-canvas {
   background: transparent;
 }
 
-:root[data-theme="dark"][data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace {
-  --main-panel-tint: 72%;
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace .workspace-toolstrip {
+  background: color-mix(in oklab, var(--island-canvas, var(--ui-surface-pane)) 35%, transparent);
 }
 
-/* The toolstrip keeps a slightly denser veil (anchors the controls) instead
-   of an opaque band with a hard edge. */
-:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace .workspace-toolstrip {
-  background: color-mix(in oklab, var(--island-canvas, var(--ui-surface-pane)) 55%, transparent);
+:root[data-bg-main-panel="on"][data-menu-acrylic="1"] .app-shell[data-shell-layout="islands"] > :is(.navigation-pane, .workspace, .inspector-pane) {
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+:root[data-bg-main-panel="on"][data-menu-acrylic="2"] .app-shell[data-shell-layout="islands"] > :is(.navigation-pane, .workspace, .inspector-pane) {
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+:root[data-bg-main-panel="on"][data-menu-acrylic="3"] .app-shell[data-shell-layout="islands"] > :is(.navigation-pane, .workspace, .inspector-pane) {
+  -webkit-backdrop-filter: blur(30px) saturate(1.3);
+  backdrop-filter: blur(30px) saturate(1.3);
+}
+
+/* ── a91: theme preview miniature (islands layout) ──────────────────────── */
+.theme-mini {
+  --mini-window: color-mix(in oklab, var(--theme-preview-canvas) 90%, var(--theme-preview-text));
+  --mini-panel: var(--theme-preview-pane);
+  --mini-line: color-mix(in oklab, var(--theme-preview-text) 22%, transparent);
+  --mini-edge: color-mix(in oklab, var(--theme-preview-text) 10%, transparent);
+  display: grid;
+  grid-template-rows: 7px 1fr;
+  gap: 3px;
+  box-sizing: border-box;
+  height: 56px;
+  padding: 4px 5px 5px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--mini-window);
+  box-shadow: inset 0 0 0 1px var(--mini-edge);
+}
+
+.theme-mini-tabs {
+  display: flex;
+  gap: 3px;
+  padding-left: 26%;
+}
+
+.theme-mini-tab {
+  width: 18%;
+  height: 7px;
+  border-radius: 3px 3px 2px 2px;
+  background: color-mix(in oklab, var(--mini-panel) 55%, transparent);
+}
+
+.theme-mini-tab.is-active {
+  background: var(--mini-panel);
+}
+
+.theme-mini-islands {
+  display: grid;
+  grid-template-columns: 24% 1fr 20%;
+  gap: 3px;
+  min-height: 0;
+}
+
+.theme-mini-island {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 5px;
+  background: var(--mini-panel);
+  box-shadow:
+    0 0 0 0.5px var(--mini-edge),
+    0 1px 2px color-mix(in oklab, black 12%, transparent);
+}
+
+.theme-mini-island.is-main {
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 3px;
+  background: color-mix(in oklab, var(--theme-preview-canvas) 70%, var(--mini-panel));
+}
+
+.theme-mini-row {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--mini-line);
+}
+
+.theme-mini-row.is-short {
+  width: 60%;
+}
+
+.theme-mini-row.is-active {
+  background: color-mix(in oklab, var(--theme-preview-accent) 80%, transparent);
+}
+
+.theme-mini-card {
+  display: block;
+  min-height: 0;
+  border-radius: 3px;
+  background: var(--theme-preview-raised);
+  box-shadow: 0 0 0 0.5px var(--mini-edge);
+}
+
+.theme-mini-card.is-accent {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--theme-preview-accent) 70%, var(--theme-preview-raised)) 0 62%,
+    var(--theme-preview-raised) 62%
+  );
+}
+
+/* ── a91: tab icon vertically centred with the title ───────────────────────
+   The glyph box (15px) was laid out from the top of the 28px tab button
+   while the title centred, leaving the icon ~2px high. Centre both. */
+.app-shell .workspace-tab-select {
+  align-items: center;
+}
+
+.app-shell .workspace-tab .workspace-tab-select > :is(.icon, .nav-entity-glyph) {
+  align-self: center;
+  height: 16px;
+  margin-block: 0;
+  line-height: 0;
+  translate: none;
+}
+
+.app-shell .workspace-tab-select > .nav-entity-glyph .nav-entity-glyph-emoji {
+  display: block;
+  line-height: 16px;
+}
+
+/* ── a91: restore acrylic on every menu surface ────────────────────────────
+   The main-menu "compact flat surface" block forced `background: var(--raised);
+   backdrop-filter: none` under any acrylic level, and level 1 context menus
+   were 92% opaque (visually solid). All menu surfaces now share one
+   translucent + blurred treatment per acrylic level; level 0 stays solid. */
+:root[data-menu-acrylic] :is(.ui-menu-surface, .context-menu, .main-menu-surface, .main-menu-submenu, .library-switcher-menu, .workspace-tools-overflow-menu):is(*, #a91-acrylic-specificity) {
+  --menu-acrylic-fill: var(--menu-surface-background, var(--ui-surface-overlay));
+}
+
+:root[data-menu-acrylic="0"] :is(.ui-menu-surface, .context-menu, .main-menu-surface, .main-menu-submenu, .library-switcher-menu, .workspace-tools-overflow-menu):is(*, #a91-acrylic-specificity) {
+  background: var(--menu-acrylic-fill);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-menu-acrylic="1"] :is(.ui-menu-surface, .context-menu, .main-menu-surface, .main-menu-submenu, .library-switcher-menu, .workspace-tools-overflow-menu):is(*, #a91-acrylic-specificity) {
+  background: color-mix(in oklab, var(--menu-acrylic-fill) 80%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+}
+
+:root[data-menu-acrylic="2"] :is(.ui-menu-surface, .context-menu, .main-menu-surface, .main-menu-submenu, .library-switcher-menu, .workspace-tools-overflow-menu):is(*, #a91-acrylic-specificity) {
+  background: color-mix(in oklab, var(--menu-acrylic-fill) 70%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+}
+
+:root[data-menu-acrylic="3"] :is(.ui-menu-surface, .context-menu, .main-menu-surface, .main-menu-submenu, .library-switcher-menu, .workspace-tools-overflow-menu):is(*, #a91-acrylic-specificity) {
+  background: color-mix(in oklab, var(--menu-acrylic-fill) 58%, transparent);
+  -webkit-backdrop-filter: blur(32px) saturate(1.7);
+  backdrop-filter: blur(32px) saturate(1.7);
+}
+
+/* a91: save row at the end of the custom-colours section */
+.app-settings-custom-theme-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-3);
+}
+
+.app-settings-custom-theme-save .app-settings-custom-theme-name {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+.app-settings-custom-theme-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ui-space-2);
+  margin-bottom: var(--ui-space-2);
 }
