@@ -15427,11 +15427,51 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   background-color: var(--island-backdrop);
 }
 
-/* Title bar stays transparent so the backdrop shows between islands. */
+/* Title bar — quiet macOS-like chrome: soft bar material matching the
+   island backdrop (intentional, not empty), hairline seam, gap rhythm.
+   Solid fill only — no backdrop-filter (that broke canvas corner rounding). */
 .app-shell[data-shell-layout="islands"] > .app-toolbar {
-  border-bottom-color: transparent;
-  background: transparent;
+  background: var(--island-backdrop);
+  border-bottom: 1px solid var(--island-hairline);
   box-shadow: none;
+}
+/* Keep the hairline under inactive chrome; active tab tongue covers its span. */
+.app-shell[data-shell-layout="islands"]:has(.workspace-tabs) > .app-toolbar {
+  border-bottom: 1px solid var(--island-hairline);
+  box-shadow: none;
+}
+/* Horizontal rhythm with the 10px island gap. */
+.app-shell[data-shell-layout="islands"] .toolbar-nav-cluster {
+  padding-left: var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"] .toolbar-inspector-cluster {
+  padding-right: var(--island-gap);
+}
+/* Inactive tabs: quieter on the soft bar. */
+.app-shell[data-shell-layout="islands"] .workspace-tab:not(.is-active) {
+  color: var(--secondary);
+}
+.app-shell[data-shell-layout="islands"] .workspace-tab:not(.is-active):hover {
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+}
+/* Search — soft inset field, continuous radius, quiet focus. */
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-search .search-control-wrap {
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 5.5%, var(--island-backdrop));
+  box-shadow: inset 0 0 0 1px var(--island-hairline);
+  color: var(--tertiary);
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-search .search-control-wrap:hover {
+  background: color-mix(in srgb, var(--text) 7%, var(--island-backdrop));
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-search .search-control-wrap:focus-within {
+  background: var(--raised);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, var(--island-hairline)),
+    0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .app-shell[data-shell-layout="islands"] > .navigation-pane,
