@@ -1,5 +1,5 @@
 /** Gap between asset cards / masonry columns (matches `.asset-grid` CSS). */
-export const ASSET_GRID_GAP_PX = 22;
+export const ASSET_GRID_GAP_PX = 14;
 
 export type AssetViewMode = "grid" | "masonry";
 

@@ -106,7 +106,7 @@ describe("canvas asset layout", () => {
   });
 
   it("keeps trailing gap out of the last stacked item", () => {
-    expect(stackItemHeights([100, 100, 100])).toEqual([122, 122, 100]);
+    expect(stackItemHeights([100, 100, 100])).toEqual([114, 114, 100]);
   });
 
   it("shrinks only the waterfall cards that have no resolution (Serpent-b1b0f2)", () => {

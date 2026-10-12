@@ -94,16 +94,16 @@ describe("distributed masonry", () => {
       (item) => heights[item]!,
     );
 
-    // Shortest-load packing with ASSET_GRID_GAP_PX=22 → [a] | [b,d] | [c,e].
+    // Shortest-load packing with ASSET_GRID_GAP_PX=14 → [a] | [b,d,e] | [c].
     expect(columns.map((column) => column.items)).toEqual([
       ["a"],
-      ["b", "d"],
-      ["c", "e"],
+      ["b", "d", "e"],
+      ["c"],
     ]);
     expect(columns.map((column) => column.estimatedHeightPx)).toEqual([
       300,
-      180,
-      250,
+      230,
+      200,
     ]);
   });
 

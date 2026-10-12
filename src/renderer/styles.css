@@ -16681,3 +16681,93 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .workspace-tab.is-active .workspace-tab-select > .nav-entity-glyph {
   color: var(--ui-content-primary);
 }
+
+/* ==== a37: selective a28 calibration (not full a29–a35) ====================
+   1) Softer ladder: lighter backdrop, quieter canvas; L/R --island-side kept
+   2) Tighter gallery (~14 gap, equal L/R pad)
+   3) Tighter caption pads
+   4) Card-content toggles = muted pressed wash (selection + applied filters stay loud)
+   5) Toolstrip extra inset from island edge
+   6) Keep a28 panel hairlines — do NOT strip
+   7) No tab strokes added */
+
+.app-shell[data-shell-layout="islands"] {
+  /* 1) Backdrop toward pane; canvas closer to sides */
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 78%, var(--ui-surface-canvas));
+  --island-canvas: color-mix(in srgb, var(--ui-surface-raised) 45%, var(--ui-surface-pane));
+  --island-side: var(--ui-surface-pane);
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-pane) 70%, var(--island-canvas));
+  --island-tab-fill: var(--island-toolstrip-bg);
+  background-color: var(--island-backdrop);
+}
+
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 55%, var(--ui-surface-canvas));
+  --island-canvas: color-mix(in srgb, var(--ui-surface-raised) 55%, var(--ui-surface-pane));
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-pane) 75%, var(--island-canvas));
+  --island-tab-fill: var(--island-toolstrip-bg);
+}
+
+.app-shell[data-shell-layout="islands"] > .workspace {
+  background: var(--island-canvas);
+}
+
+/* L/R side panels: --island-side token only (no later background repaint — guard) */
+
+/* 2) Less empty space — equal L/R + scrollbar both-edges */
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  padding: 12px 14px 20px;
+  background: var(--island-canvas);
+  scrollbar-gutter: stable both-edges;
+}
+.app-shell[data-shell-layout="islands"] .justified-row {
+  /* Match ASSET_GRID_GAP_PX = 14 */
+  margin-bottom: 14px !important;
+}
+.app-shell[data-shell-layout="islands"] .navigation-scroll {
+  padding: 8px 12px 12px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-content {
+  padding: 12px 12px 20px;
+}
+
+/* 3) Caption padding tightened */
+.app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
+.app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
+  padding: 11px 12px;
+  gap: 4px;
+  background: var(--island-canvas);
+}
+
+/* 4) Card-content display toggles: secondary muted wash, never loud accent */
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button[aria-pressed="true"]:not(:disabled),
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button.is-active:not(.is-accent) {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button[aria-pressed="true"]:not(:disabled) .icon,
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button.is-active:not(.is-accent) .icon {
+  color: var(--ui-content-secondary);
+}
+
+/* 5) Toolstrip breathe from island edge (left title + right field toggles) */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  padding: 8px 20px 10px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
+  padding: 0;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  padding: 2px 0 0;
+}
+
+/* 6) Reassert a28 panel hairlines (do not strip) */
+.app-shell[data-shell-layout="islands"] > .navigation-pane,
+.app-shell[data-shell-layout="islands"] > .inspector-pane,
+.app-shell[data-shell-layout="islands"] > .workspace {
+  border: var(--island-hairline-w) solid var(--island-border);
+  border-radius: var(--island-radius);
+  box-shadow: none;
+}
