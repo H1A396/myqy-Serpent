@@ -1,0 +1,55 @@
+{
+  "baseline": "5d79b5e4",
+  "method": "isolated-electron-dom-compatibility-check",
+  "images": [
+    {
+      "file": "01-islands-original.png",
+      "label": "当前 Islands",
+      "width": 1400,
+      "height": 900,
+      "sha256": "cbecf83a59e7e701c949d773d5d44ea9116668c6100559388f3da09f8fc2c547"
+    },
+    {
+      "file": "02-main-only-legacy.png",
+      "label": "只把主壳改成 legacy",
+      "width": 1400,
+      "height": 900,
+      "sha256": "0a9a9ba802a828cb550f8b10caae05711b26e1794f52ada97d468ba9b500a9a2"
+    },
+    {
+      "file": "03-legacy-main-islands-portal.png",
+      "label": "旧主壳 + 新 UI 颜色弹层",
+      "width": 1400,
+      "height": 900,
+      "sha256": "9ade3d68abb3597aefa565699b576e260171cfb10f0b43bb009d34d339d7f447"
+    },
+    {
+      "file": "04-all-scopes-legacy.png",
+      "label": "手动修改已存在的 scopes",
+      "width": 1400,
+      "height": 900,
+      "sha256": "227d6bd91c207eee81c1f337ae4a41b333521fd2f1c1166d66e83396277703e0"
+    },
+    {
+      "file": "05-new-portal-resets-islands.png",
+      "label": "重新打开形状弹层恢复 islands",
+      "width": 1400,
+      "height": 900,
+      "sha256": "f1b0146d02d04612b28d87e05a0dfde049c34d676fcbed35a51e1f7ae0b2a2c8"
+    },
+    {
+      "file": "06-legacy-settings-islands-theme-dialog.png",
+      "label": "旧设置 + Islands 主题小弹窗",
+      "width": 1400,
+      "height": 900,
+      "sha256": "bc03bb3582d56ef803b67f52c6f1fca15dc07438d2ee0b2495617984950aeac8"
+    },
+    {
+      "file": "07-restored-islands.png",
+      "label": "手动恢复 Islands",
+      "width": 1400,
+      "height": 900,
+      "sha256": "5d6f89b71f55449faaa114b8689f6e9672de8f60ec27f0a72235ffb138ef10ec"
+    }
+  ]
+}
