@@ -45,6 +45,9 @@ const PROFILE_LABELS = {
   silver: 'settings.themeProfileSilver',
   graphite: 'settings.themeProfileGraphite',
   smoke: 'settings.themeProfileSmoke',
+  notion: 'settings.themeProfileNotion',
+  onedark: 'settings.themeProfileOnedark',
+  code: 'settings.themeProfileCode',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
