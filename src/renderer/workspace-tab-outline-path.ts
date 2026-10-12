@@ -8,6 +8,11 @@
  *
  * Path is OPEN along the baseline between scoop tips so the stroke does not
  * close across the toolstrip join.
+ *
+ * SVG arc sweep note (y-down): the concave scoop edge is the quarter-circle
+ * about the outer-top corner of each scoop box. That is sweep=0 on both sides
+ * — NOT the alternate center on the tab baseline (which draws a bulbous ear
+ * and meets the vertical side with a horizontal tangent / kink).
  */
 export function workspaceTabOutlinePath(
   width: number,
@@ -22,11 +27,11 @@ export function workspaceTabOutlinePath(
 
   // Left tip → left scoop arc → up left → top-left corner → top → top-right
   // → down right → right scoop arc → right tip. No Z.
-  // Left scoop center (−S, H−S): start (−S, H) → end (0, H−S), CCW quarter.
-  // Right scoop center (W+S, H−S): start (W, H−S) → end (W+S, H), CW quarter (sweep 0).
+  // Left scoop center (−S, H−S): (−S, H) → (0, H−S), sweep 0 (concave).
+  // Right scoop center (W+S, H−S): (W, H−S) → (W+S, H), sweep 0 (concave).
   return [
     `M ${-S} ${H}`,
-    `A ${S} ${S} 0 0 1 0 ${H - S}`,
+    `A ${S} ${S} 0 0 0 0 ${H - S}`,
     `L 0 ${R}`,
     `A ${R} ${R} 0 0 1 ${R} 0`,
     `L ${W - R} 0`,
