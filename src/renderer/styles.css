@@ -120,7 +120,7 @@
      switcher must read as one interaction system in both themes. */
   --menu-surface-background: var(--raised);
   --menu-surface-border: color-mix(in srgb, var(--divider) 82%, transparent);
-  --menu-surface-radius: 8px;
+  --menu-surface-radius: calc(8px * var(--ui-radius-scale, 1));
   --menu-surface-shadow: var(--shadow-menu);
   --menu-item-hover-background: var(--hover);
   --menu-item-focus-background: color-mix(in srgb, var(--text) 11%, transparent);
@@ -339,7 +339,7 @@ summary:focus-visible {
 
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   background-clip: padding-box;
   transition: background var(--scrollbar-fade-out, 220ms) ease-in;
@@ -745,7 +745,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 5px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: var(--secondary);
   cursor: pointer;
   font-size: calc(12px * var(--ui-font-scale));
@@ -786,7 +786,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
      finding F4, evidenced in 09-filter-panel.png). */
   max-height: calc(100vh - 140px);
   overflow-y: auto;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   box-shadow: var(--shadow-panel);
 }
@@ -845,7 +845,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 5px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -893,7 +893,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--divider);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--pane);
   box-shadow: var(--shadow-panel);
   isolation: isolate;
@@ -954,7 +954,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 .dimension-rating-chip {
   padding: 4px 8px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -1030,7 +1030,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   width: 100%;
   padding: 6px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -1147,7 +1147,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   max-width: min(280px, calc(100vw - 24px));
   padding: 3px 7px;
   border: 1px solid var(--divider-soft);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -1172,7 +1172,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   max-width: none;
   padding: 8px 10px;
   border-color: color-mix(in srgb, var(--divider-soft) 72%, white);
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised-2) 84%, white);
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -1214,7 +1214,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -1304,7 +1304,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   height: var(--shell-control-height);
   padding: 0 7px 0 9px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12.5px * var(--ui-font-scale));
@@ -1383,7 +1383,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 8px;
   padding: var(--menu-item-padding);
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-family: inherit;
@@ -1466,7 +1466,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   margin: 1px 2px 1px 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -1532,7 +1532,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -1577,7 +1577,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   height: var(--shell-control-height);
   padding: 0 4px;
   border: 0;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -1616,7 +1616,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   align-self: center;
   align-items: center;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--canvas);
   color: var(--tertiary);
   line-height: 1;
@@ -1777,7 +1777,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   height: 22px;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -1916,7 +1916,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   user-select: none;
 }
@@ -1930,7 +1930,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   width: 100%;
   height: 148px;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   cursor: crosshair;
 }
 
@@ -2042,7 +2042,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   width: 100%;
   padding: 7px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -2262,7 +2262,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -2294,7 +2294,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 7px;
   padding: 0 7px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -2368,7 +2368,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 .nav-disclosure {
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -2710,7 +2710,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -2759,7 +2759,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   gap: 8px;
   padding: var(--menu-item-padding);
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-family: inherit;
@@ -3003,7 +3003,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   min-height: 28px;
   padding: 0 11px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -3193,7 +3193,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--plugin-job-status-color) 28%, var(--divider));
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -3216,7 +3216,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   height: 26px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -3312,7 +3312,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   flex-shrink: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -3426,7 +3426,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   min-width: 180px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--menu-surface-background) 92%, transparent);
   box-shadow: var(--shadow-menu);
   backdrop-filter: blur(14px) saturate(120%);
@@ -3667,7 +3667,7 @@ input[type="range"] {
   width: min(720px, calc(100% - 48px));
   min-height: 260px;
   border: 1px solid var(--divider);
-  border-radius: 12px;
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
   background: var(--pane);
   box-shadow: var(--shadow-elevated);
   animation: state-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -3794,7 +3794,7 @@ input[type="range"] {
   gap: 8px;
   padding: 8px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -3816,7 +3816,7 @@ input[type="range"] {
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: var(--secondary);
 }
 
@@ -3865,7 +3865,7 @@ input[type="range"] {
   justify-content: center;
   width: 28px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -3903,7 +3903,7 @@ input[type="range"] {
   justify-content: center;
   gap: 7px;
   padding: 0 14px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   font-size: calc(12px * var(--ui-font-scale));
   font-weight: 560;
   cursor: pointer;
@@ -3939,7 +3939,7 @@ input[type="range"] {
   padding: 10px 11px;
   border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
   border-left: 2px solid var(--warning);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--warning) 8%, var(--pane));
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -3999,7 +3999,7 @@ input[type="range"] {
   gap: 3px;
   padding: 10px;
   border: 1px solid var(--divider);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--pane);
 }
 
@@ -4040,7 +4040,7 @@ input[type="range"] {
   place-items: end start;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--divider));
-  border-radius: 6px 2px 6px 2px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1)) calc(2px * var(--ui-radius-scale, 1)) calc(6px * var(--ui-radius-scale, 1)) calc(2px * var(--ui-radius-scale, 1));
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--accent) 17%, transparent), transparent 55%), var(--pane);
   color: color-mix(in srgb, var(--accent) 72%, white);
@@ -4099,7 +4099,7 @@ input[type="range"] {
   height: 46px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--divider));
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--accent) 9%, var(--pane));
   color: var(--accent-soft-fg);
   font-family: "IBM Plex Mono", monospace;
@@ -4168,7 +4168,7 @@ input[type="range"] {
   margin: 0;
   padding: 9px;
   border: 1px solid var(--divider-soft);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--secondary);
   font-size: calc(10px * var(--ui-font-scale));
@@ -4207,7 +4207,7 @@ input[type="range"] {
   margin-bottom: 14px;
   place-items: center;
   border: 1px dashed var(--divider);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   color: var(--tertiary);
 }
 
@@ -4234,7 +4234,7 @@ input[type="range"] {
   padding: 0;
   place-items: center;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--secondary);
   cursor: pointer;
@@ -4399,7 +4399,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   min-height: 30px;
   padding: var(--menu-item-padding);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   border: none;
   background: transparent;
   color: var(--text);
@@ -4502,7 +4502,7 @@ body.serpent-modal-open .app-shell {
   margin: 0 6px 5px;
   padding: 7px 8px;
   border: 1px solid var(--divider-soft, var(--divider-soft));
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised-2, var(--raised-2)) 72%, transparent);
   color: var(--secondary, var(--secondary));
   font-size: calc(11px * var(--ui-font-scale));
@@ -4551,7 +4551,7 @@ body.serpent-modal-open .app-shell {
   gap: 2px;
   padding: 3px 6px 3px 4px;
   border: none;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary, var(--secondary));
   font-family: inherit;
@@ -4580,7 +4580,7 @@ body.serpent-modal-open .app-shell {
   margin: 0 2px 4px;
   padding: 4px 8px;
   border: 1px solid var(--divider-soft, var(--divider-soft));
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised-2, var(--raised-2)) 72%, transparent);
   color: var(--tertiary, var(--tertiary));
 }
@@ -4618,7 +4618,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   padding: 6px 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-family: inherit;
@@ -4747,7 +4747,7 @@ body.serpent-modal-open .app-shell {
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -4774,7 +4774,7 @@ body.serpent-modal-open .app-shell {
 .appearance-picker-clear {
   padding: 4px 8px;
   border: none;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-family: inherit;
@@ -4804,7 +4804,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   padding: 4px 6px;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary, var(--secondary));
   font: inherit;
@@ -4900,7 +4900,7 @@ body.serpent-modal-open .app-shell {
 .preview-playback-error button {
   padding: 6px 10px;
   border: 1px solid var(--divider);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--text);
   font-size: calc(10px * var(--ui-font-scale));
@@ -4982,7 +4982,7 @@ body.serpent-modal-open .app-shell {
   height: min(240px, 42vh);
   flex: 0 0 auto;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   overflow: hidden;
   background: var(--pane);
   cursor: pointer;
@@ -5168,7 +5168,7 @@ body.serpent-modal-open .app-shell {
   padding: 4px 8px;
   overflow: hidden;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--warning) 14%, var(--viewer-stage));
   color: var(--warning-fg, var(--text));
   font-size: calc(12px * var(--ui-font-scale));
@@ -5199,7 +5199,7 @@ body.serpent-modal-open .app-shell {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -5310,7 +5310,7 @@ body.serpent-modal-open .app-shell {
   max-height: none;
   overflow: hidden;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised);
 }
 
@@ -5438,7 +5438,7 @@ body.serpent-modal-open .app-shell {
   gap: 6px;
   padding: 5px 8px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   color: var(--secondary);
@@ -5447,7 +5447,7 @@ body.serpent-modal-open .app-shell {
 }
 .preview-speed-control select {
   border: 1px solid var(--divider);
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--text);
 }
@@ -5465,7 +5465,7 @@ body.serpent-modal-open .app-shell {
   gap: 10px;
   padding: 6px 12px;
   border: 1px solid var(--divider);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   color: var(--text);
@@ -5511,7 +5511,7 @@ body.serpent-modal-open .app-shell {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -5549,7 +5549,7 @@ body.serpent-modal-open .app-shell {
   left: 0;
   right: 0;
   height: 4px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--divider);
   transform: translateY(-50%);
 }
@@ -5558,7 +5558,7 @@ body.serpent-modal-open .app-shell {
   top: 50%;
   left: 0;
   height: 4px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--accent);
   transform: translateY(-50%);
   pointer-events: none;
@@ -5576,7 +5576,7 @@ body.serpent-modal-open .app-shell {
 .preview-video-track:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
 }
 .preview-video-rate-host {
   position: relative;
@@ -5592,7 +5592,7 @@ body.serpent-modal-open .app-shell {
   padding: 0 8px;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -5635,7 +5635,7 @@ body.serpent-modal-open .app-shell {
   left: 0;
   right: 0;
   height: 4px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--divider);
   transform: translateY(-50%);
 }
@@ -5644,7 +5644,7 @@ body.serpent-modal-open .app-shell {
   top: 50%;
   left: 0;
   height: 4px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--accent);
   transform: translateY(-50%);
   pointer-events: none;
@@ -5662,7 +5662,7 @@ body.serpent-modal-open .app-shell {
 .preview-viewer-volume-track:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
 }
 .preview-image-viewport,
 .preview-video-viewport {
@@ -5764,7 +5764,7 @@ body.serpent-modal-open .app-shell {
   width: min(100%, 720px);
   height: 100%;
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   box-shadow: var(--shadow-card);
 }
 
@@ -5781,7 +5781,7 @@ body.serpent-modal-open .app-shell {
   height: 26px;
   padding: 0 8px;
   border: 1px solid var(--divider);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--text);
   font-size: calc(14px * var(--ui-font-scale));
@@ -5854,7 +5854,7 @@ body.serpent-modal-open .app-shell {
   min-height: var(--pdf-page-height, auto);
   max-height: none;
   background: var(--viewer-document-page);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   box-shadow: var(--shadow-card);
   overflow: hidden;
 }
@@ -5992,7 +5992,7 @@ body.serpent-modal-open .app-shell {
   width: min(200px, 28vw);
   padding: 3px 6px;
   border: 1px solid var(--divider);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -6154,7 +6154,7 @@ body.serpent-modal-open .app-shell {
   gap: 6px;
   padding: 4px 10px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   backdrop-filter: blur(10px);
@@ -6186,7 +6186,7 @@ body.serpent-modal-open .app-shell {
   cursor: pointer;
 }
 .preview-color-space-control:focus-within {
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   box-shadow: 0 0 0 2px var(--accent);
 }
 .preview-zoom-controls .preview-zoom-label,
@@ -6194,7 +6194,7 @@ body.serpent-modal-open .app-shell {
   min-width: 0;
   padding: 3px 7px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6228,7 +6228,7 @@ body.serpent-modal-open .app-shell {
   flex-shrink: 0;
   padding: 4px 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6256,7 +6256,7 @@ body.serpent-modal-open .app-shell {
   min-height: 280px;
   flex: 1 1 280px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   /* Transparent: the rounded corners show the workspace veil (same backdrop
      opacity as the canvas); the iframe document covers it once loaded. */
   background: transparent;
@@ -6313,7 +6313,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   min-height: 200px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--canvas);
 }
 .plugin-viewer-overlay-host {
@@ -6335,7 +6335,7 @@ body.serpent-modal-open .app-shell {
 .plugin-viewer-overlay-toggle {
   padding: 6px 10px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6350,7 +6350,7 @@ body.serpent-modal-open .app-shell {
   width: min(400px, calc(100vw - 48px));
   padding: 8px;
   border: 1px solid var(--divider);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--pane) 92%, transparent);
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   backdrop-filter: blur(12px);
@@ -6364,7 +6364,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   min-height: 180px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--canvas);
 }
 .plugin-settings-pages-card {
@@ -6386,7 +6386,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   min-height: 280px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--canvas);
 }
 .preview-plugin-actions {
@@ -6398,7 +6398,7 @@ body.serpent-modal-open .app-shell {
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   backdrop-filter: blur(10px);
@@ -6406,7 +6406,7 @@ body.serpent-modal-open .app-shell {
 .preview-plugin-actions button {
   padding: 4px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6423,7 +6423,7 @@ body.serpent-modal-open .app-shell {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -6471,7 +6471,7 @@ body.serpent-modal-open .app-shell {
   gap: 8px;
   padding: 5px 10px;
   border: 1px solid var(--divider);
-  border-radius: 9px;
+  border-radius: calc(9px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   color: var(--secondary);
@@ -6497,7 +6497,7 @@ body.serpent-modal-open .app-shell {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   box-shadow: none;
   color: var(--text);
@@ -6515,7 +6515,7 @@ body.serpent-modal-open .app-shell {
   gap: 6px;
   padding: 5px 7px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   color: var(--secondary);
@@ -6570,7 +6570,7 @@ body.serpent-modal-open .app-shell {
   place-items: center;
   padding: 5px 9px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--viewer-chrome-bg);
   box-shadow: 0 1px 6px rgb(0 0 0 / 10%);
   color: var(--text);
@@ -6620,7 +6620,7 @@ body.serpent-modal-open .app-shell {
   max-width: min(520px, calc(100% - 32px));
   transform: translateX(-50%);
   border: 1px solid var(--divider);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--pane) 92%, transparent);
 }
 .preview-state strong {
@@ -6649,7 +6649,7 @@ body.serpent-modal-open .app-shell {
   gap: 12px;
   padding: 9px 11px;
   border: 1px solid color-mix(in srgb, var(--warning) 35%, var(--divider));
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--warning-muted) 88%, var(--pane));
   color: var(--warning-fg);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6669,7 +6669,7 @@ body.serpent-modal-open .app-shell {
   max-width: min(520px, calc(100% - 32px));
   padding: 5px 8px;
   border: 1px solid var(--divider);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--pane) 92%, transparent);
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6700,7 +6700,7 @@ body.serpent-modal-open .app-shell {
   max-width: min(520px, calc(100% - 32px));
   padding: 5px 10px;
   border: 1px solid var(--divider);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--pane) 92%, transparent);
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -6713,7 +6713,7 @@ body.serpent-modal-open .app-shell {
   margin: auto;
   padding: 20px;
   border: 1px solid var(--divider);
-  border-radius: 12px;
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
   background: var(--pane);
   box-shadow: var(--shadow-elevated);
   /* Opacity-only enter — translateY fights true window centering. */
@@ -6784,7 +6784,7 @@ body.serpent-modal-open .app-shell {
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 70%, var(--pane));
 }
 
@@ -6840,7 +6840,7 @@ body.serpent-modal-open .app-shell {
   margin: 6px 0 0;
   padding: 8px;
   overflow: auto;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--canvas) 65%, var(--raised));
   color: var(--secondary);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -6894,7 +6894,7 @@ body.serpent-modal-open .app-shell {
   margin: 0;
   padding: 12px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--canvas) 72%, var(--raised));
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -6935,7 +6935,7 @@ body.serpent-modal-open .app-shell {
   overflow: auto;
   min-height: 260px;
   border: 1px solid var(--divider-soft);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 72%, var(--pane));
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -6998,7 +6998,7 @@ body.serpent-modal-open .app-shell {
   min-height: 32px;
   padding: 5px 8px;
   border: 1px solid var(--divider-soft);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 70%, transparent);
   color: var(--secondary);
 }
@@ -7019,7 +7019,7 @@ body.serpent-modal-open .app-shell {
   min-height: 26px;
   padding: 3px 8px;
   border: 1px solid var(--divider);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -7041,7 +7041,7 @@ body.serpent-modal-open .app-shell {
 
 .script-sandbox-preview-dialog .dialog-actions > button {
   min-height: 32px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   font-size: calc(12px * var(--ui-font-scale));
 }
 
@@ -7278,7 +7278,7 @@ body.serpent-modal-open .app-shell {
   height: 24px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -7386,7 +7386,7 @@ body.serpent-modal-open .app-shell {
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -7476,7 +7476,7 @@ body.serpent-modal-open .app-shell {
   overflow: auto;
   list-style: none;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--pane);
   box-shadow: var(--shadow-menu);
 }
@@ -7492,7 +7492,7 @@ body.serpent-modal-open .app-shell {
   width: 100%;
   padding: 6px 8px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -7701,7 +7701,7 @@ select.ai-config-input.ai-config-languages {
   min-height: 29px;
   padding: 2px 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: var(--text);
 }
 
@@ -7748,7 +7748,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -7857,7 +7857,7 @@ select.ai-config-input.ai-config-languages {
   gap: 9px;
   padding: 7px 9px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -7947,7 +7947,7 @@ select.ai-config-input.ai-config-languages {
   min-width: 0;
   padding: 14px 15px;
   border: 1px solid color-mix(in srgb, var(--divider) 92%, transparent);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 92%, var(--pane));
   box-shadow: inset 0 1px rgb(255 255 255 / 2%);
 }
@@ -8008,7 +8008,7 @@ select.ai-config-input.ai-config-languages {
 .mcp-permission-client {
   padding: 10px 11px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 55%, var(--pane));
 }
 
@@ -8026,7 +8026,7 @@ select.ai-config-input.ai-config-languages {
   min-width: 120px;
   padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -8064,7 +8064,7 @@ select.ai-config-input.ai-config-languages {
   height: 30px;
   padding: 0;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -8313,7 +8313,7 @@ select.ai-config-input.ai-config-languages {
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--canvas);
   color: var(--tertiary);
   transition:
@@ -8359,7 +8359,7 @@ select.ai-config-input.ai-config-languages {
   gap: 12px;
   padding: 12px 13px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 55%, var(--pane));
 }
 
@@ -8387,7 +8387,7 @@ select.ai-config-input.ai-config-languages {
 .plugin-community-card-open:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
 }
 
 .plugin-community-card-icon {
@@ -8396,7 +8396,7 @@ select.ai-config-input.ai-config-languages {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   color: var(--secondary);
   flex: 0 0 auto;
@@ -8613,7 +8613,7 @@ select.ai-config-input.ai-config-languages {
   overflow-x: auto;
   margin: 0;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -8625,7 +8625,7 @@ select.ai-config-input.ai-config-languages {
 .plugin-community-readme p code,
 .plugin-community-readme li code {
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -8753,7 +8753,7 @@ select.ai-config-input.ai-config-languages {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -9232,7 +9232,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-elevation-slider::-webkit-slider-runnable-track {
   height: 3px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--divider);
 }
 
@@ -9253,7 +9253,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-elevation-slider::-moz-range-track {
   height: 3px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--divider);
 }
 
@@ -9358,7 +9358,7 @@ select.ai-config-input.ai-config-languages {
 .app-settings-option {
   padding: 6px 12px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -9385,7 +9385,7 @@ select.ai-config-input.ai-config-languages {
   height: 32px;
   padding: 0 9px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--text);
   font: inherit;
@@ -9519,7 +9519,7 @@ select.ai-config-input.ai-config-languages {
   width: 72%;
   height: 20px;
   margin-top: 3px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   background: var(--theme-preview-raised);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-preview-text) 14%, transparent);
 }
@@ -9742,7 +9742,7 @@ select.ai-config-input.ai-config-languages {
   padding: 0;
   place-items: center;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
@@ -9769,7 +9769,7 @@ select.ai-config-input.ai-config-languages {
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--canvas);
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -9941,7 +9941,7 @@ select.ai-config-input.ai-config-languages {
   gap: 6px;
   padding: 0 10px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   font-size: calc(12px * var(--ui-font-scale));
@@ -10108,7 +10108,7 @@ select.ai-config-input.ai-config-languages {
   /* Serpent-fvto: tighter trailing pad — X sat in a wide empty gutter. */
   padding: 7px 6px 7px 10px;
   border: var(--ui-border-width-hairline) solid var(--ui-border-divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--ui-surface-raised);
   box-shadow: var(--ui-shadow-notice);
   color: var(--ui-content-primary);
@@ -10264,7 +10264,7 @@ select.ai-config-input.ai-config-languages {
 .library-settings-gitignore-help {
   margin: 0;
   padding: 9px 11px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--hover);
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -10278,7 +10278,7 @@ select.ai-config-input.ai-config-languages {
   resize: vertical;
   padding: 12px;
   border: 1px solid var(--divider);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--canvas);
   color: var(--text);
   font-family: var(--font-mono);
@@ -10327,7 +10327,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -10354,7 +10354,7 @@ select.ai-config-input.ai-config-languages {
   height: 76px;
   margin-bottom: 4px;
   border: 1px solid color-mix(in srgb, var(--divider) 72%, transparent);
-  border-radius: 18px;
+  border-radius: calc(18px * var(--ui-radius-scale, 1));
   box-shadow: var(--shadow-panel);
   object-fit: cover;
 }
@@ -10394,7 +10394,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--divider-soft));
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--accent-soft) 56%, var(--raised-2));
   color: var(--accent);
   cursor: pointer;
@@ -10471,7 +10471,7 @@ select.ai-config-input.ai-config-languages {
   overflow: auto;
   padding: 8px 10px;
   border: 1px solid var(--divider-soft);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -10526,7 +10526,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--danger) 36%, var(--divider-soft));
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--danger-muted) 56%, var(--raised-2));
   color: var(--danger);
   cursor: pointer;
@@ -10623,7 +10623,7 @@ select.ai-config-input.ai-config-languages {
   gap: 3px;
   padding: 10px 12px;
   border: 1px solid var(--divider-soft);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -10701,7 +10701,7 @@ select.ai-config-input.ai-config-languages {
 
 .import-progress-strip {
   align-items: center;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
 }
 
 .import-progress-strip .activity-pulse {
@@ -11112,7 +11112,7 @@ select.ai-config-input.ai-config-languages {
   height: 100%;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   box-shadow:
     0 1px 2px rgb(0 0 0 / 12%),
@@ -11133,7 +11133,7 @@ select.ai-config-input.ai-config-languages {
   height: 100%;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--ink) 14%, var(--raised-2));
   box-shadow:
     0 1px 2px rgb(0 0 0 / 12%),
@@ -11228,7 +11228,7 @@ select.ai-config-input.ai-config-languages {
 }
 .asset-size-control input[type="range"]::-webkit-slider-runnable-track {
   height: 3px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--divider);
 }
 .asset-size-control input[type="range"]::-webkit-slider-thumb {
@@ -11254,7 +11254,7 @@ select.ai-config-input.ai-config-languages {
   justify-items: center;
   gap: 7px;
   border: 1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent);
-  border-radius: 12px;
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
   /* Keep the drag affordance visible while letting the assets remain visible
      through a translucent accent wash. Mixing with --canvas here made the
      light theme effectively opaque white, which looked like the canvas had
@@ -11294,7 +11294,7 @@ select.ai-config-input.ai-config-languages {
   min-width: 0;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -11383,7 +11383,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--divider);
-  border-radius: 9px;
+  border-radius: calc(9px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
   box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
   opacity: 0.6;
@@ -11412,7 +11412,7 @@ select.ai-config-input.ai-config-languages {
   bottom: 4px;
   min-width: 16px;
   padding: 1px 4px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--accent);
   color: var(--text);
   font-family: "IBM Plex Mono", monospace;
@@ -11447,7 +11447,7 @@ select.ai-config-input.ai-config-languages {
   /* REQ-CANVAS-008: uniform radius on all four corners, bottom corners too.
      The selection ring lives on the parent .asset-card, so this overflow
      clip only rounds the thumbnail, never the ring. */
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   /* Force a clipping context so absolutely-positioned GIF/video layers
      (`.asset-card-media`) inherit the same rounded mask (Serpent-woa). */
   isolation: isolate;
@@ -11489,7 +11489,7 @@ select.ai-config-input.ai-config-languages {
 .asset-caption-skeleton-line {
   display: block;
   flex-shrink: 0;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--text) 10%, var(--raised-2));
 }
 
@@ -11552,7 +11552,7 @@ select.ai-config-input.ai-config-languages {
   max-height: 220px;
   object-fit: contain;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -11743,7 +11743,7 @@ select.ai-config-input.ai-config-languages {
   bottom: 6px;
   right: 6px;
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: rgb(15 17 18 / 62%);
   backdrop-filter: blur(6px);
   color: var(--secondary);
@@ -11760,7 +11760,7 @@ select.ai-config-input.ai-config-languages {
   bottom: 6px;
   left: 6px;
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: rgb(15 17 18 / 68%);
   backdrop-filter: blur(6px);
   color: var(--text);
@@ -11776,7 +11776,7 @@ select.ai-config-input.ai-config-languages {
   bottom: 6px;
   right: 6px;
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: rgb(15 17 18 / 68%);
   backdrop-filter: blur(6px);
   color: var(--text);
@@ -11878,7 +11878,7 @@ select.ai-config-input.ai-config-languages {
   left: 6px;
   max-width: calc(100% - 28px);
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: rgb(15 17 18 / 62%);
   backdrop-filter: blur(6px);
   color: var(--secondary);
@@ -11915,7 +11915,7 @@ select.ai-config-input.ai-config-languages {
   align-items: center;
   gap: 4px;
   padding: 3px 6px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: var(--warning-muted);
   color: var(--warning-fg);
   font-size: calc(9px * var(--ui-font-scale));
@@ -12018,14 +12018,14 @@ select.ai-config-input.ai-config-languages {
   white-space: nowrap;
 }
 .search-snippet mark {
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--warning) 24%, transparent);
   color: var(--warning-fg);
 }
 
 .search-text-highlight {
   padding: 0;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--warning) 26%, transparent);
   color: inherit;
 }
@@ -12047,7 +12047,7 @@ select.ai-config-input.ai-config-languages {
   height: 22px;
   margin-top: 0;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
 }
 
@@ -12126,7 +12126,7 @@ select.ai-config-input.ai-config-languages {
   gap: 8px;
   padding: 9px 9px 9px 11px;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised);
   box-shadow: var(--shadow-toast);
   color: var(--text);
@@ -12210,7 +12210,7 @@ select.ai-config-input.ai-config-languages {
   aspect-ratio: 1;
   max-height: none;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -12282,7 +12282,7 @@ select.ai-config-input.ai-config-languages {
   min-height: 112px;
   width: 100%;
   border: 1px solid var(--divider-soft);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--canvas) 86%, var(--ink));
 }
 
@@ -12292,7 +12292,7 @@ select.ai-config-input.ai-config-languages {
   max-width: 100%;
   height: auto;
   max-height: min(360px, 45vh);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   object-fit: contain;
 }
 
@@ -12307,7 +12307,7 @@ select.ai-config-input.ai-config-languages {
   height: min(360px, 45vh);
   min-height: 112px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
 }
 
 .inspector-hero-sequence-preview .inspector-hero-face {
@@ -12316,7 +12316,7 @@ select.ai-config-input.ai-config-languages {
   width: 100%;
   height: 100%;
   min-height: 112px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
 }
 
 .inspector-hero-sequence-preview .sequence-frame-canvas {
@@ -12346,7 +12346,7 @@ select.ai-config-input.ai-config-languages {
   display: inline-flex;
   max-width: 100%;
   max-height: min(360px, 45vh);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
 }
 
 .inspector-pane[data-inspector-card-feel="on"] .inspector-hero-face {
@@ -12562,7 +12562,7 @@ select.ai-config-input.ai-config-languages {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--canvas) 90%, var(--ink));
   /* REQ-INSPECT-004: soft layered shadows so stacked multi-select previews stay separable. */
   box-shadow:
@@ -12877,7 +12877,7 @@ select.ai-config-input.ai-config-languages {
   padding: 3px;
   place-items: center;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -12950,7 +12950,7 @@ select.ai-config-input.ai-config-languages {
   padding: 0;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--tertiary);
   cursor: pointer;
@@ -12987,7 +12987,7 @@ select.ai-config-input.ai-config-languages {
 .inspector-ai-badge {
   display: inline-block;
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--accent);
   font-size: calc(9px * var(--ui-font-scale));
@@ -13017,7 +13017,7 @@ select.ai-config-input.ai-config-languages {
   margin-top: 10px;
   padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--divider));
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--accent) 8%, var(--pane));
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -13036,7 +13036,7 @@ select.ai-config-input.ai-config-languages {
   margin: 2px 0 0;
   padding: 9px;
   border: 1px solid var(--divider-soft);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--pane);
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -13157,7 +13157,7 @@ select.ai-config-input.ai-config-languages {
 }
 
 .tag-input-chip:has(.tag-input-pending) {
-  border-radius: 14px;
+  border-radius: calc(14px * var(--ui-radius-scale, 1));
 }
 
 .tag-input-pending {
@@ -13203,7 +13203,7 @@ select.ai-config-input.ai-config-languages {
   padding: 4px;
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--divider) 82%, transparent);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 90%, var(--canvas));
   box-shadow: 0 10px 28px rgb(0 0 0 / 30%);
 }
@@ -13216,7 +13216,7 @@ select.ai-config-input.ai-config-languages {
   min-height: 29px;
   padding: 5px 8px;
   border: 0;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(11px * var(--ui-font-scale));
@@ -13247,7 +13247,7 @@ select.ai-config-input.ai-config-languages {
 .tag-suggestion-create {
   color: var(--accent);
   border-top: 1px solid color-mix(in srgb, var(--divider-soft) 70%, transparent);
-  border-radius: 0 0 5px 5px;
+  border-radius: 0 0 calc(5px * var(--ui-radius-scale, 1)) calc(5px * var(--ui-radius-scale, 1));
 }
 
 /* Tags section header with add button */
@@ -13268,7 +13268,7 @@ select.ai-config-input.ai-config-languages {
   margin: auto;
   padding: 20px;
   border: 1px solid var(--divider);
-  border-radius: 12px;
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
   background: var(--pane);
   box-shadow: var(--shadow-elevated);
   animation: dialog-enter 180ms ease-out both;
@@ -13330,7 +13330,7 @@ select.ai-config-input.ai-config-languages {
   height: 40px;
   flex: 0 0 auto;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   object-fit: cover;
   background: var(--canvas);
 }
@@ -13374,7 +13374,7 @@ select.ai-config-input.ai-config-languages {
   overflow: hidden;
   margin-bottom: 18px;
   border: 1px solid var(--divider-soft);
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--divider-soft);
 }
 .conflict-summary div {
@@ -13413,7 +13413,7 @@ select.ai-config-input.ai-config-languages {
   height: var(--shell-control-height);
   padding: 0 28px 0 8px;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background-color: var(--raised);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 12 12'%3E%3Cpath stroke='%23777c79' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -13446,7 +13446,7 @@ select.ai-config-input.ai-config-languages {
   margin-top: 14px;
   padding: 9px;
   border: 1px solid var(--divider-soft);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--pane);
 }
 .conflict-examples > span {
@@ -13547,7 +13547,7 @@ select.ai-config-input.ai-config-languages {
   gap: 7px;
   padding: 2px 7px 2px 0;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: var(--secondary);
 }
 
@@ -13705,14 +13705,14 @@ select.ai-config-input.ai-config-languages {
   width: 100%;
   height: 4px;
   margin-top: 4px;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--hover);
   overflow: hidden;
 }
 
 .task-progress-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--accent);
   transition: width 250ms ease;
 }
@@ -13738,7 +13738,7 @@ select.ai-config-input.ai-config-languages {
 .task-progress-indeterminate {
   width: 35%;
   height: 100%;
-  border-radius: 2px;
+  border-radius: calc(2px * var(--ui-radius-scale, 1));
   background: var(--accent);
   animation: task-progress-slide 1.4s ease-in-out infinite;
 }
@@ -13779,7 +13779,7 @@ select.ai-config-input.ai-config-languages {
   height: 30px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--ui-content-primary) 12%, transparent);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   cursor: pointer;
   appearance: none;
   background: transparent;
@@ -13792,7 +13792,7 @@ select.ai-config-input.ai-config-languages {
 
 .app-settings-custom-theme-swatch::-webkit-color-swatch {
   border: none;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--ui-radius-scale, 1));
 }
 
 .app-settings-custom-theme-swatch:focus-visible {
@@ -14552,7 +14552,7 @@ select.ai-config-input.ai-config-languages {
 .main-menu-section,
 .main-menu-item {
   min-height: 30px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   padding: 6px 10px;
   font-size: calc(12.5px * var(--ui-font-scale));
   font-weight: 450;
@@ -14609,7 +14609,7 @@ select.ai-config-input.ai-config-languages {
 .nav-row {
   gap: 8px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: color-mix(in srgb, var(--secondary) 88%, var(--tertiary));
   font-size: calc(12.5px * var(--ui-font-scale));
   font-weight: 450;
@@ -14659,7 +14659,7 @@ select.ai-config-input.ai-config-languages {
 .tiny-action {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   color: var(--tertiary);
 }
 
@@ -14862,7 +14862,7 @@ select.ai-config-input.ai-config-languages {
 .app-settings-dialog:not(.library-settings-dialog) .app-settings-nav-item {
   min-height: 32px;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   font-size: calc(12.5px * var(--ui-font-scale));
   font-weight: 450;
 }
@@ -15137,7 +15137,7 @@ select.ai-config-input.ai-config-languages {
 /* Nav rows — final cascade: soft idle wash, accent-soft active, never a border. */
 .nav-row {
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   box-shadow: none;
   outline: none;
 }
@@ -15408,14 +15408,14 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
    Info. Scoped to [data-shell-layout="islands"]. Import/drop stays on-dev. */
 :root {
   --island-gap: 12px;
-  --island-radius: 22px;
+  --island-radius: calc(22px * var(--ui-radius-scale, 1));
   --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 82%, var(--ui-surface-raised));
   --island-border: rgb(0 0 0 / 5%);
   --island-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 16px -6px rgb(0 0 0 / 8%);
   --island-select: color-mix(in srgb, var(--accent) 16%, transparent);
   --island-hairline: rgb(0 0 0 / 6%);
   --island-group-gap: 20px;
-  --island-card-radius: 14px;
+  --island-card-radius: calc(14px * var(--ui-radius-scale, 1));
   --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-raised) 72%, transparent);
   /* Opaque equivalent of the toolstrip over the canvas island: the active tab
      must be exactly this so it fuses with the toolstrip it attaches to. */
@@ -15529,7 +15529,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   padding: 12px 12px 16px;
 }
 .app-shell[data-shell-layout="islands"] .nav-tree-row {
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
 }
 .app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) {
   background: var(--island-select);
@@ -15557,7 +15557,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .nav-row {
   min-height: 30px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   border-color: transparent;
   box-shadow: none;
   font-size: calc(13px * var(--ui-font-scale));
@@ -15645,14 +15645,14 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   flex-wrap: wrap;
   gap: 2px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--island-segment-track);
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn {
   min-height: 26px;
   padding: 0 11px;
   border: none;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -15707,7 +15707,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   letter-spacing: -0.005em;
 }
 .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
 }
 .app-shell[data-shell-layout="islands"] .tag-chip:hover,
 .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all):hover {
@@ -15868,7 +15868,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-variant-numeric: tabular-nums;
 }
 .app-shell[data-shell-layout="islands"] .inspector-hero-preview {
-  border-radius: 12px;
+  border-radius: calc(12px * var(--ui-radius-scale, 1));
   overflow: hidden;
 }
 
@@ -15878,7 +15878,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   height: 52px;
   margin-bottom: 14px;
   border: 1px solid var(--divider-soft);
-  border-radius: 14px;
+  border-radius: calc(14px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--accent) 6%, var(--raised));
   box-shadow: none;
   color: color-mix(in srgb, var(--accent) 78%, var(--text));
@@ -15896,7 +15896,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .inspector-empty-frame {
   border: 1px solid var(--divider-soft);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--raised);
 }
 .app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
@@ -15905,7 +15905,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   padding: 10px;
   margin-bottom: 12px;
   border: 1px solid var(--divider-soft);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--tertiary);
 }
@@ -16351,8 +16351,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] {
   /* Structure: tighter shell, flatter, clearer ladder */
   --island-gap: 8px;
-  --island-radius: 16px;
-  --island-card-radius: 10px;
+  --island-radius: calc(16px * var(--ui-radius-scale, 1));
+  --island-card-radius: calc(10px * var(--ui-radius-scale, 1));
   --island-group-gap: 12px;
   --island-hairline-w: 0.5px;
   --island-border: color-mix(in srgb, var(--ui-content-primary) 7%, transparent);
@@ -16441,12 +16441,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .nav-row {
   min-height: 26px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   font-size: calc(12px * var(--ui-font-scale));
   font-weight: 450;
 }
 .app-shell[data-shell-layout="islands"] .nav-tree-row {
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
 }
 .app-shell[data-shell-layout="islands"] .nav-row .nav-entity-glyph .icon,
 .app-shell[data-shell-layout="islands"] .nav-row .icon {
@@ -16507,18 +16507,18 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .workspace-bar .tool-button {
   min-height: 26px;
   min-width: 26px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-dims {
   gap: 1px;
   padding: 2px;
-  border-radius: 7px;
+  border-radius: calc(7px * var(--ui-radius-scale, 1));
   background: var(--island-segment-track);
   box-shadow: none;
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn {
   min-height: 24px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   font-size: calc(11px * var(--ui-font-scale));
   box-shadow: none;
 }
@@ -16619,7 +16619,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
   border: var(--island-hairline-w) solid var(--island-hairline);
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
 }
 
 /* Inspector denser + flat */
@@ -17139,11 +17139,11 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .create-dialog .dialog-actions .secondary-button,
 .app-shell[data-shell-layout="islands"] .create-dialog .empty-actions .primary-button,
 .app-shell[data-shell-layout="islands"] .create-dialog .empty-actions .secondary-button {
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
 }
 .app-shell[data-shell-layout="islands"] .create-dialog .text-field,
 .app-shell[data-shell-layout="islands"] .create-library-dialog .text-field {
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
 }
 
 /* 3) Sort: quieter than full accent filter highlight */
@@ -17449,7 +17449,7 @@ html.serpent-window-square {
   max-height: 24px;
   padding: 0 8px 0 6px;
   gap: 4px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   line-height: 1;
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-dims .sort-mode-control .sort-order-glyph {
@@ -17517,7 +17517,7 @@ html.serpent-window-square {
   padding-left: 3px;
 }
 .app-shell[data-shell-layout="islands"] .tag-chip > .inspector-ai-badge-inline {
-  border-radius: 3px;
+  border-radius: calc(3px * var(--ui-radius-scale, 1));
   line-height: calc(14px * var(--ui-font-scale));
 }
 
@@ -17678,7 +17678,7 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   --pad-y: calc(var(--pad-inset) + (100% - 2 * var(--pad-inset)) * var(--pad-fy));
   width: 184px;
   height: 184px;
-  border-radius: 20px;
+  border-radius: calc(20px * var(--ui-radius-scale, 1));
   background:
     radial-gradient(120% 90% at 18% 0%, color-mix(in oklab, white 55%, transparent), transparent 60%),
     linear-gradient(180deg, var(--pad-surface), color-mix(in oklab, var(--pad-surface) 96%, var(--pad-ink)));
@@ -18094,321 +18094,6 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   margin-bottom: var(--ui-space-2);
 }
 
-/* ── a92: custom-theme editor preview — a live islands miniature ──────────
-   Window backdrop, three floating rounded panels with soft shadow, app-like
-   accent use (solid accent only on emphasis, soft fills elsewhere), real
-   button classes, a pointed tag chip, input and slider. Everything is drawn
-   from the live theme tokens, so edits above repaint it instantly. */
-.app-settings-theme-preview .tp-window {
-  --tp-backdrop: color-mix(in oklab, var(--ui-surface-pane) 92%, var(--ui-content-primary));
-  --tp-panel: var(--ui-surface-pane);
-  --tp-canvas: var(--ui-surface-canvas);
-  --tp-card: var(--ui-surface-raised);
-  --tp-line: color-mix(in oklab, var(--ui-content-primary) 18%, transparent);
-  --tp-edge: color-mix(in oklab, var(--ui-content-primary) 9%, transparent);
-  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 1px 2px color-mix(in oklab, black 8%, transparent),
-    0 6px 18px -6px color-mix(in oklab, black 18%, transparent);
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) 210px;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 14px;
-  background: var(--tp-backdrop);
-  box-shadow: inset 0 0 0 1px var(--tp-edge);
-  color: var(--ui-content-primary);
-  font-size: 11px;
-}
-
-:root[data-theme="dark"] .app-settings-theme-preview .tp-window {
-  --tp-backdrop: color-mix(in oklab, var(--ui-surface-pane) 80%, black);
-  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 6px 18px -6px color-mix(in oklab, black 45%, transparent);
-}
-
-.tp-island {
-  min-width: 0;
-  border-radius: 11px;
-  background: var(--tp-panel);
-  box-shadow: var(--tp-shadow);
-}
-
-.tp-nav {
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  padding: 10px 8px;
-}
-
-.tp-nav-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 6px;
-}
-
-.tp-nav-row i {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
-  background: var(--tp-line);
-}
-
-.tp-nav-row b {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--tp-line);
-}
-
-.tp-nav-row b.is-short { flex: 0 0 55%; }
-
-.tp-nav-row.is-active {
-  background: color-mix(in oklab, var(--ui-action-accent) 12%, transparent);
-}
-
-.tp-nav-row.is-active i,
-.tp-nav-row.is-active b {
-  background: var(--ui-action-accent);
-}
-
-.tp-nav-label {
-  width: 40%;
-  height: 3px;
-  margin: 8px 6px 2px;
-  border-radius: 2px;
-  background: color-mix(in oklab, var(--ui-content-primary) 12%, transparent);
-}
-
-.tp-main {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 8px;
-  padding: 8px;
-  background: var(--tp-canvas);
-}
-
-.tp-toolstrip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 7px;
-  background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent);
-}
-
-.tp-pill {
-  width: 34px;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--tp-line);
-}
-
-.tp-pill.is-accent {
-  background: color-mix(in oklab, var(--ui-action-accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-action-accent) 30%, transparent);
-}
-
-.tp-toolstrip-spacer { flex: 1; }
-
-.tp-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
-  background: var(--tp-line);
-}
-
-.tp-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-content: start;
-  gap: 8px;
-}
-
-.tp-card {
-  overflow: hidden;
-  border-radius: 9px;
-  background: var(--tp-card);
-  box-shadow: 0 0 0 0.5px var(--tp-edge), 0 2px 6px -2px color-mix(in oklab, black 14%, transparent);
-}
-
-.tp-card.is-selected {
-  box-shadow: 0 0 0 2px var(--ui-action-accent), 0 4px 10px -3px color-mix(in oklab, var(--ui-action-accent) 35%, transparent);
-}
-
-.tp-card-media {
-  aspect-ratio: 4 / 3;
-  background:
-    radial-gradient(circle at 30% 35%, color-mix(in oklab, var(--ui-action-accent) 55%, white) 0 18%, transparent 19%),
-    linear-gradient(160deg, color-mix(in oklab, var(--ui-action-accent) 35%, var(--tp-card)), color-mix(in oklab, var(--ui-content-primary) 14%, var(--tp-card)));
-}
-
-.tp-card-media.is-alt {
-  background: linear-gradient(160deg, color-mix(in oklab, var(--ui-content-primary) 10%, var(--tp-card)), color-mix(in oklab, var(--ui-content-primary) 22%, var(--tp-card)));
-}
-
-.tp-card-caption {
-  display: grid;
-  gap: 3px;
-  padding: 7px 8px 8px;
-  min-width: 0;
-}
-
-.tp-card-caption strong {
-  overflow: hidden;
-  font-size: 11px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tp-card-caption span {
-  color: var(--ui-content-tertiary);
-  font-size: 10px;
-}
-
-.tp-card-caption b,
-.tp-card-caption i {
-  display: block;
-  height: 5px;
-  width: 70%;
-  border-radius: 3px;
-  background: var(--tp-line);
-}
-
-.tp-card-caption i { width: 45%; height: 4px; opacity: 0.7; }
-
-.tp-inspector {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  padding: 10px;
-}
-
-.tp-inspector-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.tp-inspector-heading strong { font-size: 12px; font-weight: 600; }
-.tp-inspector-heading span { color: var(--ui-content-tertiary); font-size: 10px; }
-
-.tp-selected {
-  padding: 5px 8px;
-  border-radius: 7px;
-  background: color-mix(in oklab, var(--ui-action-accent) 12%, transparent);
-  color: var(--ui-content-accent, var(--ui-action-accent));
-  font-weight: 600;
-}
-
-.tp-fields {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px 10px;
-  margin: 0;
-}
-
-.tp-fields dt { color: var(--ui-content-tertiary); font-size: 10px; }
-.tp-fields dd {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--ui-content-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tp-tag {
-  --tp-tag-color: var(--ui-action-accent);
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 20px;
-  padding: 0 14px 0 7px;
-  color: var(--ui-content-primary);
-  font-size: 10.5px;
-  isolation: isolate;
-  filter: drop-shadow(0 0 0.5px color-mix(in oklab, black 25%, transparent));
-}
-
-.tp-tag::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: color-mix(in oklab, var(--tp-tag-color) 12%, var(--tp-card));
-  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 12px 0 6px / 0 stretch;
-  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 12px 0 6px / 0 stretch;
-}
-
-.tp-tag-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tp-tag-color);
-}
-
-.tp-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tp-actions .tp-button {
-  pointer-events: none;
-}
-
-.tp-input {
-  display: flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--ui-border-control, var(--tp-edge));
-  border-radius: 7px;
-  background: var(--tp-canvas);
-  color: var(--ui-content-tertiary);
-}
-
-.tp-slider {
-  position: relative;
-  height: 4px;
-  margin: 6px 2px 2px;
-  border-radius: 2px;
-  background: color-mix(in oklab, var(--ui-content-primary) 12%, transparent);
-}
-
-.tp-slider-fill {
-  position: absolute;
-  inset: 0 40% 0 0;
-  border-radius: inherit;
-  background: var(--ui-action-accent);
-}
-
-.tp-slider-thumb {
-  position: absolute;
-  top: 50%;
-  left: 60%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: white;
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, black 25%, transparent), 0 1px 3px color-mix(in oklab, black 25%, transparent);
-  translate: -50% -50%;
-}
-
-/* a92: no dim/blur behind Settings while on Appearance — live theme, shadow
-   and background edits must be visible on the real app. */
-.dialog-backdrop.app-settings-backdrop.is-live-preview:is(*, #a92-live) {
-  background: transparent;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
 /* a92: settings content must not scroll while dragging a slider. Measured in
    Electron: each slider update jumped .app-settings-content by +125px with no
    JS scroll call and no element size change — Chromium scroll anchoring
@@ -18419,7 +18104,140 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
   overflow-anchor: none;
 }
 
-.app-settings-theme-preview .tp-window { grid-template-columns: 100px minmax(0, 1fr) 236px; }
-.tp-actions { flex-wrap: nowrap; }
-.tp-actions .tp-button { min-width: 0; white-space: nowrap; }
-.tp-card-caption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* a93: tag-chip shape follows the corner-radius tier (left corners, shoulders
+   and nose rounded in sync; level 2 keeps the a82 SVG). */
+:root[data-radius="0"] .app-shell[data-shell-layout="islands"] :is(.tag-chip, .filter-tag-chip)::before,
+:root[data-radius="0"] .tp-tag::before {
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0.5%200%20L69.78%200%20A0.5%200.5%200%200%201%2070.15%200.16%20L79.69%2010.66%20A0.5%200.5%200%200%201%2079.69%2011.34%20L70.15%2021.84%20A0.5%200.5%200%200%201%2069.78%2022%20L0.5%2022%20A0.5%200.5%200%200%201%200%2021.5%20L0%200.5%20A0.5%200.5%200%200%201%200.5%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w, 12px) 0 6px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0.5%200%20L69.78%200%20A0.5%200.5%200%200%201%2070.15%200.16%20L79.69%2010.66%20A0.5%200.5%200%200%201%2079.69%2011.34%20L70.15%2021.84%20A0.5%200.5%200%200%201%2069.78%2022%20L0.5%2022%20A0.5%200.5%200%200%201%200%2021.5%20L0%200.5%20A0.5%200.5%200%200%201%200.5%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w, 12px) 0 6px / 0 stretch;
+}
+:root[data-radius="1"] .app-shell[data-shell-layout="islands"] :is(.tag-chip, .filter-tag-chip)::before,
+:root[data-radius="1"] .tp-tag::before {
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3.5%200%20L68.45%200%20A3.5%203.5%200%200%201%2071.04%201.15%20L79.1%2010.01%20A1.47%201.47%200%200%201%2079.1%2011.99%20L71.04%2020.85%20A3.5%203.5%200%200%201%2068.45%2022%20L3.5%2022%20A3.5%203.5%200%200%201%200%2018.5%20L0%203.5%20A3.5%203.5%200%200%201%203.5%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w, 12px) 0 6px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3.5%200%20L68.45%200%20A3.5%203.5%200%200%201%2071.04%201.15%20L79.1%2010.01%20A1.47%201.47%200%200%201%2079.1%2011.99%20L71.04%2020.85%20A3.5%203.5%200%200%201%2068.45%2022%20L3.5%2022%20A3.5%203.5%200%200%201%200%2018.5%20L0%203.5%20A3.5%203.5%200%200%201%203.5%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w, 12px) 0 6px / 0 stretch;
+}
+:root[data-radius="3"] .app-shell[data-shell-layout="islands"] :is(.tag-chip, .filter-tag-chip)::before,
+:root[data-radius="3"] .tp-tag::before {
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M9%200%20L66.02%200%20A9%209%200%200%201%2072.68%202.95%20L77.69%208.46%20A3.78%203.78%200%200%201%2077.69%2013.54%20L72.68%2019.05%20A9%209%200%200%201%2066.02%2022%20L9%2022%20A9%209%200%200%201%200%2013%20L0%209%20A9%209%200%200%201%209%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 9 fill / 0 var(--tag-tip-w, 12px) 0 9px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M9%200%20L66.02%200%20A9%209%200%200%201%2072.68%202.95%20L77.69%208.46%20A3.78%203.78%200%200%201%2077.69%2013.54%20L72.68%2019.05%20A9%209%200%200%201%2066.02%2022%20L9%2022%20A9%209%200%200%201%200%2013%20L0%209%20A9%209%200%200%201%209%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 9 fill / 0 var(--tag-tip-w, 12px) 0 9px / 0 stretch;
+}
+
+/* ── a93: custom-theme islands surface overrides ───────────────────────────
+   Built-in profiles derive the island surfaces from canvas/pane/raised. A
+   custom theme may pin them via --ui-island-* (set inline on :root by the
+   theme provider only when overridden; the attribute match keeps the
+   derived formulas untouched otherwise). */
+:root[style*="--ui-island-backdrop:"] .app-shell[data-shell-layout="islands"]:is(*, #a93-island) {
+  --island-backdrop: var(--ui-island-backdrop);
+}
+
+:root[style*="--ui-island-canvas:"] .app-shell[data-shell-layout="islands"]:is(*, #a93-island) {
+  --island-canvas: var(--ui-island-canvas);
+}
+
+:root[style*="--ui-island-border:"] .app-shell[data-shell-layout="islands"]:is(*, #a93-island) {
+  --island-border: var(--ui-island-border);
+}
+
+:root[style*="--ui-island-card:"] .app-shell[data-shell-layout="islands"] .asset-card:is(*, #a93-island) {
+  background-color: var(--ui-island-card);
+}
+
+/* ── a93: custom-theme editor preview — accurate islands miniature ────────
+   Proportions like the real app (centre largest, sidebar = inspector).
+   Island surfaces (--tp-backdrop/panel/canvas/card/edge) are sampled from the
+   live app by ThemeColorSettings, so they are the exact painted colours;
+   text, accent, accent-soft and raised use the real tokens directly. */
+.app-settings-theme-preview .tp-window {
+  --tp-line: color-mix(in oklab, var(--ui-content-primary) 16%, transparent);
+  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 1px 2px color-mix(in oklab, black 6%, transparent),
+    0 6px 16px -8px color-mix(in oklab, black 20%, transparent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.3fr) minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border-radius: calc(14px * var(--ui-radius-scale, 1));
+  background: var(--tp-backdrop, var(--ui-surface-canvas));
+  box-shadow: inset 0 0 0 1px var(--tp-edge, transparent);
+  color: var(--ui-content-primary);
+  font-size: 11px;
+}
+
+:root[data-theme="dark"] .app-settings-theme-preview .tp-window {
+  --tp-shadow: 0 0 0 0.5px var(--tp-edge), 0 6px 16px -8px color-mix(in oklab, black 50%, transparent);
+}
+
+.tp-island {
+  min-width: 0;
+  border-radius: calc(11px * var(--ui-radius-scale, 1));
+  background: var(--tp-panel, var(--ui-surface-pane));
+  box-shadow: var(--tp-shadow);
+}
+
+.tp-nav { display: grid; align-content: start; gap: 4px; padding: 10px 7px; }
+.tp-nav-row { display: flex; align-items: center; gap: 6px; height: 20px; padding: 0 6px; border-radius: calc(6px * var(--ui-radius-scale, 1)); }
+.tp-nav-row i { flex: none; width: 9px; height: 9px; border-radius: calc(3px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
+.tp-nav-row b { flex: 1; height: 4px; border-radius: calc(2px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
+.tp-nav-row b.is-short { flex: 0 0 55%; }
+.tp-nav-row.is-active { background: var(--ui-action-accent-soft); }
+.tp-nav-row.is-active i, .tp-nav-row.is-active b { background: var(--ui-action-accent); }
+.tp-nav-label { width: 40%; height: 3px; margin: 8px 6px 2px; border-radius: calc(2px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 10%, transparent); }
+
+.tp-main { display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 8px; background: var(--tp-canvas, var(--ui-surface-raised)); }
+.tp-toolstrip { display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; border-radius: calc(7px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent); }
+.tp-pill { width: 34px; height: 12px; border-radius: 999px; background: var(--tp-line); }
+.tp-pill.is-accent { background: var(--ui-action-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-action-accent) 35%, transparent); }
+.tp-toolstrip-spacer { flex: 1; }
+.tp-dot { width: 12px; height: 12px; border-radius: calc(4px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
+
+.tp-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 8px; }
+.tp-card { min-width: 0; overflow: hidden; border-radius: calc(10px * var(--ui-radius-scale, 1)); background: var(--tp-card, var(--ui-surface-raised)); box-shadow: 0 0 0 0.5px var(--tp-edge), 0 2px 6px -3px color-mix(in oklab, black 16%, transparent); }
+.tp-card.is-selected { box-shadow: 0 0 0 2px var(--ui-action-accent); }
+.tp-card-media { aspect-ratio: 4 / 3; background:
+  radial-gradient(circle at 30% 35%, color-mix(in oklab, var(--ui-action-accent) 55%, white) 0 16%, transparent 17%),
+  linear-gradient(160deg, color-mix(in oklab, var(--ui-action-accent) 40%, var(--tp-card, white)), color-mix(in oklab, var(--ui-content-primary) 16%, var(--tp-card, white))); }
+.tp-card-media.is-alt { background: linear-gradient(160deg, color-mix(in oklab, orange 45%, var(--tp-card, white)), color-mix(in oklab, tomato 35%, var(--tp-card, white))); }
+.tp-card-media.is-alt2 { background: linear-gradient(160deg, color-mix(in oklab, mediumseagreen 40%, var(--tp-card, white)), color-mix(in oklab, deepskyblue 40%, var(--tp-card, white))); }
+.tp-card-caption { display: grid; gap: 3px; min-width: 0; padding: 7px 8px 8px; }
+.tp-card-caption strong { overflow: hidden; font-size: 10.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.tp-card-caption span { overflow: hidden; color: var(--ui-content-tertiary); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tp-card-caption b, .tp-card-caption i { display: block; width: 70%; height: 5px; border-radius: calc(3px * var(--ui-radius-scale, 1)); background: var(--tp-line); }
+.tp-card-caption i { width: 45%; height: 4px; opacity: 0.7; }
+
+.tp-inspector { display: grid; align-content: start; gap: 5px; padding: 8px; }
+.tp-inspector-thumb { aspect-ratio: 4 / 3; border-radius: calc(8px * var(--ui-radius-scale, 1)); background:
+  radial-gradient(circle at 30% 35%, color-mix(in oklab, var(--ui-action-accent) 55%, white) 0 16%, transparent 17%),
+  linear-gradient(160deg, color-mix(in oklab, var(--ui-action-accent) 40%, var(--tp-card, white)), color-mix(in oklab, var(--ui-content-primary) 16%, var(--tp-card, white))); }
+.tp-inspector-name { overflow: hidden; margin-top: 2px; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.tp-inspector-meta { overflow: hidden; color: var(--ui-content-tertiary); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.tp-inspector-section { margin-top: 4px; color: var(--ui-content-tertiary); font-size: 9px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.tp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tp-tag { --tp-tag-color: royalblue; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 12px 0 6px; color: var(--ui-content-primary); font-size: 10px; isolation: isolate; filter: drop-shadow(0 0 0.5px color-mix(in oklab, black 25%, transparent)); }
+.tp-tag.is-alt { --tp-tag-color: seagreen; }
+.tp-tag::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in oklab, var(--tp-tag-color) 10%, var(--tp-panel, white));
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 11px 0 6px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 11px 0 6px / 0 stretch; }
+.tp-tag-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tp-tag-color); }
+.tp-stars { display: flex; gap: 3px; margin-top: 3px; }
+.tp-stars i { width: 9px; height: 9px; background: var(--tp-line); clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.tp-stars i.is-on { background: var(--ui-action-accent); }
+.tp-description { padding: 6px 7px; border-radius: calc(6px * var(--ui-radius-scale, 1)); background: color-mix(in oklab, var(--ui-content-primary) 4%, transparent); color: var(--ui-content-secondary); font-size: 10px; line-height: 1.35; }
+
+/* a93: Settings backdrop fades out only while an appearance control is being
+   adjusted (pointer/drag/input): ~180ms out, back in after ~600ms idle
+   (timer in use-appearance-adjusting.ts) with a 600ms ease. blur(0px)
+   instead of none keeps backdrop-filter interpolable. */
+.dialog-backdrop.app-settings-backdrop {
+  transition:
+    background-color 600ms ease,
+    -webkit-backdrop-filter 600ms ease,
+    backdrop-filter 600ms ease;
+}
+
+.dialog-backdrop.app-settings-backdrop.is-adjusting:is(*, #a93-adjusting) {
+  background-color: transparent;
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  transition-duration: 180ms;
+}

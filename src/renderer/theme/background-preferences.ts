@@ -60,6 +60,7 @@ const defaultPreferences = (): BackgroundPreferences => ({
   imageOpacity: 0.8,
   showInMainPanel: false,
   panelOpacity: DEFAULT_PANEL_OPACITY,
+  enabled: true,
 });
 
 export const DEFAULT_BACKGROUND_PREFERENCES: BackgroundPreferences =
@@ -131,6 +132,8 @@ export const backgroundPreferencesSchema = z.strictObject({
   /** Also paint the wallpaper behind the centre (main) panel. Default off. */
   showInMainPanel: z.boolean().default(false),
   /** Opacity of the three panels when they show the wallpaper. */
+  /** Show the wallpaper. Off hides it without deleting the image. */
+  enabled: z.boolean().default(true),
   panelOpacity: z.number().finite().min(MIN_PANEL_OPACITY).max(1).default(DEFAULT_PANEL_OPACITY),
 });
 
@@ -214,6 +217,8 @@ export function normalizeBackgroundPreferences(
       record.overlayOpacity,
     ),
     showInMainPanel: record.showInMainPanel === true,
+    // Records from before the toggle existed: on (the image was showing).
+    enabled: record.enabled !== false,
     panelOpacity: typeof record.panelOpacity === 'number' && Number.isFinite(record.panelOpacity)
       ? Math.min(1, Math.max(MIN_PANEL_OPACITY, record.panelOpacity))
       : DEFAULT_PANEL_OPACITY,
@@ -321,7 +326,9 @@ export function applyBackgroundPreferences(
   const root = document.documentElement;
   if (!root) return;
 
-  const normalized = normalizeBackgroundPreferences(preferences);
+  const stored = normalizeBackgroundPreferences(preferences);
+  // Disabled = render exactly as if no image were set (image kept in storage).
+  const normalized = stored.enabled ? stored : { ...stored, imageDataUrl: null };
   // The background color is gone in v3; let the token default (surface canvas)
   // own the variable so a stale v2 inline value cannot leak through.
   root.style.removeProperty('--ui-background-color');

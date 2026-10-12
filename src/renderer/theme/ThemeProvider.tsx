@@ -21,7 +21,7 @@ import {
   saveCustomTheme,
   type CustomTheme,
 } from './custom-theme';
-import { CUSTOM_THEME_COLOR_TOKENS, DEFAULT_CUSTOM_THEME } from './custom-theme';
+import { CUSTOM_THEME_OVERRIDE_TOKENS, DEFAULT_CUSTOM_THEME } from './custom-theme';
 import {
   activeUserTheme as findActiveUserTheme,
   addUserTheme,
@@ -168,7 +168,7 @@ export function ThemeProvider({
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    for (const token of CUSTOM_THEME_COLOR_TOKENS) {
+    for (const token of CUSTOM_THEME_OVERRIDE_TOKENS) {
       root.style.removeProperty(token);
     }
     const composition = resolveEffectiveThemeTokens({

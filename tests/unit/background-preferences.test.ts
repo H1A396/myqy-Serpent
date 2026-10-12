@@ -52,6 +52,7 @@ describe('background preferences contract v3', () => {
       imageOpacity: 0.8,
       showInMainPanel: false,
       panelOpacity: 0.72,
+      enabled: true,
     });
     expect(backgroundPreferencesSchema.parse(DEFAULT_BACKGROUND_PREFERENCES)).toEqual(
       DEFAULT_BACKGROUND_PREFERENCES,
@@ -189,6 +190,7 @@ describe('background preferences contract v3', () => {
       imageOpacity: 0.8,
       showInMainPanel: false,
       panelOpacity: 0.72,
+      enabled: true,
     };
     expect(backgroundPreferencesSchema.parse(preferences)).toEqual(preferences);
     expect(validateBackgroundPreferences(preferences)).toBe(true);
@@ -220,6 +222,7 @@ describe('background preferences contract v3', () => {
       imageOpacity: 0.65,
       showInMainPanel: true,
       panelOpacity: 0.5,
+      enabled: true,
     };
 
     expect(saveBackgroundPreferences(preferences, storage)).toBe(true);
@@ -402,5 +405,13 @@ describe('panel opacity (a91)', () => {
     expect(mod.normalizeBackgroundPreferences({}).panelOpacity).toBe(0.72);
     expect(mod.normalizeBackgroundPreferences({ panelOpacity: 0.05 }).panelOpacity).toBe(mod.MIN_PANEL_OPACITY);
     expect(mod.normalizeBackgroundPreferences({ panelOpacity: 3 }).panelOpacity).toBe(1);
+  });
+});
+
+describe('background enabled toggle (a93)', () => {
+  it('migrates records without the flag to on and keeps an explicit off', async () => {
+    const mod = await import('../../src/renderer/theme/background-preferences');
+    expect(mod.normalizeBackgroundPreferences({ mode: 'cover' }).enabled).toBe(true);
+    expect(mod.normalizeBackgroundPreferences({ enabled: false }).enabled).toBe(false);
   });
 });

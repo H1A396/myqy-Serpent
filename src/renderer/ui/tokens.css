@@ -137,6 +137,8 @@
   --ui-radius-dialog: 10px;
   --ui-radius-overlay: 10px;
   --ui-radius-pill: 999px;
+  /* Corner-radius tier multiplier for hard-coded radii (radius-preferences). */
+  --ui-radius-scale: 1;
   --ui-border-width-hairline: 1px;
   --ui-border-width-focus: 2px;
 

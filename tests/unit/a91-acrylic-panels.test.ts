@@ -21,7 +21,9 @@ describe('a92 settings live preview', () => {
     expect(css).toMatch(/\.app-settings-content,\s*\.app-settings-content \* \{\s*overflow-anchor: none;/);
   });
 
-  it('drops the backdrop dim/blur on the Appearance tab', () => {
-    expect(css).toMatch(/\.dialog-backdrop\.app-settings-backdrop\.is-live-preview[^{]*\{[^}]*background: transparent;[^}]*backdrop-filter: none;/);
+  it('fades the backdrop only while adjusting (a93)', () => {
+    expect(css).toMatch(/\.dialog-backdrop\.app-settings-backdrop\.is-adjusting[^{]*\{[^}]*background-color: transparent;[^}]*transition-duration: 180ms;/);
+    expect(css).not.toMatch(/is-live-preview/);
   });
+
 });

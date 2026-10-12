@@ -38,10 +38,17 @@ export function WorkspaceTabOutline(): ReactNode {
       const cs = getComputedStyle(tab);
       const tabs = tab.closest(".workspace-tabs");
       const tcs = tabs ? getComputedStyle(tabs) : null;
-      const scoop = readPx(
-        tcs?.getPropertyValue("--workspace-tab-scoop") ?? "",
-        FALLBACK_SCOOP,
-      );
+      // The scoop is a calc() (scaled by the corner-radius tier), so resolve
+      // it through layout instead of parsing the custom property text.
+      let scoop = readPx(tcs?.getPropertyValue("--workspace-tab-scoop") ?? "", Number.NaN);
+      if (!Number.isFinite(scoop) && tabs) {
+        const probe = document.createElement("span");
+        probe.style.cssText = "position:absolute;visibility:hidden;height:0;width:var(--workspace-tab-scoop)";
+        tabs.appendChild(probe);
+        scoop = probe.getBoundingClientRect().width;
+        probe.remove();
+      }
+      if (!Number.isFinite(scoop)) scoop = FALLBACK_SCOOP;
       const radius = readPx(cs.borderTopLeftRadius, FALLBACK_RADIUS);
       const rect = tab.getBoundingClientRect();
 
@@ -83,8 +90,12 @@ export function WorkspaceTabOutline(): ReactNode {
       .closest(".app-shell")
       ?.querySelector(":scope > .workspace") as HTMLElement | null;
     if (workspace) ro.observe(workspace);
+    // Corner-radius tier changes restyle the tab without resizing it.
+    const mo = new MutationObserver(measure);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-radius"] });
     return () => {
       ro.disconnect();
+      mo.disconnect();
       workspace?.style.removeProperty("--tab-seam-hole-left");
       workspace?.style.removeProperty("--tab-seam-hole-right");
     };

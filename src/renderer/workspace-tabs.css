@@ -36,9 +36,9 @@
   max-width: 100%;
   gap: 0;
   height: auto;
-  --workspace-tab-curve: calc(var(--ui-space-4) - 2px);
+  --workspace-tab-curve: calc((var(--ui-space-4) - 2px) * var(--ui-radius-scale, 1));
   /* Bottom scoop feet — between original ~14px curve and prior 24px. */
-  --workspace-tab-scoop: 18px;
+  --workspace-tab-scoop: max(2px, calc(18px * var(--ui-radius-scale, 1)));
   --workspace-tab-font-size: calc(12.5px * var(--ui-font-scale));
   /* Chrome around a title (82px = 2px borders, 12+8px select padding, 16px
      icon, 8px gap, 22px close chip, 8px tab padding, 6px rounding slack). */

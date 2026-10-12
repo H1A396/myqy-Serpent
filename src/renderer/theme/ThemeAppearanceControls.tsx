@@ -305,6 +305,7 @@ export function BackgroundSettings(): ReactNode {
       const saved = setBackgroundPreferences({
         ...backgroundPreferences,
         imageDataUrl: result.dataUrl,
+        enabled: true,
         imageSource: {
           fileName: file.name,
           width: result.width,
@@ -345,6 +346,18 @@ export function BackgroundSettings(): ReactNode {
 
   return (
     <div className="app-settings-background-settings">
+      <div className="app-settings-row app-settings-background-enabled">
+        <div className="app-settings-row-copy">
+          <strong>{t('settings.backgroundEnabled')}</strong>
+          <span>{t('settings.backgroundEnabledHint')}</span>
+        </div>
+        <Switch
+          aria-label={t('settings.backgroundEnabled')}
+          checked={backgroundPreferences.enabled}
+          disabled={backgroundPreferences.imageDataUrl === null}
+          onCheckedChange={(checked) => update({ enabled: checked })}
+        />
+      </div>
       <BackgroundImagePanel
         busy={busy}
         error={error}
@@ -375,7 +388,7 @@ export function BackgroundSettings(): ReactNode {
         <Switch
           aria-label={t('settings.backgroundMainPanel')}
           checked={backgroundPreferences.showInMainPanel}
-          disabled={backgroundPreferences.imageDataUrl === null}
+          disabled={backgroundPreferences.imageDataUrl === null || !backgroundPreferences.enabled}
           onCheckedChange={(checked) => update({ showInMainPanel: checked })}
         />
       </div>
@@ -392,7 +405,7 @@ export function BackgroundSettings(): ReactNode {
           valueText={`${Math.round(backgroundPreferences.imageOpacity * 100)}%`}
         />
       </div>
-      {backgroundPreferences.showInMainPanel && backgroundPreferences.imageDataUrl !== null ? (
+      {backgroundPreferences.showInMainPanel && backgroundPreferences.enabled && backgroundPreferences.imageDataUrl !== null ? (
         <div className="app-settings-background-opacity app-settings-background-panel-opacity">
           <Slider
             aria-label={t('settings.backgroundPanelOpacity')}
