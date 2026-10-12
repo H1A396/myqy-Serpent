@@ -16729,6 +16729,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .inspector-content {
   padding: 12px 12px 20px;
+  /* Scrollbar was eating the right edge (L visual 12 vs R 12+sb) — reserve
+     gutter on both edges so hero preview L/R insets match. */
+  scrollbar-gutter: stable both-edges;
 }
 
 /* 3) Caption padding tightened */
@@ -16857,6 +16860,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   margin-bottom: -2px;
   overflow-y: visible;
 }
+
+/* ==== a48: inspector preview L/R padding match ============================
+   Scrollbar consumed the right inset (CSS pad 12/12 → visual 12 vs 22).
+   scrollbar-gutter: stable both-edges on .inspector-content equalizes. */
 
 /* ==== a45: deeper backdrop + soft tab stroke ==============================
    Backdrop one more subtle step darker. Tab/seam stroke pulls border ink
