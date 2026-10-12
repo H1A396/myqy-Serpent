@@ -16886,17 +16886,14 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a60: tag tip shoulder fillets + self-reviewed mask ==================
-   a59 failed self-review: tip nose had an arc but shoulders (body→tip joints)
-   stayed sharp; mask-box-image stretch warped the tip; older islands rules
-   still applied border-radius/border on .tag-chip.
-   Fix: split chrome — CSS R=2 body (::before) + fixed-size tip SVG mask
-   (::after) so shoulders/nose never stretch. Tip SVG includes R≈2 shoulder
-   fillets + R=2 nose. Kill rectangular border/radius. Soft a58 tints kept. */
+/* ==== a61: straight tip slopes, slightly larger left radius ================
+   a60 slopes used cubic C-curves (bowed). Owner wants LONG diagonals straight;
+   keep tiny joint fillets + rounded nose only. Left body R=2 → R=3.
+   Tip flat band shortened to 4px so body join sits before shoulder fillet. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
-  --tag-tip-flat: 5px; /* opaque join band inside tip SVG */
+  --tag-tip-flat: 4px; /* join band ends before shoulder fillet (~x=4.29) */
   --tag-chip-fill: color-mix(
     in srgb,
     var(--tag-chip-color, var(--ui-content-primary)) 5%,
@@ -16916,7 +16913,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* Body: native R=2 on the left; square right tucked under tip's flat band */
+/* Body: native R=3 on the left; square right tucked under tip's flat band */
 .app-shell[data-shell-layout="islands"] .tag-chip::before,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip::before {
   content: "";
@@ -16925,13 +16922,13 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   bottom: 0;
   left: 0;
   right: calc(var(--tag-tip-w) - var(--tag-tip-flat));
-  border-radius: 2px 0 0 2px;
+  border-radius: 3px 0 0 3px;
   background: var(--tag-chip-fill);
   z-index: 0;
   pointer-events: none;
 }
 
-/* Tip: fixed aspect mask — shoulders + nose never warp with chip width */
+/* Tip: fixed mask — straight L slopes; A fillets only at joints + nose */
 .app-shell[data-shell-layout="islands"] .tag-chip::after,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip::after {
   content: "";
@@ -16941,11 +16938,11 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   bottom: 0;
   width: var(--tag-tip-w);
   background: var(--tag-chip-fill);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H5C8%200%209.2%201.8%2010.2%204.2L13.8%209.2A2%202%200%200%201%2013.8%2012.8L10.2%2017.8C9.2%2020.2%208%2022%205%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H4.29A1.5%201.5%200%200%200%205.45%200.55L12.96%209.73A2%202%200%200%200%2012.96%2012.27L5.45%2021.45A1.5%201.5%200%200%200%204.29%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
   -webkit-mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
-  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H5C8%200%209.2%201.8%2010.2%204.2L13.8%209.2A2%202%200%200%201%2013.8%2012.8L10.2%2017.8C9.2%2020.2%208%2022%205%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H4.29A1.5%201.5%200%200%200%205.45%200.55L12.96%209.73A2%202%200%200%200%2012.96%2012.27L5.45%2021.45A1.5%201.5%200%200%200%204.29%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
   mask-position: center;
