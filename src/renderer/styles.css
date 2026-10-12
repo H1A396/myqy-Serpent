@@ -15436,6 +15436,63 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
+/* Title-bar controls align to island edges (grid columns are full-bleed;
+   islands are inset by --island-gap). Search was overhanging the canvas
+   island by one gap into the inspector column. No soft title-bar fill. */
+.app-shell[data-shell-layout="islands"] .toolbar-nav-cluster {
+  padding-left: var(--island-gap);
+  align-items: center;
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-cluster {
+  padding-left: var(--island-gap);
+  padding-right: var(--island-gap);
+  align-items: center;
+  gap: 10px;
+}
+/* workspace-tabs.css zeroes L/R padding when tabs exist (higher specificity).
+   Re-assert island-gap so search lines up with the canvas island edges. */
+.app-shell[data-shell-layout="islands"]:not(.left-collapsed) .toolbar-workspace-cluster:has(.workspace-tabs) {
+  padding-left: var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"]:not(.right-collapsed) .toolbar-workspace-cluster:has(.workspace-tabs) {
+  padding-right: var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"] .toolbar-inspector-cluster {
+  /* Sit at the inspector island's leading edge so search | gap | toggle read
+     as one aligned control row (captions stay reserved on the right). */
+  justify-content: flex-start;
+  padding-left: var(--island-gap);
+  align-items: center;
+  gap: 8px;
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-search,
+.app-shell[data-shell-layout="islands"] .search-control-wrap {
+  height: var(--shell-control-height);
+  align-self: center;
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-search {
+  margin-left: auto;
+}
+/* Shared vertical center for search neighbors: settings/main-menu, panel
+   toggles, history, library switcher. */
+.app-shell[data-shell-layout="islands"] .toolbar-nav-cluster > .tool-button,
+.app-shell[data-shell-layout="islands"] .library-switcher-trigger,
+.app-shell[data-shell-layout="islands"] .scope-history-button,
+.app-shell[data-shell-layout="islands"] .main-menu-trigger,
+.app-shell[data-shell-layout="islands"] .app-settings-entry,
+.app-shell[data-shell-layout="islands"] .app-settings-entry .tool-button,
+.app-shell[data-shell-layout="islands"] .toolbar-inspector-cluster .tool-button {
+  align-self: center;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-leading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--shell-toolbar-height);
+}
+
 .app-shell[data-shell-layout="islands"] > .navigation-pane,
 .app-shell[data-shell-layout="islands"] > .inspector-pane,
 .app-shell[data-shell-layout="islands"] > .workspace {
