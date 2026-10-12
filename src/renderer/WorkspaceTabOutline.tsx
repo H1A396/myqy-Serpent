@@ -9,13 +9,19 @@ function readPx(raw: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Snap CSS px length to a device-pixel multiple so 1px strokes stay 1 device px. */
+function snapCssPx(cssPx: number): number {
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  return Math.round(cssPx * dpr) / dpr;
+}
+
 /**
  * Single-geometry chrome for the active tab: one SVG path paints both fill and
  * stroke (open bottom into the toolstrip). No CSS scoop fills / border rings.
  *
- * Also publishes --tab-seam-hole-left/right on the workspace island so its top
- * border is interrupted under the chrome (Chrome-style continuous edge: SVG
- * scoops own the join; island hairline continues outside the tips only).
+ * Stroke ink/weight match island panel borders (--island-border +
+ * --island-hairline-w). Publishes --tab-seam-hole-left/right so the workspace
+ * top border is interrupted under the chrome with the same ink/width.
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -42,11 +48,12 @@ export function WorkspaceTabOutline(): ReactNode {
       const padBottom = readPx(cs.paddingBottom, 0);
       const rect = tab.getBoundingClientRect();
       const faceH = Math.max(rect.height - padBottom, scoop + 1);
+      // Integer device pixels → viewBox matches CSS px grid (DPR=1 or 2).
       setBox({
-        w: rect.width,
-        h: faceH,
-        scoop,
-        radius,
+        w: snapCssPx(rect.width),
+        h: snapCssPx(faceH),
+        scoop: snapCssPx(scoop),
+        radius: snapCssPx(radius),
       });
 
       // Tabs live in the toolbar; the island they join is a sibling .workspace.
@@ -55,8 +62,8 @@ export function WorkspaceTabOutline(): ReactNode {
         ?.querySelector(":scope > .workspace") as HTMLElement | null;
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
-        // Pull the seam hole 0.5px inward so each tip sits under the hairline
-        // segment — buries butt-cap AA without a second geometry.
+        // Pull the seam hole 0.5px inward so each tip sits under the panel
+        // border segment — buries butt-cap AA without a second geometry.
         const tipInset = 0.5;
         const leftTip = rect.left - scoop - wr.left + tipInset;
         const rightTip = rect.right + scoop - wr.left - tipInset;

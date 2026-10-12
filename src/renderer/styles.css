@@ -16772,18 +16772,17 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* ==== a42: soft tab chrome stroke on current islands surfaces =============
-   Keep a41 single-path fill+stroke. Retune ink to the soft hairline language
-   (not the heavier panel --island-border) so the outline sits on the muted
-   toolstrip/tab-fill without floating. Seam segments share the same stroke
-   token so tips stay continuous. */
+/* ==== a43: tab chrome = island panel border language =====================
+   Single-path fill+stroke. Ink + weight match panel edges exactly:
+   color --island-border, width --island-hairline-w (1px). No paint-order
+   trick (that halved visible stroke vs CSS borders). Seam uses the same
+   token + width so tips meet the island top as one continuous edge. */
 
 .app-shell[data-shell-layout="islands"] {
-  /* Subtle internal-edge ink — same family as toolstrip/card hairlines. */
-  --island-tab-stroke: var(--island-hairline);
+  --island-tab-stroke: var(--island-border);
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: var(--island-hairline);
+  --island-tab-stroke: var(--island-border);
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab,
@@ -16814,19 +16813,23 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 .app-shell[data-shell-layout="islands"] .workspace-tab-outline {
   z-index: 0;
+  /* Crisp device pixels: avoid subpixel SVG box stretching the stroke. */
+  shape-rendering: auto;
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab-outline-path {
   fill: var(--island-tab-fill);
   stroke: var(--island-tab-stroke);
-  stroke-width: 1px;
-  /* Fill covers the inner half of the centered stroke → edge reads outside-only,
-     less muddy AA against the soft tab face. */
-  paint-order: stroke fill;
-  shape-rendering: geometricPrecision;
+  /* Same effective weight as panel `border: var(--island-hairline-w) solid …` */
+  stroke-width: var(--island-hairline-w);
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  /* Default paint-order (fill then stroke): full 1px reads like CSS borders.
+     Do NOT use stroke→fill — that hides the inner half and looks thinner. */
 }
 
-/* Chrome-style seam: same ink as tab stroke (not the heavier panel border). */
+/* Seam = same ink + same 1px as panel / tab stroke. */
 .app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace {
   border-top-color: transparent;
   background-color: var(--island-canvas);
