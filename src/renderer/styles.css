@@ -16354,9 +16354,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --island-radius: 16px;
   --island-card-radius: 10px;
   --island-group-gap: 12px;
-  --island-hairline-w: 1px;
-  --island-border: color-mix(in srgb, var(--ui-content-primary) 14%, transparent);
-  --island-hairline: color-mix(in srgb, var(--ui-content-primary) 9%, transparent);
+  --island-hairline-w: 0.5px;
+  --island-border: color-mix(in srgb, var(--ui-content-primary) 7%, transparent);
+  --island-hairline: color-mix(in srgb, var(--ui-content-primary) 5%, transparent);
   --island-shadow: none;
 
   /* Stronger surface ladder: deep backdrop → opaque sides → bright canvas */
@@ -16384,8 +16384,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-border: color-mix(in srgb, white 14%, transparent);
-  --island-hairline: color-mix(in srgb, white 9%, transparent);
+  --island-border: color-mix(in srgb, white 7%, transparent);
+  --island-hairline: color-mix(in srgb, white 5%, transparent);
   --island-shadow: none;
   --island-backdrop: color-mix(in srgb, black 45%, var(--ui-surface-canvas));
   --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-pane) 70%, black);
@@ -17068,4 +17068,41 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .inspector-ai-badge {
   background: color-mix(in srgb, var(--accent) 24%, transparent);
   color: var(--accent);
+}
+
+/* ==== a72: soften border presence ========================================
+   Owner: borders felt too loud. Keep structure, drop contrast + weight.
+   Punchy accents (a70) and tag silhouette (a65–a67) unchanged. */
+.app-shell[data-shell-layout="islands"] {
+  --island-hairline-w: 0.5px;
+  --island-border: color-mix(in srgb, var(--ui-content-primary) 6%, transparent);
+  --island-hairline: color-mix(in srgb, var(--ui-content-primary) 4%, transparent);
+  /* Tab stroke follows quieter border */
+  --island-tab-stroke: color-mix(in srgb, var(--island-border) 45%, var(--island-backdrop));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-border: color-mix(in srgb, white 6%, transparent);
+  --island-hairline: color-mix(in srgb, white 4%, transparent);
+  --island-tab-stroke: color-mix(in srgb, var(--island-border) 45%, var(--island-backdrop));
+}
+
+/* Cards / chips / fields: quieter default strokes (selection accent stays loud). */
+.app-shell[data-shell-layout="islands"] .asset-card:not(.is-selected):not(:focus-visible) {
+  border-color: var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .text-field,
+.app-shell[data-shell-layout="islands"] .inspector-input,
+.app-shell[data-shell-layout="islands"] .inspector-textarea,
+.app-shell[data-shell-layout="islands"] .search-control-wrap,
+.app-shell[data-shell-layout="islands"] .tag-input-chip,
+.app-shell[data-shell-layout="islands"] .dimension-filter-popover,
+.app-shell[data-shell-layout="islands"] .filter-preset-chip:not(.is-active),
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  border-color: var(--island-hairline);
+}
+.app-shell[data-shell-layout="islands"] .text-field:focus,
+.app-shell[data-shell-layout="islands"] .inspector-input:focus,
+.app-shell[data-shell-layout="islands"] .inspector-textarea:focus,
+.app-shell[data-shell-layout="islands"] .search-control-wrap:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--island-hairline));
 }
