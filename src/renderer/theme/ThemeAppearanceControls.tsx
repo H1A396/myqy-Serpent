@@ -49,6 +49,12 @@ const PROFILE_LABELS = {
   notion: 'settings.themeProfileNotion',
   onedark: 'settings.themeProfileOnedark',
   code: 'settings.themeProfileCode',
+  azure: 'settings.themeProfileAzure',
+  teal: 'settings.themeProfileTeal',
+  jade: 'settings.themeProfileJade',
+  amber: 'settings.themeProfileAmber',
+  orchid: 'settings.themeProfileOrchid',
+  coral: 'settings.themeProfileCoral',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
