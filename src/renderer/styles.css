@@ -16883,22 +16883,20 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a57: flip tag tip right, × on tip, alt icon =========================
-   New stubby soft price-tag mask (not a56 Lucide tip-left+hole): rounded flat
-   body on the LEFT, short soft tip on the RIGHT. Text starts immediately in
-   the body; remove × sits in the tip zone. No color dots; soft tint retained. */
+/* ==== a58: softer tag colors, unified radii ================================
+   Quieter tint (lower chroma wash). Mask uses one radius language R=5:
+   left body A5 arcs + tip cubics with the same R-scale nose (no mixed sharp/soft).
+   Keep tip-right, × on tip, no dots. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   border: 0;
   border-radius: 0;
-  /* Left slice = rounded flat end; right slice = short tip; middle stretches */
-  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M8%202H40C49%202%2055.5%206.2%2060.5%2012C55.5%2017.8%2049%2022%2040%2022H8A6%206%200%200%201%202%2016V8A6%206%200%200%201%208%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 14 fill / 0 18px 0 10px / 0 stretch;
-  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M8%202H40C49%202%2055.5%206.2%2060.5%2012C55.5%2017.8%2049%2022%2040%2022H8A6%206%200%200%201%202%2016V8A6%206%200%200%201%208%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 14 fill / 0 18px 0 10px / 0 stretch;
-  /* Short left pad (body); room on right for tip + × */
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M7%202H40C46.5%202%2049.5%206.5%2053.5%2012C49.5%2017.5%2046.5%2022%2040%2022H7A5%205%200%200%201%202%2017V7A5%205%200%200%201%207%202Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 12 fill / 0 16px 0 9px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M7%202H40C46.5%202%2049.5%206.5%2053.5%2012C49.5%2017.5%2046.5%2022%2040%2022H7A5%205%200%200%201%202%2017V7A5%205%200%200%201%207%202Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 12 fill / 0 16px 0 9px / 0 stretch;
   padding-left: 8px;
   padding-right: 14px;
   filter: drop-shadow(
-    0 0 0.55px color-mix(in srgb, var(--ui-content-primary) 28%, transparent)
+    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) 18%, transparent)
   );
 }
 
@@ -16907,9 +16905,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   min-height: 22px;
   padding-top: 0;
   padding-bottom: 0;
+  /* Muted pastel wash — was 14%/20% (a57), now ~5%/8% */
   background: color-mix(
     in srgb,
-    var(--tag-chip-color, var(--ui-content-primary)) 14%,
+    var(--tag-chip-color, var(--ui-content-primary)) 5%,
     var(--island-surface-soft)
   );
   color: var(--ui-content-secondary);
@@ -16918,11 +16917,11 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .tag-chip:hover {
   background: color-mix(
     in srgb,
-    var(--tag-chip-color, var(--ui-content-primary)) 20%,
+    var(--tag-chip-color, var(--ui-content-primary)) 8%,
     var(--island-surface-soft)
   );
   filter: drop-shadow(
-    0 0 0.55px color-mix(in srgb, var(--ui-content-primary) 36%, transparent)
+    0 0 0.5px color-mix(in srgb, var(--ui-content-primary) 24%, transparent)
   );
 }
 
@@ -16930,15 +16929,13 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   display: none;
 }
 
-/* × lives in the right tip: pull into tip padding, keep hit target usable */
 .app-shell[data-shell-layout="islands"] .tag-chip-remove {
   order: 3;
   width: 14px;
   height: 14px;
   margin-left: 0;
-  /* Pull × into the pointed tip so it reads as “on the tip” */
   margin-right: -10px;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 .app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
   opacity: 1;
@@ -16957,7 +16954,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   padding-right: 14px;
   background: color-mix(
     in srgb,
-    var(--ui-content-primary) 6%,
+    var(--ui-content-primary) 4%,
     var(--island-surface-soft)
   );
   color: var(--ui-content-secondary);
@@ -16967,14 +16964,14 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  background: color-mix(in srgb, var(--accent) 16%, var(--island-surface-soft));
-  color: color-mix(in srgb, var(--accent) 70%, var(--ui-content-primary));
+  background: color-mix(in srgb, var(--accent) 10%, var(--island-surface-soft));
+  color: color-mix(in srgb, var(--accent) 55%, var(--ui-content-primary));
   filter: drop-shadow(
-    0 0 0.55px color-mix(in srgb, var(--accent) 40%, transparent)
+    0 0 0.5px color-mix(in srgb, var(--accent) 28%, transparent)
   );
 }
 
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  background: color-mix(in srgb, var(--accent) 24%, var(--island-surface-soft));
-  color: color-mix(in srgb, var(--accent) 55%, white);
+  background: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
+  color: color-mix(in srgb, var(--accent) 45%, white);
 }
