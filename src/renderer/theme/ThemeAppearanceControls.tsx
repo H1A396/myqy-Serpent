@@ -35,6 +35,12 @@ const PROFILE_LABELS = {
   ink: 'settings.themeProfileInk',
   lilac: 'settings.themeProfileLilac',
   citrus: 'settings.themeProfileCitrus',
+  paper: 'settings.themeProfilePaper',
+  slate: 'settings.themeProfileSlate',
+  film: 'settings.themeProfileFilm',
+  mono: 'settings.themeProfileMono',
+  blush: 'settings.themeProfileBlush',
+  olive: 'settings.themeProfileOlive',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
