@@ -2527,7 +2527,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   max-height: calc(var(--shell-chip-height) * 6 + 24px);
   overflow-y: auto;
   padding-right: 4px;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
 }
 
 .filter-tag-section-label {
@@ -3493,7 +3493,7 @@ input[type="range"] {
 :root[data-platform="windows"] .workspace-canvas {
   /* Reserve gutter up front on classic scrollbar platforms so justified /
      masonry layouts never lay out at (clientWidth + scrollbar) then overflow. */
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
 }
 
 .tag-management {
@@ -4314,7 +4314,7 @@ body.serpent-modal-open .app-shell {
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: stable both-edges;
   padding: 5px;
 }
 
@@ -15461,7 +15461,23 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 /* ---- Sidebar: macOS Photos / Finder ------------------------------------ */
 .app-shell[data-shell-layout="islands"] .navigation-scroll {
-  padding: 12px 10px 16px;
+  /* Equal L/R inset; selection spans the full tree-row so the disclosure
+     gutter does not leave a one-sided blank. */
+  padding: 12px 12px 16px;
+}
+.app-shell[data-shell-layout="islands"] .nav-tree-row {
+  border-radius: 10px;
+}
+.app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) {
+  background: var(--island-select);
+}
+.app-shell[data-shell-layout="islands"] .nav-tree-row:has(> .nav-row.is-active) > .nav-row.is-active {
+  background: transparent;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .nav-section-heading {
+  padding-left: 12px;
+  padding-right: 12px;
 }
 .app-shell[data-shell-layout="islands"] .nav-section {
   margin-top: var(--island-group-gap);
@@ -15469,7 +15485,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .nav-section-heading {
   height: 20px;
   margin: 0 0 4px;
-  padding: 0 10px;
+  padding: 0 12px;
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
   font-weight: 590;
@@ -15529,10 +15545,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 .app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
   height: 44px;
-  padding: 0 16px;
+  padding: 0 18px;
 }
 .app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
-  padding: 6px 16px 12px;
+  padding: 6px 18px 12px;
 }
 .app-shell[data-shell-layout="islands"] .workspace-title {
   gap: 8px;
@@ -15548,14 +15564,26 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-weight: 450;
 }
 
-/* SF-style segmented filter track */
+/* SF-style segmented filter track — soft Apple materials */
+.app-shell[data-shell-layout="islands"] {
+  --island-segment-track: color-mix(in srgb, var(--text) 5%, transparent);
+  --island-segment-hover: color-mix(in srgb, var(--text) 7%, transparent);
+  --island-segment-pill: var(--raised);
+  --island-segment-pill-shadow: 0 0.5px 1px rgb(0 0 0 / 6%), 0 0 0 0.5px rgb(0 0 0 / 4%);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
+  --island-segment-track: rgb(255 255 255 / 8%);
+  --island-segment-hover: rgb(255 255 255 / 11%);
+  --island-segment-pill: color-mix(in srgb, var(--ui-surface-raised) 88%, white);
+  --island-segment-pill-shadow: 0 0.5px 1px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(255 255 255 / 8%);
+}
 .app-shell[data-shell-layout="islands"] .dimension-filter-dims {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  background: var(--island-segment-track);
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn {
   min-height: 26px;
@@ -15569,19 +15597,42 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: var(--island-segment-hover);
   color: var(--text);
 }
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] {
-  background: var(--raised);
+  background: var(--island-segment-pill);
   color: var(--text);
   font-weight: 510;
-  box-shadow: 0 0.5px 1px rgb(0 0 0 / 8%), 0 0 0 0.5px var(--island-hairline);
+  box-shadow: var(--island-segment-pill-shadow);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] .icon {
+  color: var(--accent);
+}
+
+/* Selected ring: must beat the islands .asset-card border-color rule so the
+   accent stroke replaces the hairline (no gap) and follows border-radius. */
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  border-color: transparent;
+  outline: none;
+  border-radius: var(--island-card-radius);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card.is-selected,
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] .asset-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.app-shell[data-shell-layout="islands"] .asset-card.is-selected .asset-preview,
+.app-shell[data-shell-layout="islands"] .asset-card:focus-visible .asset-preview {
+  border-radius: var(--island-card-radius) var(--island-card-radius) 0 0;
 }
 
 /* ---- Gallery: Photos air + softer card chrome --------------------------- */
 .app-shell[data-shell-layout="islands"] .workspace-canvas {
-  padding: 14px 16px 24px;
+  /* Equal L/R; stable gutter so the scrollbar does not steal only the right inset. */
+  padding: 14px 18px 24px;
+  scrollbar-gutter: stable both-edges;
 }
 .app-shell[data-shell-layout="islands"] .justified-row {
   margin-bottom: 22px !important;
