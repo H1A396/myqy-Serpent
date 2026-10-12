@@ -1,7 +1,6 @@
 import { useCallback, useRef, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 
 import {
-  SHADOW_OFF_THRESHOLD,
   SHADOW_VALUE_MAX,
   SHADOW_VALUE_MIN,
   clampShadowValue,
@@ -25,12 +24,14 @@ export type ElevationPadProps = {
 };
 
 const KEY_STEP = 4;
+/** Thumb travel is inset from the pad edge so the sphere never collides with it. */
+const THUMB_INSET = 16;
 const KEY_STEP_LARGE = 12;
 
 /**
  * a87: 2D elevation trackpad. X = shadow size, Y = intensity (up = stronger).
- * Bottom-left corner (either axis ~0) = off. The pad renders a live preview
- * card using the picked values; the app's --elev-* vars update as you drag.
+ * Bottom-left corner (either axis ~0) = off. The pad itself floats and casts
+ * the chosen shadow (island math); the sphere thumb casts its own shadow.
  */
 export function ElevationPad({ preferences, onChange, labels }: ElevationPadProps) {
   const padRef = useRef<HTMLDivElement>(null);
@@ -44,8 +45,10 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (r.width <= 0 || r.height <= 0) return;
-      const x = (clientX - r.left) / r.width;
-      const y = 1 - (clientY - r.top) / r.height;
+      const w = Math.max(1, r.width - THUMB_INSET * 2);
+      const h = Math.max(1, r.height - THUMB_INSET * 2);
+      const x = (clientX - r.left - THUMB_INSET) / w;
+      const y = 1 - (clientY - r.top - THUMB_INSET) / h;
       onChange(clampShadowValue(x * SHADOW_VALUE_MAX), clampShadowValue(y * SHADOW_VALUE_MAX));
     },
     [onChange],
@@ -86,21 +89,17 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
     onChange(clampShadowValue(nextSize), clampShadowValue(nextIntensity));
   };
 
-  const previewStyle = {
+  const padStyle = {
     "--pad-elev-size": String(shadowPreferenceToMultiplier(size)),
     "--pad-elev-intensity": String(shadowPreferenceToMultiplier(intensity)),
+    "--pad-fx": String(size / SHADOW_VALUE_MAX),
+    "--pad-fy": String(1 - intensity / SHADOW_VALUE_MAX),
+    "--pad-inset": `${THUMB_INSET}px`,
   } as CSSProperties;
-  const offZone = `${(SHADOW_OFF_THRESHOLD / SHADOW_VALUE_MAX) * 100}%`;
 
   return (
     <div className="elevation-pad-field">
-      <div className="elevation-pad-body">
-        <span aria-hidden="true" className="elevation-pad-axis elevation-pad-axis-y">
-          <span>↑</span>
-          {Array.from(labels.intensity).map((ch, i) => (
-            <span key={i}>{ch}</span>
-          ))}
-        </span>
+      <div className="elevation-pad-stage">
         <div
           className={`elevation-pad${enabled ? "" : " is-off"}`}
           onLostPointerCapture={() => { dragging.current = false; }}
@@ -109,13 +108,20 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           ref={padRef}
-          style={{ ["--pad-off-zone" as string]: offZone } as CSSProperties}
+          style={padStyle}
         >
-          <div aria-hidden="true" className="elevation-pad-grid" />
-          <div aria-hidden="true" className="elevation-pad-preview" style={previewStyle}>
-            <span />
-            <span />
-          </div>
+          <span aria-hidden="true" className="elevation-pad-field-dots" />
+          <span aria-hidden="true" className="elevation-pad-guide elevation-pad-guide-x" />
+          <span aria-hidden="true" className="elevation-pad-guide elevation-pad-guide-y" />
+          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-y">
+            {labels.intensity}
+          </span>
+          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-x">
+            {labels.size}
+          </span>
+          <span aria-hidden="true" className="elevation-pad-label elevation-pad-label-off">
+            {labels.off}
+          </span>
           <div
             aria-label={labels.pad}
             aria-valuemax={SHADOW_VALUE_MAX}
@@ -125,17 +131,25 @@ export function ElevationPad({ preferences, onChange, labels }: ElevationPadProp
             className="elevation-pad-thumb"
             onKeyDown={onKeyDown}
             role="slider"
-            style={{ left: `${size}%`, top: `${100 - intensity}%` }}
             tabIndex={0}
-          />
+          >
+            <span aria-hidden="true" className="elevation-pad-thumb-shadow" />
+            <span aria-hidden="true" className="elevation-pad-sphere" />
+          </div>
         </div>
       </div>
-      <div aria-hidden="true" className="elevation-pad-foot">
-        <span className="elevation-pad-off-label">{labels.off}</span>
-        <span className="elevation-pad-axis elevation-pad-axis-x">{labels.size} →</span>
-        <span className="elevation-pad-readout">
-          {enabled ? labels.valueText(size, intensity) : labels.off}
-        </span>
+      <div aria-hidden="true" className="elevation-pad-readout">
+        {enabled ? (
+          <>
+            <span>{labels.size}</span>
+            <b>{size}</b>
+            <i />
+            <span>{labels.intensity}</span>
+            <b>{intensity}</b>
+          </>
+        ) : (
+          <span>{labels.off}</span>
+        )}
       </div>
     </div>
   );
