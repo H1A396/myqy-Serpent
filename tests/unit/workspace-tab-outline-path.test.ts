@@ -15,7 +15,6 @@ describe("workspaceTabOutlinePath", () => {
 
   it("clamps radius when the tab is narrow", () => {
     const d = workspaceTabOutlinePath(20, 40, 18, 14);
-    // radius min(14, 20/2, 40-18) = 10
     expect(d).toContain("A 10 10 0 0 1 10 0");
   });
 
@@ -27,7 +26,6 @@ describe("workspaceTabOutlinePath", () => {
 
   it("insets path so centered 1px stroke outer edge matches CSS silhouette", () => {
     const d = workspaceTabOutlinePath(120, 40, 18, 14, 0.5);
-    // Tips pulled inward by inset; scoop radius S-0.5; top at y=0.5; corners R-0.5
     expect(d).toContain("M -17.5 40");
     expect(d).toContain("A 17.5 17.5 0 0 0 0.5 22.5");
     expect(d).toContain("A 13.5 13.5 0 0 1 13.5 0.5");

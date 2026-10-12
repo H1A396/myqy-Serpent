@@ -12,12 +12,10 @@ function readPx(raw: string, fallback: number): number {
 }
 
 /**
- * Single-geometry chrome for the active tab: one SVG path paints fill + stroke.
- *
- * Geometry uses the live CSS tokens (--workspace-tab-scoop / border-radius) and
- * an inset path so the centered 1px stroke’s outer edge matches that silhouette.
- * Publishes --tab-seam-hole-* so the workspace top border is interrupted under
- * the chrome (no divider across the tab face).
+ * Active-tab chrome: one SVG path for tab fill + scoop/side/top stroke.
+ * Center-island top hairline outside scoops is a single full-width CSS stroke
+ * (not pieced L/R gradients) so thickness stays even; hole under the tab is
+ * covered with tab-fill only (no divider).
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -36,7 +34,6 @@ export function WorkspaceTabOutline(): ReactNode {
       const cs = getComputedStyle(tab);
       const tabs = tab.closest(".workspace-tabs");
       const tcs = tabs ? getComputedStyle(tabs) : null;
-      // Exact CSS constants — do not snap; snapping broke scoop symmetry vs tab box.
       const scoop = readPx(
         tcs?.getPropertyValue("--workspace-tab-scoop") ?? "",
         FALLBACK_SCOOP,
@@ -48,11 +45,20 @@ export function WorkspaceTabOutline(): ReactNode {
         .closest(".app-shell")
         ?.querySelector(":scope > .workspace") as HTMLElement | null;
 
-      // Tip Y = panel-top pixel center so 1px stroke shares the seam row.
       let faceH: number;
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
         faceH = Math.max(wr.top + 0.5 - rect.top, scoop + 1);
+        const leftTip = rect.left - scoop - wr.left;
+        const rightTip = rect.right + scoop - wr.left;
+        workspace.style.setProperty(
+          "--tab-seam-hole-left",
+          `${Math.max(0, leftTip)}px`,
+        );
+        workspace.style.setProperty(
+          "--tab-seam-hole-right",
+          `${Math.max(0, rightTip)}px`,
+        );
       } else {
         const padBottom = readPx(cs.paddingBottom, 0);
         faceH = Math.max(rect.height - padBottom, scoop + 1);
@@ -64,21 +70,6 @@ export function WorkspaceTabOutline(): ReactNode {
         scoop,
         radius,
       });
-
-      if (workspace) {
-        const wr = workspace.getBoundingClientRect();
-        const tipInset = 0.5;
-        const leftTip = rect.left - scoop - wr.left + tipInset;
-        const rightTip = rect.right + scoop - wr.left - tipInset;
-        workspace.style.setProperty(
-          "--tab-seam-hole-left",
-          `${Math.max(0, leftTip)}px`,
-        );
-        workspace.style.setProperty(
-          "--tab-seam-hole-right",
-          `${Math.max(0, rightTip)}px`,
-        );
-      }
     };
 
     measure();

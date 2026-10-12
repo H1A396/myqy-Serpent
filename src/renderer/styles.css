@@ -16772,16 +16772,13 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* ==== a44: panel-top match + no divider under active tab ==================
-   Single-path chrome. Stroke = --island-border @ --island-hairline-w (same as
-   center island edges). Workspace TOP border width is 0 while chrome is up —
-   a transparent 1px border still showed --island-canvas under the tab (the
-   unwanted divider). Left/right top seam is painted with the same border ink
-   via background gradients only; under the tab hole there is no line. */
+/* ==== a46: uniform island-top stroke (no pieced seam fight) ===============
+   Chewed thick/thin came from L/R CSS seam segments overlapping SVG tips.
+   Now: ONE full-width 1px CSS stroke (--island-tab-stroke) for the center
+   island top; hole under the tab covered with tab-fill only; SVG paints only
+   the tab bump (scoops/sides/top). Soft stroke + a45 backdrop unchanged. */
 
 .app-shell[data-shell-layout="islands"] {
-  /* Softer than panel --island-border: pull ink toward backdrop so the tab
-     outline sits quietly on the shell field; seam uses the same token. */
   --island-tab-stroke: color-mix(in srgb, var(--island-border) 55%, var(--island-backdrop));
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
@@ -16826,31 +16823,23 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   vector-effect: non-scaling-stroke;
 }
 
-/* Keep 1px top border SLOT (layout) but color=transparent. Paint:
-   - left/right segments = --island-border (same as other panel edges)
-   - hole under tab chrome = --island-tab-fill (no divider; merges into toolstrip)
-   A zero-width top border let the toolstrip cover the seam; a transparent
-   1px slot with canvas showing through was the a43 under-tab divider. */
 .app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace {
   border-top-width: var(--island-hairline-w);
   border-top-style: solid;
   border-top-color: transparent;
   background-color: var(--island-canvas);
+  /* Layer 0 (top): hole cover. Layer 1: FULL-WIDTH uniform top stroke. */
   background-image:
-    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke)),
-    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke)),
-    linear-gradient(var(--island-tab-fill), var(--island-tab-fill));
+    linear-gradient(var(--island-tab-fill), var(--island-tab-fill)),
+    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke));
   background-size:
-    var(--tab-seam-hole-left, 100%) var(--island-hairline-w),
-    calc(100% - var(--tab-seam-hole-right, 100%)) var(--island-hairline-w),
-    calc(var(--tab-seam-hole-right, 100%) - var(--tab-seam-hole-left, 0%)) var(--island-hairline-w);
+    calc(var(--tab-seam-hole-right, 100%) - var(--tab-seam-hole-left, 0%))
+      var(--island-hairline-w),
+    100% var(--island-hairline-w);
   background-position:
-    0 0,
-    var(--tab-seam-hole-right, 100%) 0,
-    var(--tab-seam-hole-left, 0%) 0;
+    var(--tab-seam-hole-left, 0%) 0,
+    0 0;
   background-repeat: no-repeat;
-  /* Must paint into the transparent top border strip (default origin is
-     padding-box, which left the seam invisible and the hole showing canvas). */
   background-origin: border-box;
   background-clip: border-box;
 }
