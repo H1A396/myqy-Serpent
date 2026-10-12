@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { workspaceTabOutlinePath } from "../../src/renderer/workspace-tab-outline-path";
+import {
+  workspaceTabOutlineFillPath,
+  workspaceTabOutlinePath,
+} from "../../src/renderer/workspace-tab-outline-path";
 
 describe("workspaceTabOutlinePath", () => {
   it("emits an open path with concave scoop arcs and top radii", () => {
@@ -32,5 +35,16 @@ describe("workspaceTabOutlinePath", () => {
     expect(d).toContain("A 13.5 13.5 0 0 1 119.5 13.5");
     expect(d).toContain("A 17.5 17.5 0 0 0 137.5 40");
     expect(d.includes("Z")).toBe(false);
+  });
+});
+
+describe("workspaceTabOutlineFillPath", () => {
+  it("closes below tips so fill covers the panel border row", () => {
+    const d = workspaceTabOutlineFillPath(120, 40, 18, 14, 0.5, 1);
+    expect(d.startsWith("M -17.5 41")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    expect(d).toContain("L -17.5 40");
+    expect(d).toContain("A 17.5 17.5 0 0 0 137.5 40");
+    expect(d).toContain("L 137.5 41");
   });
 });

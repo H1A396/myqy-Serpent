@@ -1,10 +1,15 @@
 import { useLayoutEffect, useState, type ReactNode } from "react";
-import { workspaceTabOutlinePath } from "./workspace-tab-outline-path";
+import {
+  workspaceTabOutlineFillPath,
+  workspaceTabOutlinePath,
+} from "./workspace-tab-outline-path";
 
 const FALLBACK_SCOOP = 18;
 const FALLBACK_RADIUS = 14;
 /** Half of the 1px chrome stroke — path is inset so the outer edge matches CSS. */
 const STROKE_INSET = 0.5;
+/** Fill extends this many px below scoop tips to cover the panel top border. */
+const FILL_BOTTOM_EXTRA = 1;
 
 function readPx(raw: string, fallback: number): number {
   const n = Number.parseFloat(raw);
@@ -12,10 +17,9 @@ function readPx(raw: string, fallback: number): number {
 }
 
 /**
- * Active-tab chrome: one SVG path for tab fill + scoop/side/top stroke.
- * Center-island top hairline outside scoops is a single full-width CSS stroke
- * (not pieced L/R gradients) so thickness stays even; hole under the tab is
- * covered with tab-fill only (no divider).
+ * Active-tab chrome: SVG fill (covers panel top border under tab) + open
+ * stroke for scoops/sides/top. Center-island perimeter is a uniform CSS
+ * border matching side islands; under-tab hole covered by fill + ::after.
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -89,11 +93,23 @@ export function WorkspaceTabOutline(): ReactNode {
   const S = box?.scoop ?? FALLBACK_SCOOP;
   const h = box?.h ?? 0;
   const w = box?.w ?? 0;
-  const path =
+  const strokePath =
     box === null
       ? ""
       : workspaceTabOutlinePath(w, h, S, box.radius, STROKE_INSET);
+  const fillPath =
+    box === null
+      ? ""
+      : workspaceTabOutlineFillPath(
+          w,
+          h,
+          S,
+          box.radius,
+          STROKE_INSET,
+          FILL_BOTTOM_EXTRA,
+        );
   const vbW = w + 2 * S;
+  const vbH = h + FILL_BOTTOM_EXTRA;
 
   return (
     <svg
@@ -102,10 +118,15 @@ export function WorkspaceTabOutline(): ReactNode {
       aria-hidden="true"
       focusable="false"
       width={box ? vbW : undefined}
-      height={box ? h : undefined}
-      viewBox={box ? `${-S} 0 ${vbW} ${h}` : undefined}
+      height={box ? vbH : undefined}
+      viewBox={box ? `${-S} 0 ${vbW} ${vbH}` : undefined}
     >
-      {box ? <path className="workspace-tab-outline-path" d={path} /> : null}
+      {box ? (
+        <>
+          <path className="workspace-tab-outline-fill" d={fillPath} />
+          <path className="workspace-tab-outline-path" d={strokePath} />
+        </>
+      ) : null}
     </svg>
   );
 }

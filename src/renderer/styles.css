@@ -16772,11 +16772,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: none;
 }
 
-/* ==== a46: uniform island-top stroke (no pieced seam fight) ===============
-   Chewed thick/thin came from L/R CSS seam segments overlapping SVG tips.
-   Now: ONE full-width 1px CSS stroke (--island-tab-stroke) for the center
-   island top; hole under the tab covered with tab-fill only; SVG paints only
-   the tab bump (scoops/sides/top). Soft stroke + a45 backdrop unchanged. */
+/* ==== a47: clean center-island perimeter (match side islands) ============
+   a46 fixed tab-seam chew but TL/TR corners stayed pitted: transparent top
+   border + gradient stroke fought L/R --island-border at 16px radius under
+   overflow:hidden. Side islands use one uniform 1px border all around — do
+   the same for .workspace. Hole under active tab covered with tab-fill only
+   (no divider). Tab SVG keeps soft --island-tab-stroke; a45 backdrop kept. */
 
 .app-shell[data-shell-layout="islands"] {
   --island-tab-stroke: color-mix(in srgb, var(--island-border) 55%, var(--island-backdrop));
@@ -16814,8 +16815,13 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   z-index: 0;
 }
 
-.app-shell[data-shell-layout="islands"] .workspace-tab-outline-path {
+.app-shell[data-shell-layout="islands"] .workspace-tab-outline-fill {
   fill: var(--island-tab-fill);
+  stroke: none;
+}
+
+.app-shell[data-shell-layout="islands"] .workspace-tab-outline-path {
+  fill: none;
   stroke: var(--island-tab-stroke);
   stroke-width: var(--island-hairline-w);
   stroke-linecap: butt;
@@ -16823,25 +16829,27 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   vector-effect: non-scaling-stroke;
 }
 
+/* Same perimeter language as nav/inspector: one border color on all sides so
+   radius corners AA cleanly. Semi-transparent border still shows through a
+   background hole — cover under-tab with an opaque ::after ON TOP of the border. */
 .app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace {
-  border-top-width: var(--island-hairline-w);
-  border-top-style: solid;
-  border-top-color: transparent;
+  border: var(--island-hairline-w) solid var(--island-border);
+  border-radius: var(--island-radius);
   background-color: var(--island-canvas);
-  /* Layer 0 (top): hole cover. Layer 1: FULL-WIDTH uniform top stroke. */
-  background-image:
-    linear-gradient(var(--island-tab-fill), var(--island-tab-fill)),
-    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke));
-  background-size:
-    calc(var(--tab-seam-hole-right, 100%) - var(--tab-seam-hole-left, 0%))
-      var(--island-hairline-w),
-    100% var(--island-hairline-w);
-  background-position:
-    var(--tab-seam-hole-left, 0%) 0,
-    0 0;
-  background-repeat: no-repeat;
-  background-origin: border-box;
-  background-clip: border-box;
+  background-image: none;
+}
+
+.app-shell[data-shell-layout="islands"]:has(.workspace-tab-outline) > .workspace::after {
+  content: "";
+  position: absolute;
+  /* Absolute containing block is the padding edge — sit on the top border. */
+  top: calc(-1 * var(--island-hairline-w));
+  left: calc(var(--tab-seam-hole-left, 0px) - var(--island-hairline-w));
+  width: calc(var(--tab-seam-hole-right, 0px) - var(--tab-seam-hole-left, 0px));
+  height: var(--island-hairline-w);
+  background: var(--island-tab-fill);
+  pointer-events: none;
+  z-index: 4;
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tabs-list {
