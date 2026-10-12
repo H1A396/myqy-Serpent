@@ -16090,3 +16090,30 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: color-mix(in srgb, var(--ui-content-tertiary) 70%, transparent);
   opacity: 0.85;
 }
+
+/* ==== a25b: card content toggles use muted pressed state ==================
+   「卡片显示内容」controls live in .canvas-controls (filename / size / date /
+   caption-align, plus view-mode). They use aria-pressed, not .is-active. */
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button[aria-pressed="true"]:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-content-primary) 8%, transparent);
+  color: var(--ui-content-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .canvas-controls .tool-button[aria-pressed="true"]:not(:disabled) .icon {
+  color: var(--ui-content-secondary);
+}
+/* Same mute for other secondary chrome toggles that only use aria-pressed. */
+.app-shell[data-shell-layout="islands"] .app-toolbar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent),
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent) {
+  background: color-mix(in srgb, var(--ui-content-primary) 8%, transparent);
+  color: var(--ui-content-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .app-toolbar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent) .icon,
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent) .icon,
+.app-shell[data-shell-layout="islands"] .workspace-bar .tool-button[aria-pressed="true"]:not(:disabled):not(.is-accent) .icon {
+  color: var(--ui-content-secondary);
+}
