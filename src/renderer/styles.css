@@ -52,7 +52,8 @@
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 18%, transparent));
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 62%, white));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 55%, transparent);
-  --rating-star: #d9b54b;
+  /* a69: scores follow theme accent (Codex-like emphasis), not fixed gold */
+  --rating-star: var(--accent);
   --appearance-color-blue: #6ea8dc;
   --appearance-color-indigo: #8b9be8;
   --appearance-color-purple: #b794e8;
@@ -182,7 +183,7 @@
   /* Was hardcoded #1d4ed8 — that froze soft labels to blue after accent change. */
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 72%, black));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 50%, transparent);
-  --rating-star: #ecc83a;
+  --rating-star: var(--accent);
   --appearance-color-blue: #2f6fad;
   --appearance-color-indigo: #4c5fd0;
   --appearance-color-purple: #7c4db8;
@@ -968,7 +969,8 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 .dimension-rating-chip.is-active:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--divider));
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--text);
+  color: var(--accent-soft-fg);
+  font-weight: 600;
 }
 
 .dimension-rating-chip:disabled {
@@ -16086,7 +16088,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ui-content-primary) 18%, transparent);
 }
 
-/* Rating stars: keep filled gold but mute empty/track. */
+/* Rating stars: filled = accent (--rating-star); mute empty/track. */
 .app-shell[data-shell-layout="islands"] .inspector-rating .icon:not(.is-filled),
 .app-shell[data-shell-layout="islands"] .rating-control .icon:not(.is-filled) {
   color: color-mix(in srgb, var(--ui-content-tertiary) 70%, transparent);
@@ -17032,4 +17034,32 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
   --tag-fill-solid: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
   color: color-mix(in srgb, var(--accent) 45%, white);
+}
+
+/* ==== a69: accent for scores and key emphasis ============================
+   Ratings/use --rating-star (= --accent). Quiet surfaces stay quiet; only
+   informational emphasis (filled stars, active rating chips, scope count)
+   picks up accent — Codex-like hierarchy, not chrome flood. */
+.app-shell[data-shell-layout="islands"] .rating-star[data-active],
+.app-shell[data-shell-layout="islands"] .rating-star:hover {
+  color: var(--rating-star);
+}
+.app-shell[data-shell-layout="islands"] .rating-star[data-active] .icon {
+  fill: currentColor;
+  stroke-width: 1;
+}
+.app-shell[data-shell-layout="islands"] .dimension-rating-chip.is-active:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--island-hairline, var(--divider)));
+  background: color-mix(in srgb, var(--accent) 12%, var(--island-surface-soft, transparent));
+  color: var(--accent-soft-fg);
+}
+.app-shell[data-shell-layout="islands"] .item-count {
+  color: color-mix(in srgb, var(--accent) 42%, var(--ui-content-tertiary));
+}
+.app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-count {
+  color: color-mix(in srgb, var(--accent-soft-fg) 80%, var(--ui-content-secondary));
+}
+.app-shell[data-shell-layout="islands"] .inspector-ai-badge {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-soft-fg);
 }
