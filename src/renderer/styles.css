@@ -15666,6 +15666,66 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 .app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] .icon {
   color: var(--accent);
 }
+/* Active (filter applied) segment: accent-tinted pill + accent label. */
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled),
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--island-segment-pill));
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+  font-weight: 560;
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0.5px 1px rgb(0 0 0 / 6%);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active .icon {
+  color: var(--accent);
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-filter-btn.is-active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: color-mix(in srgb, var(--accent) 55%, white);
+}
+
+/* Tag chips (inspector + filter summary): refined tinted capsules. */
+.app-shell[data-shell-layout="islands"] .tag-chips-container {
+  gap: 6px;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip,
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+  font-size: calc(11.5px * var(--ui-font-scale));
+  font-weight: 480;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:hover,
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all):hover {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-dot {
+  width: 7px;
+  height: 7px;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip-remove {
+  width: 15px;
+  height: 15px;
+  margin-right: -3px;
+  opacity: 0.7;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:hover .tag-chip-remove {
+  opacity: 1;
+}
+.app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .dimension-active-chip:not(.is-clear-all) {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: color-mix(in srgb, var(--accent) 50%, white);
+}
 
 /* Selected ring: must beat the islands .asset-card border-color rule so the
    accent stroke replaces the hairline (no gap) and follows border-radius. */

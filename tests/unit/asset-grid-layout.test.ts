@@ -215,3 +215,25 @@ describe("layoutJustifiedRows", () => {
     expect(rows[0]!.items[0]!.width).toBe(100);
   });
 });
+
+describe("layoutJustifiedRows closest-break smoothing", () => {
+  it("includes the overflowing item when that lands nearer the target height", () => {
+    // 1000px wide, target 200: three 1.5 aspect items natural = 900 + gaps.
+    // Greedy would close with 3 (scaled ~1.08); a 4th tall item (0.7) gives
+    // ~1.0 overall, which is closer to target.
+    const items = [1.5, 1.5, 1.5, 0.7, 1.5].map((aspectRatio, i) => ({ id: String(i), aspectRatio }));
+    const rows = layoutJustifiedRows(items, 1000, 200, 10);
+    expect(rows[0]!.items).toHaveLength(4);
+    expect(Math.abs(rows[0]!.height - 200)).toBeLessThan(20);
+  });
+});
+
+describe("layoutJustifiedRows minimum slot aspect", () => {
+  it("never makes a slot narrower than JUSTIFIED_MIN_SLOT_ASPECT x height", () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({ id: String(i), aspectRatio: 0.3 }));
+    const rows = layoutJustifiedRows(items, 900, 200, 10);
+    for (const row of rows) for (const item of row.items) {
+      expect(item.width / row.height).toBeGreaterThanOrEqual(0.6);
+    }
+  });
+});
