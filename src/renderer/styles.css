@@ -16886,22 +16886,23 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a63: quieter dark tags, clearer light tags ==========================
-   Shape unchanged from a62. Contrast only: dark fill/hairline down a notch,
-   light fill/hairline up a notch. Defaults = light; dark overrides below. */
+/* ==== a64: remove tag body-tip vertical seam ==============================
+   a63 split ::before/::after double-painted the overlap (dark 72% → stripe).
+   One ::before fill + single mask-border silhouette (left R=3 + fixed tip
+   slice, stretchable middle) — continuous alpha, no join. a63 contrast kept. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
-  --tag-tip-flat: 4px; /* join band ends before shoulder fillet (~x=4.29) */
-  --tag-fill-tint: 8%; /* light: was 5% */
-  --tag-fill-tint-hover: 11%; /* light: was 8% */
-  --tag-hairline: 28%; /* light: was 18% */
-  --tag-hairline-hover: 36%; /* light: was 24% */
-  --tag-chip-fill: color-mix(
+  --tag-fill-tint: 8%;
+  --tag-fill-tint-hover: 11%;
+  --tag-hairline: 28%;
+  --tag-hairline-hover: 36%;
+  --tag-fill-solid: color-mix(
     in srgb,
     var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint),
     var(--island-surface-soft)
   );
+  --tag-chip-fill: var(--tag-fill-solid);
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -16918,57 +16919,29 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .tag-chip,
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip {
-  --tag-fill-tint: 2.5%; /* dark: was 5% — quieter */
+  --tag-fill-tint: 2.5%;
   --tag-fill-tint-hover: 4%;
-  --tag-hairline: 10%; /* dark: was 18% */
+  --tag-hairline: 10%;
   --tag-hairline-hover: 15%;
-  /* Soften raised surface so chips sit closer to panel */
-  --tag-chip-fill: color-mix(
-    in srgb,
-    color-mix(
-      in srgb,
-      var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint),
-      var(--island-surface-soft)
-    ) 72%,
-    transparent
-  );
+  --tag-chip-fill: color-mix(in srgb, var(--tag-fill-solid) 72%, transparent);
 }
 
-/* Body: native R=3 on the left; square right tucked under tip's flat band */
+/* Single paint + one 9-slice mask (tip & left radius fixed; middle stretches) */
 .app-shell[data-shell-layout="islands"] .tag-chip::before,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip::before {
   content: "";
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: calc(var(--tag-tip-w) - var(--tag-tip-flat));
-  border-radius: 3px 0 0 3px;
+  inset: 0;
   background: var(--tag-chip-fill);
   z-index: 0;
   pointer-events: none;
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3%200H68.29A1.5%201.5%200%200%200%2069.45%200.55L77.46%2010.34A1.05%201.05%200%200%201%2077.46%2011.66L69.45%2021.45A1.5%201.5%200%200%200%2068.29%2022H3A3%203%200%200%201%200%2019V3A3%203%200%200%201%203%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 3 fill / 0 var(--tag-tip-w) 0 3px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3%200H68.29A1.5%201.5%200%200%200%2069.45%200.55L77.46%2010.34A1.05%201.05%200%200%201%2077.46%2011.66L69.45%2021.45A1.5%201.5%200%200%200%2068.29%2022H3A3%203%200%200%201%200%2019V3A3%203%200%200%201%203%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 3 fill / 0 var(--tag-tip-w) 0 3px / 0 stretch;
 }
 
-/* Tip: fixed mask — straight L slopes; A fillets only at joints + nose */
 .app-shell[data-shell-layout="islands"] .tag-chip::after,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--tag-tip-w);
-  background: var(--tag-chip-fill);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H4.29A1.5%201.5%200%200%200%205.45%200.55L13.46%2010.34A1.05%201.05%200%200%201%2013.46%2011.66L5.45%2021.45A1.5%201.5%200%200%200%204.29%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
-  -webkit-mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2722%27%20viewBox%3D%270%200%2016%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M0%200H4.29A1.5%201.5%200%200%200%205.45%200.55L13.46%2010.34A1.05%201.05%200%200%201%2013.46%2011.66L5.45%2021.45A1.5%201.5%200%200%200%204.29%2022H0Z%27%2F%3E%3C%2Fsvg%3E");
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  z-index: 0;
-  pointer-events: none;
+  content: none;
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip {
@@ -16977,7 +16950,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip:hover {
-  --tag-chip-fill: color-mix(
+  --tag-fill-solid: color-mix(
     in srgb,
     var(--tag-chip-color, var(--ui-content-primary)) var(--tag-fill-tint-hover),
     var(--island-surface-soft)
@@ -17018,7 +16991,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
-  --tag-chip-fill: color-mix(
+  --tag-fill-solid: color-mix(
     in srgb,
     var(--ui-content-primary) var(--tag-fill-tint),
     var(--island-surface-soft)
@@ -17032,10 +17005,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   margin-right: -4px;
 }
 .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  --tag-chip-fill: color-mix(in srgb, var(--accent) 10%, var(--island-surface-soft));
+  --tag-fill-solid: color-mix(in srgb, var(--accent) 10%, var(--island-surface-soft));
   color: color-mix(in srgb, var(--accent) 55%, var(--ui-content-primary));
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  --tag-chip-fill: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
+  --tag-fill-solid: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
   color: color-mix(in srgb, var(--accent) 45%, white);
 }
