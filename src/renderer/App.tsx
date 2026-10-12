@@ -13398,6 +13398,9 @@ function AppInner() {
       />
       <section className="workspace">
         <div
+          className={`workspace-toolstrip${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}`}
+        >
+        <div
           className={`workspace-bar${previewAsset ? " is-viewing" : previewRestoring ? " is-restoring" : ""}`}
         >
           <div className="workspace-title">
@@ -13745,6 +13748,7 @@ function AppInner() {
           />
         </div>
         )}
+        </div>
         {(aiAnalyzing ||
           (aiJobs !== null && aiJobs.queued + aiJobs.running > 0)) &&
           aiProgressBannerVisible &&

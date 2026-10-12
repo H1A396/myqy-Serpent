@@ -15401,33 +15401,35 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-weight: 600;
 }
 
-/* ==== Shell layout: Islands + Apple HIG materials =========================
-   Floating rounded islands (layout) evolved toward Finder/Photos/Info-panel
-   materials (clarity, deference, depth). Scoped to [data-shell-layout="islands"].
-   Import/drop overlays and card borders keep their on-dev look. */
+/* ==== Shell layout: Islands + bold Apple/Photos materials ================
+   Floating islands kept; visual language pushed toward macOS Photos / Finder /
+   Info. Scoped to [data-shell-layout="islands"]. Import/drop stays on-dev. */
 :root {
-  --island-gap: 10px;
-  --island-radius: max(12px, var(--ui-radius-dialog, 14px));
-  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 88%, var(--ui-surface-raised));
-  --island-border: rgb(0 0 0 / 6%);
-  --island-shadow: 0 0.5px 0 rgb(0 0 0 / 4%), 0 1px 3px rgb(0 0 0 / 4%);
-  --island-select: color-mix(in srgb, var(--accent) 12%, transparent);
+  --island-gap: 12px;
+  --island-radius: 22px;
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-pane) 82%, var(--ui-surface-raised));
+  --island-border: rgb(0 0 0 / 5%);
+  --island-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 16px -6px rgb(0 0 0 / 8%);
+  --island-select: color-mix(in srgb, var(--accent) 16%, transparent);
   --island-hairline: rgb(0 0 0 / 6%);
-  --island-group-gap: 18px;
+  --island-group-gap: 20px;
+  --island-card-radius: 14px;
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-raised) 72%, transparent);
 }
 :root[data-theme="dark"] {
-  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 88%, black);
+  --island-backdrop: color-mix(in srgb, var(--ui-surface-canvas) 78%, black);
   --island-border: rgb(255 255 255 / 7%);
-  --island-shadow: 0 0.5px 0 rgb(255 255 255 / 4%), 0 1px 3px rgb(0 0 0 / 28%);
-  --island-select: color-mix(in srgb, var(--accent) 22%, transparent);
+  --island-shadow: 0 6px 20px -8px rgb(0 0 0 / 45%);
+  --island-select: color-mix(in srgb, var(--accent) 28%, transparent);
   --island-hairline: rgb(255 255 255 / 8%);
+  --island-toolstrip-bg: color-mix(in srgb, var(--ui-surface-raised) 55%, transparent);
 }
 
 .app-shell[data-shell-layout="islands"] {
   background-color: var(--island-backdrop);
 }
 
-/* Title bar stays transparent so the backdrop shows between islands. */
+/* Quieter window chrome: transparent title bar (backdrop shows through). */
 .app-shell[data-shell-layout="islands"] > .app-toolbar {
   border-bottom-color: transparent;
   background: transparent;
@@ -15452,23 +15454,22 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   border-width: 0;
   box-shadow: none;
 }
-
 .app-shell[data-shell-layout="islands"] > .navigation-pane::before,
 .app-shell[data-shell-layout="islands"] > .inspector-pane::before {
   content: none;
 }
 
-/* Sidebar — Finder/Photos: soft fill selection, medium section titles. */
+/* ---- Sidebar: macOS Photos / Finder ------------------------------------ */
 .app-shell[data-shell-layout="islands"] .navigation-scroll {
-  padding: 10px 10px 14px;
+  padding: 12px 10px 16px;
 }
 .app-shell[data-shell-layout="islands"] .nav-section {
   margin-top: var(--island-group-gap);
 }
 .app-shell[data-shell-layout="islands"] .nav-section-heading {
-  height: 22px;
-  margin: 0 0 3px;
-  padding: 0 8px 0 10px;
+  height: 20px;
+  margin: 0 0 4px;
+  padding: 0 10px;
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
   font-weight: 590;
@@ -15476,15 +15477,20 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   text-transform: none;
 }
 .app-shell[data-shell-layout="islands"] .nav-row {
-  min-height: 28px;
-  border-radius: 8px;
+  min-height: 30px;
+  border-radius: 10px;
   border-color: transparent;
   box-shadow: none;
-  font-size: calc(12.5px * var(--ui-font-scale));
+  font-size: calc(13px * var(--ui-font-scale));
   font-weight: 450;
 }
+.app-shell[data-shell-layout="islands"] .nav-row .nav-entity-glyph .icon,
+.app-shell[data-shell-layout="islands"] .nav-row .icon {
+  width: 16px;
+  height: 16px;
+}
 .app-shell[data-shell-layout="islands"] .nav-row:hover:not(:disabled):not(.is-active) {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
   box-shadow: none;
 }
 .app-shell[data-shell-layout="islands"] .nav-row.is-active {
@@ -15492,6 +15498,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: var(--text);
   box-shadow: none;
   border-color: transparent;
+  font-weight: 510;
 }
 .app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-entity-glyph,
 .app-shell[data-shell-layout="islands"] .nav-row.is-active .icon {
@@ -15504,75 +15511,116 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-size: calc(11px * var(--ui-font-scale));
 }
 
-/* Empty states — quiet squircle; no glow / dashed frames. */
-.app-shell[data-shell-layout="islands"] .empty-orbit {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 14px;
-  border: 1px solid var(--divider-soft);
-  border-radius: var(--ui-radius-surface, 14px);
-  background: color-mix(in srgb, var(--accent) 6%, var(--raised));
-  box-shadow: none;
-  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+/* ---- Canvas toolstrip (inside island) — Photos-like unified chrome ------ */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--island-toolstrip-bg);
+  border-bottom: 1px solid var(--island-hairline);
 }
-.app-shell[data-shell-layout="islands"] .empty-library h1 {
-  margin: 0 0 6px;
-  font-size: calc(17px * var(--ui-font-scale));
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip.is-viewing {
+  display: none;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar,
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  border-bottom: none;
+  background: transparent;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
+  height: 44px;
+  padding: 0 16px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  padding: 6px 16px 12px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-title {
+  gap: 8px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-title .scope-crumb-label.is-current {
+  font-size: calc(15px * var(--ui-font-scale));
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
-.app-shell[data-shell-layout="islands"] .empty-library p {
-  max-width: 340px;
+.app-shell[data-shell-layout="islands"] .item-count {
   color: var(--tertiary);
   font-size: calc(12px * var(--ui-font-scale));
-}
-.app-shell[data-shell-layout="islands"] .inspector-empty-frame {
-  border: 1px solid var(--divider-soft);
-  border-radius: var(--ui-radius-control, 10px);
-  background: var(--raised);
-}
-.app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
-.app-shell[data-shell-layout="islands"] .inspector-empty > svg {
-  box-sizing: content-box;
-  padding: 10px;
-  margin-bottom: 12px;
-  border: 1px solid var(--divider-soft);
-  border-radius: var(--ui-radius-control, 10px);
-  background: var(--raised);
-  color: var(--tertiary);
+  font-weight: 450;
 }
 
-/* Gallery — Photos air: more vertical breathing; SF caption hierarchy.
-   Card border/shadow stays on-dev. */
+/* SF-style segmented filter track */
+.app-shell[data-shell-layout="islands"] .dimension-filter-dims {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn {
+  min-height: 26px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--secondary);
+  font-size: calc(12px * var(--ui-font-scale));
+  font-weight: 450;
+  box-shadow: none;
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-btn[aria-pressed="true"] {
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 510;
+  box-shadow: 0 0.5px 1px rgb(0 0 0 / 8%), 0 0 0 0.5px var(--island-hairline);
+}
+
+/* ---- Gallery: Photos air + softer card chrome --------------------------- */
+.app-shell[data-shell-layout="islands"] .workspace-canvas {
+  padding: 14px 16px 24px;
+}
 .app-shell[data-shell-layout="islands"] .justified-row {
-  margin-bottom: 16px !important;
+  margin-bottom: 22px !important;
+}
+.app-shell[data-shell-layout="islands"] .asset-card {
+  border-radius: var(--island-card-radius);
+  border-color: color-mix(in srgb, var(--divider) 55%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 3%);
+  background: var(--raised);
+}
+.app-shell[data-shell-layout="islands"] .asset-card:hover {
+  box-shadow: 0 2px 8px -2px rgb(0 0 0 / 10%);
+}
+.app-shell[data-shell-layout="islands"] .asset-preview {
+  border-radius: var(--island-card-radius) var(--island-card-radius) 0 0;
 }
 .app-shell[data-shell-layout="islands"] .justified-card-slot .asset-caption,
 .app-shell[data-shell-layout="islands"] .masonry-card-slot .asset-caption {
-  padding: 9px 11px 11px;
+  padding: 10px 12px 12px;
   gap: 3px;
 }
 .app-shell[data-shell-layout="islands"] .asset-caption strong {
-  font-size: calc(12px * var(--ui-font-scale));
+  font-size: calc(12.5px * var(--ui-font-scale));
   font-weight: 510;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 .app-shell[data-shell-layout="islands"] .asset-caption > span {
   color: var(--tertiary);
   font-size: calc(11px * var(--ui-font-scale));
 }
-.app-shell[data-shell-layout="islands"] .workspace-discovery {
-  gap: 8px;
-  padding: 8px 14px 10px;
-  border-bottom-color: var(--island-hairline);
-}
-.app-shell[data-shell-layout="islands"] .workspace-bar {
-  border-bottom-color: transparent;
-}
 
-/* Inspector — Info panel groups with hairline separators. */
+/* ---- Inspector: frosted Info panel -------------------------------------- */
+.app-shell[data-shell-layout="islands"] > .inspector-pane {
+  background: color-mix(in srgb, var(--ui-surface-raised) 78%, transparent);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
 .app-shell[data-shell-layout="islands"] .inspector-content {
-  padding: 14px 16px 20px;
+  padding: 16px 18px 24px;
 }
 .app-shell[data-shell-layout="islands"] .inspector-section-label,
 .app-shell[data-shell-layout="islands"] .inspector-content .micro-label {
@@ -15608,6 +15656,44 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-variant-numeric: tabular-nums;
 }
 .app-shell[data-shell-layout="islands"] .inspector-hero-preview {
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
+}
+
+/* Empty states — quiet squircle */
+.app-shell[data-shell-layout="islands"] .empty-orbit {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  border: 1px solid var(--divider-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--raised));
+  box-shadow: none;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
+}
+.app-shell[data-shell-layout="islands"] .empty-library h1 {
+  margin: 0 0 6px;
+  font-size: calc(18px * var(--ui-font-scale));
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.app-shell[data-shell-layout="islands"] .empty-library p {
+  max-width: 340px;
+  color: var(--tertiary);
+  font-size: calc(12px * var(--ui-font-scale));
+}
+.app-shell[data-shell-layout="islands"] .inspector-empty-frame {
+  border: 1px solid var(--divider-soft);
+  border-radius: 10px;
+  background: var(--raised);
+}
+.app-shell[data-shell-layout="islands"] .inspector-empty > .icon,
+.app-shell[data-shell-layout="islands"] .inspector-empty > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--divider-soft);
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--tertiary);
 }
