@@ -17111,17 +17111,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
    browser padding, selected hover, card top flush, restore card type sizes ===
    Keep a70 accents, a72 borders, a65–a67 tags. */
 
-/* 1) Filter bar wraps on narrow widths (Windows too) */
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
-  flex-wrap: wrap;
-}
-.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
-  flex: 1 1 220px;
-  display: flex;
-  flex-wrap: wrap;
-  min-width: 0;
-  max-width: 100%;
-}
+/* 1) Filter chips wrap within their own row (row pin is a79) */
 .app-shell[data-shell-layout="islands"] .dimension-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -17388,4 +17378,30 @@ html.serpent-window-square {
 }
 .app-shell[data-shell-layout="islands"]:not(.right-collapsed) .toolbar-workspace-cluster:has(.workspace-tabs) {
   padding-right: var(--island-gap);
+}
+
+
+/* ==== a79: pin filter bar to second row ===================================
+   a28 row+wrap let discovery jump onto the title row when space allowed.
+   Always: row1 = workspace-bar (title/tools), row2 = workspace-discovery. */
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 4px;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-bar {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .workspace-discovery {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
