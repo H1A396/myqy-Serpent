@@ -17893,3 +17893,105 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
 .app-shell[data-shell-layout="islands"] .asset-caption > :last-child {
   margin-bottom: 0;
 }
+
+/* ── a90: theme grid shows exactly two rows ─────────────────────────────
+   Card height is fixed (8 + 56 preview + 8 gap + 18 label + 8, plus the
+   1px borders = 100px) so the viewport can be sized to two rows plus one
+   gap regardless of window width; a third row only peeks in on scroll. */
+.app-settings-theme-profiles {
+  --theme-card-row: 100px;
+  --theme-card-gap: 10px;
+  grid-auto-rows: var(--theme-card-row);
+  gap: var(--theme-card-gap);
+  box-sizing: border-box;
+  height: calc(var(--theme-card-row) * 2 + var(--theme-card-gap) + 5px);
+  max-height: none;
+  padding: 3px 4px 2px 2px;
+  align-content: start;
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 3px;
+}
+
+.app-settings-theme-profile {
+  box-sizing: border-box;
+  height: var(--theme-card-row);
+  grid-template-rows: 56px 18px;
+  align-content: start;
+  scroll-snap-align: start;
+}
+
+.app-settings-theme-profile-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 18px;
+}
+
+.app-settings-theme-profile-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-settings-theme-profile-badge {
+  flex: none;
+  padding: 0 5px;
+  border-radius: var(--ui-radius-pill);
+  background: color-mix(in oklab, var(--ui-action-accent) 14%, transparent);
+  color: var(--ui-content-accent);
+  font-size: 10px;
+  font-weight: var(--ui-font-weight-medium);
+  line-height: 16px;
+}
+
+/* ── a90: custom theme editor ─────────────────────────────────────────── */
+.app-settings-custom-theme-header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: var(--ui-space-3);
+}
+
+.app-settings-custom-theme-name {
+  max-width: 320px;
+}
+
+.app-settings-custom-theme-meta {
+  color: var(--ui-content-tertiary);
+  font-size: var(--ui-font-size-caption);
+  line-height: var(--ui-line-height-tight);
+}
+
+.app-settings-theme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+/* ── a90: background image in the main (centre) panel ─────────────────────
+   The app shell already paints the wallpaper. With the option on, the
+   centre island swaps its opaque fill for a pane-coloured tint so the same
+   (aligned) image shows through, while cards keep their own solid surface.
+   The tint is denser in light mode, where bright photos hurt legibility. */
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace {
+  --main-panel-tint: 78%;
+  background-color: color-mix(in oklab, var(--island-canvas, var(--ui-surface-pane)) var(--main-panel-tint), transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+  backdrop-filter: blur(16px) saturate(1.05);
+}
+
+/* Inner canvas layers must not repaint an opaque fill over the tint. */
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace .workspace-canvas {
+  background: transparent;
+}
+
+:root[data-theme="dark"][data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace {
+  --main-panel-tint: 72%;
+}
+
+/* The toolstrip keeps a slightly denser veil (anchors the controls) instead
+   of an opaque band with a hard edge. */
+:root[data-bg-main-panel="on"] .app-shell[data-shell-layout="islands"] > .workspace .workspace-toolstrip {
+  background: color-mix(in oklab, var(--island-canvas, var(--ui-surface-pane)) 55%, transparent);
+}

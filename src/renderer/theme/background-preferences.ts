@@ -54,6 +54,7 @@ const defaultPreferences = (): BackgroundPreferences => ({
   imageSource: null,
   mode: 'cover',
   imageOpacity: 0.8,
+  showInMainPanel: false,
 });
 
 export const DEFAULT_BACKGROUND_PREFERENCES: BackgroundPreferences =
@@ -122,7 +123,12 @@ export const backgroundPreferencesSchema = z.strictObject({
   imageSource: backgroundImageSourceSchema.nullable(),
   mode: backgroundDisplayModeSchema,
   imageOpacity: z.number().finite().min(0).max(1),
+  /** Also paint the wallpaper behind the centre (main) panel. Default off. */
+  showInMainPanel: z.boolean().default(false),
 });
+
+/** Accepts records saved before `showInMainPanel` existed. */
+export type BackgroundPreferencesInput = z.input<typeof backgroundPreferencesSchema>;
 
 export type BackgroundPreferences = z.infer<
   typeof backgroundPreferencesSchema
@@ -200,6 +206,7 @@ export function normalizeBackgroundPreferences(
       record.imageOpacity,
       record.overlayOpacity,
     ),
+    showInMainPanel: record.showInMainPanel === true,
   };
 
   return backgroundPreferencesSchema.parse(normalized);
@@ -268,7 +275,7 @@ export function loadBackgroundPreferences(
  * false so the caller can show a notice without losing the in-memory state.
  */
 export function saveBackgroundPreferences(
-  preferences: BackgroundPreferences,
+  preferences: BackgroundPreferencesInput,
   storage?: BackgroundPreferencesStorage,
 ): boolean {
   const store = resolveStorage(storage);
@@ -298,7 +305,7 @@ export function clearBackgroundPreferences(
 
 /** Apply the validated background contract without allowing arbitrary CSS. */
 export function applyBackgroundPreferences(
-  preferences: BackgroundPreferences,
+  preferences: BackgroundPreferencesInput,
 ): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -329,5 +336,10 @@ export function applyBackgroundPreferences(
     normalized.mode === 'tile' ? 'auto' : normalized.mode === 'fill' ? '100% 100%' : 'cover',
   );
   root.style.setProperty('--ui-background-position', 'center');
+  if (normalized.showInMainPanel && normalized.imageDataUrl !== null) {
+    root.setAttribute?.('data-bg-main-panel', 'on');
+  } else {
+    root.removeAttribute?.('data-bg-main-panel');
+  }
   root.style.setProperty('--ui-background-repeat', normalized.mode === 'tile' ? 'repeat' : 'no-repeat');
 }

@@ -50,6 +50,7 @@ describe('background preferences contract v3', () => {
       imageSource: null,
       mode: 'cover',
       imageOpacity: 0.8,
+      showInMainPanel: false,
     });
     expect(backgroundPreferencesSchema.parse(DEFAULT_BACKGROUND_PREFERENCES)).toEqual(
       DEFAULT_BACKGROUND_PREFERENCES,
@@ -185,6 +186,7 @@ describe('background preferences contract v3', () => {
       imageSource: source,
       mode: 'fill' as const,
       imageOpacity: 0.8,
+      showInMainPanel: false,
     };
     expect(backgroundPreferencesSchema.parse(preferences)).toEqual(preferences);
     expect(validateBackgroundPreferences(preferences)).toBe(true);
@@ -214,6 +216,7 @@ describe('background preferences contract v3', () => {
       imageSource: IMAGE_SOURCE,
       mode: 'tile' as const,
       imageOpacity: 0.65,
+      showInMainPanel: true,
     };
 
     expect(saveBackgroundPreferences(preferences, storage)).toBe(true);
@@ -377,5 +380,15 @@ describe('background preferences contract v3', () => {
       if (previous === undefined) delete (globalThis as { document?: Document }).document;
       else (globalThis as { document?: Document }).document = previous;
     }
+  });
+});
+
+describe('background in main panel (a90)', () => {
+  it('defaults off and only accepts a real boolean', async () => {
+    const mod = await import('../../src/renderer/theme/background-preferences');
+    expect(mod.DEFAULT_BACKGROUND_PREFERENCES.showInMainPanel).toBe(false);
+    expect(mod.normalizeBackgroundPreferences({}).showInMainPanel).toBe(false);
+    expect(mod.normalizeBackgroundPreferences({ showInMainPanel: 'yes' }).showInMainPanel).toBe(false);
+    expect(mod.normalizeBackgroundPreferences({ showInMainPanel: true }).showInMainPanel).toBe(true);
   });
 });

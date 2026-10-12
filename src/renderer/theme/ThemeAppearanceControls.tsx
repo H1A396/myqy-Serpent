@@ -1,7 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { useT } from '../i18n';
-import { Select, Slider } from '../ui/primitives';
+import { Select, Slider, Switch } from '../ui/primitives';
 import { BackgroundImagePanel } from './BackgroundImageControls';
 import {
   BACKGROUND_DISPLAY_MODES,
@@ -19,8 +19,9 @@ import {
   THEME_ACCENT_PRESETS,
   themeAccentPresetByHex,
 } from './theme-accent-preferences';
+import type { UserTheme } from './user-themes';
 
-const PROFILE_LABELS = {
+export const PROFILE_LABELS = {
   serpent: 'settings.themeProfileSerpent',
   vscode: 'settings.themeProfileVscode',
   soft: 'settings.themeProfileSoft',
@@ -63,26 +64,56 @@ const BACKGROUND_MODE_LABELS = {
   tile: 'settings.backgroundModeTile',
 } as const;
 
-function asPreviewStyle(profile: ThemeProfileId, resolved: 'light' | 'dark'): CSSProperties {
+function asPreviewStyle(
+  profile: ThemeProfileId,
+  resolved: 'light' | 'dark',
+  overrides: Partial<Record<string, string | undefined>> = {},
+): CSSProperties {
   const tokens = THEME_PROFILE_PRESETS[profile].tokens[resolved];
+  const pick = (token: keyof typeof tokens) => overrides[token] ?? tokens[token];
   return {
-    '--theme-preview-canvas': tokens['--ui-surface-canvas'],
-    '--theme-preview-pane': tokens['--ui-surface-pane'],
-    '--theme-preview-raised': tokens['--ui-surface-raised'],
-    '--theme-preview-accent': tokens['--ui-action-accent'],
-    '--theme-preview-text': tokens['--ui-content-primary'],
+    '--theme-preview-canvas': pick('--ui-surface-canvas'),
+    '--theme-preview-pane': pick('--ui-surface-pane'),
+    '--theme-preview-raised': pick('--ui-surface-raised'),
+    '--theme-preview-accent': pick('--ui-action-accent'),
+    '--theme-preview-text': pick('--ui-content-primary'),
   } as CSSProperties;
 }
 
+type PickerEntry =
+  | { readonly kind: 'user'; readonly key: string; readonly theme: UserTheme }
+  | { readonly kind: 'preset'; readonly key: string; readonly preset: ThemeProfileId };
+
 export function ThemeProfilePicker(): ReactNode {
   const t = useT();
-  const { themeProfile, setThemeProfile, resolved } = useTheme();
+  const {
+    themeProfile,
+    setThemeProfile,
+    resolved,
+    userThemes,
+    activeUserTheme,
+    selectUserTheme,
+  } = useTheme();
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectedIndex = Math.max(0, THEME_PROFILE_IDS.indexOf(themeProfile.preset));
+  // Custom themes lead the grid so they are visible without scrolling.
+  const entries: PickerEntry[] = [
+    ...userThemes.themes.map((theme) => ({ kind: 'user' as const, key: theme.id, theme })),
+    ...THEME_PROFILE_IDS.map((preset) => ({ kind: 'preset' as const, key: preset, preset })),
+  ];
+  const isSelected = (entry: PickerEntry) =>
+    entry.kind === 'user'
+      ? activeUserTheme?.id === entry.theme.id
+      : !activeUserTheme && themeProfile.preset === entry.preset;
+  const selectedIndex = Math.max(0, entries.findIndex(isSelected));
+
+  function select(entry: PickerEntry) {
+    if (entry.kind === 'user') selectUserTheme(entry.theme.id);
+    else setThemeProfile(entry.preset);
+  }
 
   function moveSelection(index: number) {
-    const nextIndex = (index + THEME_PROFILE_IDS.length) % THEME_PROFILE_IDS.length;
-    setThemeProfile(THEME_PROFILE_IDS[nextIndex]!);
+    const nextIndex = (index + entries.length) % entries.length;
+    select(entries[nextIndex]!);
     requestAnimationFrame(() => buttonRefs.current[nextIndex]?.focus());
   }
 
@@ -92,35 +123,43 @@ export function ThemeProfilePicker(): ReactNode {
       className="app-settings-theme-profiles"
       role="radiogroup"
     >
-      {THEME_PROFILE_IDS.map((profile) => {
-        const selected = themeProfile.preset === profile;
+      {entries.map((entry, index) => {
+        const selected = isSelected(entry);
+        const label = entry.kind === 'user'
+          ? entry.theme.name || t('settings.customThemeUntitled')
+          : t(PROFILE_LABELS[entry.preset]);
+        const style = entry.kind === 'user'
+          ? asPreviewStyle(entry.theme.base, resolved, entry.theme[resolved])
+          : asPreviewStyle(entry.preset, resolved);
         return (
           <button
             aria-checked={selected}
-            className={`app-settings-theme-profile${selected ? ' is-active' : ''}`}
-            key={profile}
-            onClick={() => setThemeProfile(profile)}
+            className={`app-settings-theme-profile${selected ? ' is-active' : ''}${entry.kind === 'user' ? ' is-custom' : ''}`}
+            data-theme-entry={entry.key}
+            key={entry.key}
+            onClick={() => select(entry)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
                 event.preventDefault();
-                moveSelection(THEME_PROFILE_IDS.indexOf(profile) + 1);
+                moveSelection(index + 1);
               } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
                 event.preventDefault();
-                moveSelection(THEME_PROFILE_IDS.indexOf(profile) - 1);
+                moveSelection(index - 1);
               } else if (event.key === 'Home') {
                 event.preventDefault();
                 moveSelection(0);
               } else if (event.key === 'End') {
                 event.preventDefault();
-                moveSelection(THEME_PROFILE_IDS.length - 1);
+                moveSelection(entries.length - 1);
               }
             }}
             role="radio"
-            style={asPreviewStyle(profile, resolved)}
-            tabIndex={THEME_PROFILE_IDS.indexOf(profile) === selectedIndex ? 0 : -1}
+            style={style}
+            tabIndex={index === selectedIndex ? 0 : -1}
+            title={label}
             type="button"
             ref={(element) => {
-              buttonRefs.current[THEME_PROFILE_IDS.indexOf(profile)] = element;
+              buttonRefs.current[index] = element;
             }}
           >
             <span aria-hidden="true" className="app-settings-theme-profile-preview">
@@ -132,7 +171,12 @@ export function ThemeProfilePicker(): ReactNode {
               </span>
             </span>
             <span className="app-settings-theme-profile-label">
-              {t(PROFILE_LABELS[profile])}
+              <span className="app-settings-theme-profile-name">{label}</span>
+              {entry.kind === 'user' ? (
+                <span className="app-settings-theme-profile-badge">
+                  {t('settings.customThemeBadge')}
+                </span>
+              ) : null}
             </span>
           </button>
         );
@@ -320,6 +364,18 @@ export function BackgroundSettings(): ReactNode {
             label: t(BACKGROUND_MODE_LABELS[mode]),
           }))}
           value={backgroundPreferences.mode}
+        />
+      </div>
+      <div className="app-settings-row app-settings-background-main-panel">
+        <div className="app-settings-row-copy">
+          <strong>{t('settings.backgroundMainPanel')}</strong>
+          <span>{t('settings.backgroundMainPanelHint')}</span>
+        </div>
+        <Switch
+          aria-label={t('settings.backgroundMainPanel')}
+          checked={backgroundPreferences.showInMainPanel}
+          disabled={backgroundPreferences.imageDataUrl === null}
+          onCheckedChange={(checked) => update({ showInMainPanel: checked })}
         />
       </div>
       <div className="app-settings-background-opacity">
