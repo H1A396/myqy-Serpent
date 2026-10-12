@@ -52,7 +52,7 @@
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 18%, transparent));
   --accent-soft-fg: var(--ui-content-accent, color-mix(in srgb, var(--accent) 62%, white));
   --accent-ring: color-mix(in srgb, var(--ui-action-accent, var(--accent)) 55%, transparent);
-  /* a69: scores follow theme accent (Codex-like emphasis), not fixed gold */
+  /* a70: scores = full theme accent (vivid); never wash with tertiary */
   --rating-star: var(--accent);
   --appearance-color-blue: #6ea8dc;
   --appearance-color-indigo: #8b9be8;
@@ -967,10 +967,10 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .dimension-rating-chip.is-active:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--divider));
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-soft-fg);
-  font-weight: 600;
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--divider));
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent);
+  font-weight: 650;
 }
 
 .dimension-rating-chip:disabled {
@@ -12988,7 +12988,7 @@ select.ai-config-input.ai-config-languages {
   display: inline-block;
   padding: 1px 5px;
   border-radius: 3px;
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--accent);
   font-size: calc(9px * var(--ui-font-scale));
   font-weight: var(--ui-font-weight-bold);
@@ -16088,9 +16088,9 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ui-content-primary) 18%, transparent);
 }
 
-/* Rating stars: filled = accent (--rating-star); mute empty/track. */
-.app-shell[data-shell-layout="islands"] .inspector-rating .icon:not(.is-filled),
-.app-shell[data-shell-layout="islands"] .rating-control .icon:not(.is-filled) {
+/* Rating stars: mute only inactive glyphs; active/hover keep full accent. */
+.app-shell[data-shell-layout="islands"] .inspector-rating .rating-star:not([data-active]):not(:hover) .icon,
+.app-shell[data-shell-layout="islands"] .rating-control .rating-star:not([data-active]):not(:hover) .icon {
   color: color-mix(in srgb, var(--ui-content-tertiary) 70%, transparent);
   opacity: 0.85;
 }
@@ -17036,30 +17036,36 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   color: color-mix(in srgb, var(--accent) 45%, white);
 }
 
-/* ==== a69: accent for scores and key emphasis ============================
-   Ratings/use --rating-star (= --accent). Quiet surfaces stay quiet; only
-   informational emphasis (filled stars, active rating chips, scope count)
-   picks up accent — Codex-like hierarchy, not chrome flood. */
+/* ==== a70: punchy accent highlights (Codex) ==============================
+   Surfaces stay quiet; emphasis glyphs use FULL --accent (not tertiary mixes).
+   Codex: --app-color-icon-accent #339cff on muted chrome — scarce but vivid. */
 .app-shell[data-shell-layout="islands"] .rating-star[data-active],
 .app-shell[data-shell-layout="islands"] .rating-star:hover {
-  color: var(--rating-star);
+  color: var(--accent);
 }
-.app-shell[data-shell-layout="islands"] .rating-star[data-active] .icon {
+.app-shell[data-shell-layout="islands"] .rating-star[data-active] .icon,
+.app-shell[data-shell-layout="islands"] .rating-star:hover .icon {
+  color: var(--accent);
   fill: currentColor;
+  stroke: currentColor;
   stroke-width: 1;
+  opacity: 1;
 }
 .app-shell[data-shell-layout="islands"] .dimension-rating-chip.is-active:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--island-hairline, var(--divider)));
-  background: color-mix(in srgb, var(--accent) 12%, var(--island-surface-soft, transparent));
-  color: var(--accent-soft-fg);
+  border-color: color-mix(in srgb, var(--accent) 75%, transparent);
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--accent);
+  font-weight: 650;
 }
 .app-shell[data-shell-layout="islands"] .item-count {
-  color: color-mix(in srgb, var(--accent) 42%, var(--ui-content-tertiary));
+  color: var(--accent);
+  font-weight: 550;
 }
 .app-shell[data-shell-layout="islands"] .nav-row.is-active .nav-count {
-  color: color-mix(in srgb, var(--accent-soft-fg) 80%, var(--ui-content-secondary));
+  color: var(--accent);
+  font-weight: 550;
 }
 .app-shell[data-shell-layout="islands"] .inspector-ai-badge {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-soft-fg);
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent);
 }
