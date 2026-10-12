@@ -17555,3 +17555,36 @@ html.serpent-window-square {
 :root[data-elevation="0"] .app-shell[data-shell-layout="islands"] > .workspace {
   box-shadow: none;
 }
+
+/* ==== a84: macOS traffic lights in islands layout ==========================
+   dev (Serpent-4ze) reserves 78px via `body.platform-darwin
+   .toolbar-nav-cluster { padding-left: 78px }`, but the islands rules
+   (`.app-shell[islands] .toolbar-nav-cluster { padding-left: outer-gap }`)
+   outrank it, so the sidebar toggle sat under the traffic lights.
+   Lights: x 14→66 (trafficLightPosition x14), so reserve 78px (12px clear).
+   Collapsed: base CSS already moves the cluster to left:78px — drop the
+   extra outer gap there so toggle x matches the expanded state.
+   Custom caption buttons render only on Windows (App.tsx), unchanged. */
+body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluster {
+  padding-left: 78px;
+}
+body.platform-darwin .app-shell[data-shell-layout="islands"].left-collapsed .toolbar-nav-cluster {
+  padding-left: 0;
+}
+/* The 78px inset narrows the cluster; keep the toggle square, let the
+   library switcher truncate instead. */
+body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluster > :first-child {
+  flex-shrink: 0;
+}
+
+/* ==== a84b: gap between inspector section label and AI badge ============== */
+.app-shell[data-shell-layout="islands"] .inspector-content .micro-label:has(> .inspector-ai-badge-inline),
+.app-shell[data-shell-layout="islands"] .inspector-section-label:has(> .inspector-ai-badge-inline) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-shell[data-shell-layout="islands"] .inspector-content .micro-label > .inspector-ai-badge-inline,
+.app-shell[data-shell-layout="islands"] .inspector-section-label > .inspector-ai-badge-inline {
+  margin: 0;
+}
