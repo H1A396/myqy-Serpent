@@ -16883,16 +16883,16 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a58: softer tag colors, unified radii ================================
-   Quieter tint (lower chroma wash). Mask uses one radius language R=5:
-   left body A5 arcs + tip cubics with the same R-scale nose (no mixed sharp/soft).
-   Keep tip-right, × on tip, no dots. */
+/* ==== a59: smaller tag radii + rounded tip =================================
+   Shrink body corners (R=5 → R=2) and add an explicit R=3 tip-nose arc so the
+   right point is clearly soft-rounded at chip scale. Keep a58 soft tints,
+   tip-right, × on tip, no dots. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   border: 0;
   border-radius: 0;
-  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M7%202H40C46.5%202%2049.5%206.5%2053.5%2012C49.5%2017.5%2046.5%2022%2040%2022H7A5%205%200%200%201%202%2017V7A5%205%200%200%201%207%202Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 12 fill / 0 16px 0 9px / 0 stretch;
-  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M7%202H40C46.5%202%2049.5%206.5%2053.5%2012C49.5%2017.5%2046.5%2022%2040%2022H7A5%205%200%200%201%202%2017V7A5%205%200%200%201%207%202Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 12 fill / 0 16px 0 9px / 0 stretch;
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%202H39C46%202%2050%206.5%2053.5%209.8A3%203%200%200%201%2053.5%2014.2C50%2017.5%2046%2022%2039%2022H4A2%202%200%200%201%202%2020V4A2%202%200%200%201%204%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 8 fill / 0 17px 0 7px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2764%27%20height%3D%2724%27%20viewBox%3D%270%200%2064%2024%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%202H39C46%202%2050%206.5%2053.5%209.8A3%203%200%200%201%2053.5%2014.2C50%2017.5%2046%2022%2039%2022H4A2%202%200%200%201%202%2020V4A2%202%200%200%201%204%202Z%27%2F%3E%3C%2Fsvg%3E") 0 26 0 8 fill / 0 17px 0 7px / 0 stretch;
   padding-left: 8px;
   padding-right: 14px;
   filter: drop-shadow(
