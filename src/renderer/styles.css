@@ -16882,3 +16882,72 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
     black
   );
 }
+
+/* ==== a55: minimal tag silhouette (not capsules) ==========================
+   Owner: not skeuomorphic — a flat price-tag / label shape (pointed string-end,
+   flat body). Islands only; keep color dots + soft fill. Border dropped because
+   clip-path cannot follow a rectangular border cleanly; hairline via drop-shadow
+   tracks the clipped alpha instead. */
+.app-shell[data-shell-layout="islands"] .tag-chip,
+.app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  --tag-tip: 10px;
+  border: 0;
+  border-radius: 0;
+  /* Pointed left (string end); flat square-cut right — clear asymmetry */
+  clip-path: polygon(
+    0 50%,
+    var(--tag-tip) 0,
+    100% 0,
+    100% 100%,
+    var(--tag-tip) 100%
+  );
+  /* Extra left pad so text/dot sit in the rectangular body past the tip */
+  padding-left: calc(var(--tag-tip) + 6px);
+  padding-right: 7px;
+  /* Hairline that follows the tag silhouette (filter paints after clip) */
+  filter: drop-shadow(
+    0 0 0.7px color-mix(in srgb, var(--ui-content-primary) 40%, transparent)
+  );
+}
+
+.app-shell[data-shell-layout="islands"] .tag-chip {
+  gap: 5px;
+  min-height: 22px;
+  padding-top: 0;
+  padding-bottom: 0;
+  /* Slightly stronger than island-surface-soft so the silhouette reads on ash light */
+  background: color-mix(in srgb, var(--island-surface-soft) 82%, var(--ui-content-primary));
+  color: var(--ui-content-secondary);
+}
+
+.app-shell[data-shell-layout="islands"] .tag-chip:hover {
+  background: color-mix(in srgb, var(--island-surface-soft) 86%, var(--ui-content-primary));
+  filter: drop-shadow(
+    0 0 0.65px color-mix(in srgb, var(--ui-content-primary) 44%, transparent)
+  );
+}
+
+.app-shell[data-shell-layout="islands"] .tag-chip-remove {
+  /* Keep the × inside the flat body; tip already padded on the left */
+  margin-right: -2px;
+}
+
+.app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  height: var(--shell-chip-height);
+  padding-right: 5px;
+  background: var(--island-surface-soft);
+  color: var(--ui-content-secondary);
+}
+
+.app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
+  background: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
+  color: color-mix(in srgb, var(--accent) 70%, var(--ui-content-primary));
+  filter: drop-shadow(
+    0 0 0.55px color-mix(in srgb, var(--accent) 45%, transparent)
+  );
+}
+
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
+  background: color-mix(in srgb, var(--accent) 22%, var(--island-surface-soft));
+  color: color-mix(in srgb, var(--accent) 55%, white);
+}
