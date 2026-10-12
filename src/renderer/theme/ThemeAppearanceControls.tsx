@@ -24,6 +24,12 @@ const PROFILE_LABELS = {
   serpent: 'settings.themeProfileSerpent',
   vscode: 'settings.themeProfileVscode',
   soft: 'settings.themeProfileSoft',
+  midnight: 'settings.themeProfileMidnight',
+  mist: 'settings.themeProfileMist',
+  sand: 'settings.themeProfileSand',
+  forest: 'settings.themeProfileForest',
+  indigo: 'settings.themeProfileIndigo',
+  rose: 'settings.themeProfileRose',
 } as const;
 
 const BACKGROUND_MODE_LABELS = {
