@@ -3,25 +3,21 @@ import { workspaceTabOutlinePath } from "./workspace-tab-outline-path";
 
 const FALLBACK_SCOOP = 18;
 const FALLBACK_RADIUS = 14;
+/** Half of the 1px chrome stroke — path is inset so the outer edge matches CSS. */
+const STROKE_INSET = 0.5;
 
 function readPx(raw: string, fallback: number): number {
   const n = Number.parseFloat(raw);
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Snap CSS px length to a device-pixel multiple so 1px strokes stay 1 device px. */
-function snapCssPx(cssPx: number): number {
-  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-  return Math.round(cssPx * dpr) / dpr;
-}
-
 /**
  * Single-geometry chrome for the active tab: one SVG path paints fill + stroke.
  *
- * Scoop tips sit on the center island's top pixel centerline so the 1px SVG
- * stroke lands on the same device row as the panel-top seam gradients (identical
- * --island-border ink). Publishes --tab-seam-hole-* to interrupt that seam
- * under the chrome — no divider across the tab face.
+ * Geometry uses the live CSS tokens (--workspace-tab-scoop / border-radius) and
+ * an inset path so the centered 1px stroke’s outer edge matches that silhouette.
+ * Publishes --tab-seam-hole-* so the workspace top border is interrupted under
+ * the chrome (no divider across the tab face).
  */
 export function WorkspaceTabOutline(): ReactNode {
   const [host, setHost] = useState<SVGSVGElement | null>(null);
@@ -40,6 +36,7 @@ export function WorkspaceTabOutline(): ReactNode {
       const cs = getComputedStyle(tab);
       const tabs = tab.closest(".workspace-tabs");
       const tcs = tabs ? getComputedStyle(tabs) : null;
+      // Exact CSS constants — do not snap; snapping broke scoop symmetry vs tab box.
       const scoop = readPx(
         tcs?.getPropertyValue("--workspace-tab-scoop") ?? "",
         FALLBACK_SCOOP,
@@ -51,28 +48,25 @@ export function WorkspaceTabOutline(): ReactNode {
         .closest(".app-shell")
         ?.querySelector(":scope > .workspace") as HTMLElement | null;
 
-      // 1px stroke is centered on the path. Baseline = panel-top pixel center
-      // (snapped top edge + 0.5) so it shares the seam gradient's device row.
+      // Tip Y = panel-top pixel center so 1px stroke shares the seam row.
       let faceH: number;
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
-        const topEdge = snapCssPx(wr.top - rect.top);
-        faceH = Math.max(topEdge + 0.5, scoop + 1);
+        faceH = Math.max(wr.top + 0.5 - rect.top, scoop + 1);
       } else {
         const padBottom = readPx(cs.paddingBottom, 0);
-        faceH = Math.max(snapCssPx(rect.height - padBottom), scoop + 1);
+        faceH = Math.max(rect.height - padBottom, scoop + 1);
       }
 
       setBox({
-        w: snapCssPx(rect.width),
+        w: rect.width,
         h: faceH,
-        scoop: snapCssPx(scoop),
-        radius: snapCssPx(radius),
+        scoop,
+        radius,
       });
 
       if (workspace) {
         const wr = workspace.getBoundingClientRect();
-        // Hole spans tip-to-tip; 0.5px inset buries butt AA under seam ink.
         const tipInset = 0.5;
         const leftTip = rect.left - scoop - wr.left + tipInset;
         const rightTip = rect.right + scoop - wr.left - tipInset;
@@ -105,7 +99,9 @@ export function WorkspaceTabOutline(): ReactNode {
   const h = box?.h ?? 0;
   const w = box?.w ?? 0;
   const path =
-    box === null ? "" : workspaceTabOutlinePath(w, h, S, box.radius);
+    box === null
+      ? ""
+      : workspaceTabOutlinePath(w, h, S, box.radius, STROKE_INSET);
   const vbW = w + 2 * S;
 
   return (

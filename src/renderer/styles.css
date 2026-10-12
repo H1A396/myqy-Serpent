@@ -16780,10 +16780,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
    via background gradients only; under the tab hole there is no line. */
 
 .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: var(--island-border);
+  /* Softer than panel --island-border: pull ink toward backdrop so the tab
+     outline sits quietly on the shell field; seam uses the same token. */
+  --island-tab-stroke: color-mix(in srgb, var(--island-border) 55%, var(--island-backdrop));
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
-  --island-tab-stroke: var(--island-border);
+  --island-tab-stroke: color-mix(in srgb, var(--island-border) 55%, var(--island-backdrop));
 }
 
 .app-shell[data-shell-layout="islands"] .workspace-tab,
@@ -16835,8 +16837,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   border-top-color: transparent;
   background-color: var(--island-canvas);
   background-image:
-    linear-gradient(var(--island-border), var(--island-border)),
-    linear-gradient(var(--island-border), var(--island-border)),
+    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke)),
+    linear-gradient(var(--island-tab-stroke), var(--island-tab-stroke)),
     linear-gradient(var(--island-tab-fill), var(--island-tab-fill));
   background-size:
     var(--tab-seam-hole-left, 100%) var(--island-hairline-w),
@@ -16859,20 +16861,20 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   overflow-y: visible;
 }
 
-/* ==== a44b: slightly deeper islands backdrop (subtle) =====================
-   Owner: 背景稍微暗一点点. Nudge only --island-backdrop; leave canvas/sides/
-   toolstrip ladder alone so island contrast stays readable. */
+/* ==== a45: deeper backdrop + soft tab stroke ==============================
+   Backdrop one more subtle step darker. Tab/seam stroke pulls border ink
+   toward backdrop (less contrast than full --island-border). */
 .app-shell[data-shell-layout="islands"] {
   --island-backdrop: color-mix(
     in srgb,
-    color-mix(in srgb, var(--ui-surface-pane) 78%, var(--ui-surface-canvas)) 97%,
+    color-mix(in srgb, var(--ui-surface-pane) 78%, var(--ui-surface-canvas)) 93%,
     var(--ui-content-primary)
   );
 }
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] {
   --island-backdrop: color-mix(
     in srgb,
-    color-mix(in srgb, var(--ui-surface-pane) 55%, var(--ui-surface-canvas)) 96%,
+    color-mix(in srgb, var(--ui-surface-pane) 55%, var(--ui-surface-canvas)) 93%,
     black
   );
 }
