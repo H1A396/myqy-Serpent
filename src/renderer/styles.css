@@ -2641,7 +2641,7 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 
 .format-filter-group .filter-presets {
   margin: 0;
-  padding-left: 22px;
+  padding-left: 24px;
 }
 
 .filter-presets {
@@ -16883,71 +16883,78 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a55: minimal tag silhouette (not capsules) ==========================
-   Owner: not skeuomorphic — a flat price-tag / label shape (pointed string-end,
-   flat body). Islands only; keep color dots + soft fill. Border dropped because
-   clip-path cannot follow a rectangular border cleanly; hairline via drop-shadow
-   tracks the clipped alpha instead. */
+/* ==== a56: tag chips use icon silhouette, no dots =========================
+   Replace a55 hard clip-path tip. Chip chrome = soft Lucide-like tag mask
+   derived from Icons.tsx `tag` path (rounded tip + string hole + rounded
+   body), tip-left. -webkit-mask-box-image 9-slices so tip/hole stay round
+   while the body stretches. Color via soft tint (--tag-chip-color), no dots. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
-  --tag-tip: 10px;
   border: 0;
   border-radius: 0;
-  /* Pointed left (string end); flat square-cut right — clear asymmetry */
-  clip-path: polygon(
-    0 50%,
-    var(--tag-tip) 0,
-    100% 0,
-    100% 100%,
-    var(--tag-tip) 100%
-  );
-  /* Extra left pad so text/dot sit in the rectangular body past the tip */
-  padding-left: calc(var(--tag-tip) + 6px);
-  padding-right: 7px;
-  /* Hairline that follows the tag silhouette (filter paints after clip) */
+  /* Left slice covers tip+hole; right covers rounded end; middle stretches */
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%2724%27%20viewBox%3D%270%200%2096%2024%27%3E%3Cpath%20fill%3D%27black%27%20fill-rule%3D%27evenodd%27%20d%3D%27M26%201.2H84A8%208%200%200%201%2092%209.2V14.8A8%208%200%200%201%2084%2022.8H26C14.5%2022.8%206.5%2019.2%202.2%2012C6.5%204.8%2014.5%201.2%2026%201.2ZM13.2%2012m-3%200a3%203%200%201%200%206%200a3%203%200%201%200-6%200Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 48 fill / 0 16px 0 32px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%2724%27%20viewBox%3D%270%200%2096%2024%27%3E%3Cpath%20fill%3D%27black%27%20fill-rule%3D%27evenodd%27%20d%3D%27M26%201.2H84A8%208%200%200%201%2092%209.2V14.8A8%208%200%200%201%2084%2022.8H26C14.5%2022.8%206.5%2019.2%202.2%2012C6.5%204.8%2014.5%201.2%2026%201.2ZM13.2%2012m-3%200a3%203%200%201%200%206%200a3%203%200%201%200-6%200Z%27%2F%3E%3C%2Fsvg%3E") 0 24 0 48 fill / 0 16px 0 32px / 0 stretch;
+  /* Clear the hole / tip so label starts in the body */
+  padding-left: 24px;
+  padding-right: 8px;
   filter: drop-shadow(
-    0 0 0.7px color-mix(in srgb, var(--ui-content-primary) 40%, transparent)
+    0 0 0.55px color-mix(in srgb, var(--ui-content-primary) 28%, transparent)
   );
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip {
-  gap: 5px;
+  gap: 4px;
   min-height: 22px;
   padding-top: 0;
   padding-bottom: 0;
-  /* Slightly stronger than island-surface-soft so the silhouette reads on ash light */
-  background: color-mix(in srgb, var(--island-surface-soft) 82%, var(--ui-content-primary));
+  background: color-mix(
+    in srgb,
+    var(--tag-chip-color, var(--ui-content-primary)) 14%,
+    var(--island-surface-soft)
+  );
   color: var(--ui-content-secondary);
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip:hover {
-  background: color-mix(in srgb, var(--island-surface-soft) 86%, var(--ui-content-primary));
+  background: color-mix(
+    in srgb,
+    var(--tag-chip-color, var(--ui-content-primary)) 20%,
+    var(--island-surface-soft)
+  );
   filter: drop-shadow(
-    0 0 0.65px color-mix(in srgb, var(--ui-content-primary) 44%, transparent)
+    0 0 0.55px color-mix(in srgb, var(--ui-content-primary) 36%, transparent)
   );
 }
 
+.app-shell[data-shell-layout="islands"] .tag-chip-dot {
+  display: none;
+}
+
 .app-shell[data-shell-layout="islands"] .tag-chip-remove {
-  /* Keep the × inside the flat body; tip already padded on the left */
-  margin-right: -2px;
+  margin-right: -1px;
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   height: var(--shell-chip-height);
   padding-right: 5px;
-  background: var(--island-surface-soft);
+  background: color-mix(
+    in srgb,
+    var(--ui-content-primary) 6%,
+    var(--island-surface-soft)
+  );
   color: var(--ui-content-secondary);
 }
 
 .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  background: color-mix(in srgb, var(--accent) 14%, var(--island-surface-soft));
+  background: color-mix(in srgb, var(--accent) 16%, var(--island-surface-soft));
   color: color-mix(in srgb, var(--accent) 70%, var(--ui-content-primary));
   filter: drop-shadow(
-    0 0 0.55px color-mix(in srgb, var(--accent) 45%, transparent)
+    0 0 0.55px color-mix(in srgb, var(--accent) 40%, transparent)
   );
 }
 
 :root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
-  background: color-mix(in srgb, var(--accent) 22%, var(--island-surface-soft));
+  background: color-mix(in srgb, var(--accent) 24%, var(--island-surface-soft));
   color: color-mix(in srgb, var(--accent) 55%, white);
 }

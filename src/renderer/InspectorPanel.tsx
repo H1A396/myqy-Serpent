@@ -1232,7 +1232,12 @@ export function InspectorPanel(props: InspectorPanelProps) {
                   className="tag-chip"
                   data-source={tag.source}
                   key={tag.id}
-                  style={{ borderColor: tagColor(tag.id) }}
+                  style={
+                    {
+                      borderColor: tagColor(tag.id),
+                      ["--tag-chip-color" as string]: tagColor(tag.id),
+                    }
+                  }
                 >
                   {tag.source === "ai" && showAiBadges && (
                     <span
