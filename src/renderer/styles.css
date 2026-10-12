@@ -17455,3 +17455,68 @@ html.serpent-window-square {
 .app-shell[data-shell-layout="islands"] .dimension-filter-dims .sort-mode-control .sort-order-glyph {
   opacity: 1;
 }
+
+/* ==== a82: clean tag fills, rounder tag shape, tighter AI badge inset ======
+   1) Light fills were muddy: tints mixed into --island-surface-soft (which
+      carries --ui-content-primary) in sRGB. Now tag hue → white in oklab and
+      untagged/neutral chips use pure neutral gray; hairline neutral too.
+      Dark keeps the island surface as base, mixed in oklab.
+   2) Radii in sync: left 6px (was 4), body→tip shoulders 6px (was 2), nose
+      2.5px (was 1.2). Tip slopes stay straight lines between fillets; left
+      slice widened to 6 so the 9-slice never cuts a curve (no seams).
+   3) AI badge: chip left inset = badge's vertical inset (22-16)/2 = 3px. */
+.app-shell[data-shell-layout="islands"] .tag-chip,
+.app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  --tag-base: white;
+  --tag-neutral: color-mix(in oklab, black 55%, white);
+  --tag-fill-tint: 9%;
+  --tag-fill-tint-hover: 13%;
+  --tag-fill-solid: color-mix(
+    in oklab,
+    var(--tag-chip-color, var(--tag-neutral)) var(--tag-fill-tint),
+    var(--tag-base)
+  );
+  --tag-chip-fill: var(--tag-fill-solid);
+  filter: drop-shadow(0 0 0.5px rgb(0 0 0 / 22%));
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:hover {
+  --tag-fill-solid: color-mix(
+    in oklab,
+    var(--tag-chip-color, var(--tag-neutral)) var(--tag-fill-tint-hover),
+    var(--tag-base)
+  );
+  filter: drop-shadow(0 0 0.5px rgb(0 0 0 / 30%));
+}
+.app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  --tag-fill-solid: color-mix(in oklab, var(--tag-neutral) var(--tag-fill-tint), var(--tag-base));
+}
+.app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
+  --tag-fill-solid: color-mix(in oklab, var(--accent) 11%, var(--tag-base));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .tag-chip,
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip {
+  --tag-base: var(--island-surface-soft);
+  --tag-neutral: color-mix(in oklab, white 70%, black);
+  --tag-fill-tint: 4%;
+  --tag-fill-tint-hover: 7%;
+  --tag-chip-fill: color-mix(in oklab, var(--tag-fill-solid) 78%, transparent);
+  filter: drop-shadow(0 0 0.5px rgb(255 255 255 / 12%));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .tag-chip:hover {
+  filter: drop-shadow(0 0 0.5px rgb(255 255 255 / 18%));
+}
+:root[data-theme="dark"] .app-shell[data-shell-layout="islands"] .filter-tag-chip.is-selected {
+  --tag-fill-solid: color-mix(in oklab, var(--accent) 16%, var(--tag-base));
+}
+.app-shell[data-shell-layout="islands"] .tag-chip::before,
+.app-shell[data-shell-layout="islands"] .filter-tag-chip::before {
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w) 0 6px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M6%200H66.35A6%206%200%200%201%2070.79%201.96L77.47%209.32A2.5%202.5%200%200%201%2077.47%2012.68L70.79%2020.04A6%206%200%200%201%2066.35%2022H6A6%206%200%200%201%200%2016V6A6%206%200%200%201%206%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 6 fill / 0 var(--tag-tip-w) 0 6px / 0 stretch;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip:has(> .inspector-ai-badge-inline) {
+  padding-left: 3px;
+}
+.app-shell[data-shell-layout="islands"] .tag-chip > .inspector-ai-badge-inline {
+  border-radius: 3px;
+  line-height: calc(14px * var(--ui-font-scale));
+}

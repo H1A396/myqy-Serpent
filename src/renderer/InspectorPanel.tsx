@@ -607,8 +607,10 @@ function InspectorHero({
 // --- Tag chip colors ---
 
 const TAG_CHIP_COLORS = [
-  "#4a9ec9", "#6db85d", "#c9773e", "#b866b8", "#d99a3e",
-  "#5d9b9b", "#c75252", "#7b68b8", "#5aa36b", "#b8734a",
+  // a82: clean, clearly-hued palette (no olive/brown/teal-gray that read muddy
+  // as light tints).
+  "#2f80ed", "#27ae60", "#9b51e0", "#eb5757", "#0ea5e9",
+  "#e0569b", "#5b5fe0", "#14b8a6", "#f2994a", "#7c3aed",
 ];
 
 function tagColor(tagId: string) {
