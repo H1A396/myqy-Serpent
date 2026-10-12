@@ -17312,7 +17312,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   --accent-soft: var(--ui-action-accent-soft, color-mix(in srgb, var(--accent) 9%, #ffffff));
 }
 
-/* ==== a77: tighter outer gap, match window corner radii ====================
+/* ==== a77: match window corner radii ======================================
    Window chrome (Linux rounded #root / Win11-like) uses 8px
    (LINUX_WINDOW_CORNER_RADIUS_PX). Outer panel corners that meet the window
    (nav BL, inspector BR) use the same radius so the seam disappears — Codex.
@@ -17322,22 +17322,6 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 }
 html.serpent-window-square {
   --window-corner-radius: 0px;
-}
-
-.app-shell[data-shell-layout="islands"] {
-  --island-gap: 1px;
-}
-
-.app-shell[data-shell-layout="islands"] > .navigation-pane,
-.app-shell[data-shell-layout="islands"] > .inspector-pane,
-.app-shell[data-shell-layout="islands"] > .workspace {
-  margin: 0 var(--island-gap) var(--island-gap);
-}
-.app-shell[data-shell-layout="islands"] > .navigation-pane { margin-right: 0; }
-.app-shell[data-shell-layout="islands"] > .inspector-pane { margin-left: 0; }
-.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
-.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
-  margin: 0;
 }
 
 /* Outer corners that meet the window chrome = window radius; other corners
@@ -17357,4 +17341,51 @@ html.serpent-window-square {
 }
 .app-shell[data-shell-layout="islands"].right-collapsed > .workspace {
   border-bottom-right-radius: var(--window-corner-radius);
+}
+
+/* ==== a78: separate outer vs inter-panel gaps ==============================
+   a77 set one gap to 1px — too tight between panels. Split tokens:
+   --island-outer-gap ≈ 2–3px against the window edge
+   --island-gap ≈ 4–8px between nav / workspace / inspector */
+.app-shell[data-shell-layout="islands"] {
+  --island-outer-gap: 3px;
+  --island-gap: 6px;
+}
+
+/* Outer: L of nav, R of inspector, bottom of all three.
+   Inter: L/R of workspace (nav↔ws↔inspector). */
+.app-shell[data-shell-layout="islands"] > .navigation-pane {
+  margin: 0 0 var(--island-outer-gap) var(--island-outer-gap);
+}
+.app-shell[data-shell-layout="islands"] > .workspace {
+  margin: 0 var(--island-gap) var(--island-outer-gap);
+}
+.app-shell[data-shell-layout="islands"] > .inspector-pane {
+  margin: 0 var(--island-outer-gap) var(--island-outer-gap) 0;
+}
+.app-shell[data-shell-layout="islands"].left-collapsed > .navigation-pane,
+.app-shell[data-shell-layout="islands"].right-collapsed > .inspector-pane {
+  margin: 0;
+}
+/* Collapsed: workspace picks up the freed outer edge. */
+.app-shell[data-shell-layout="islands"].left-collapsed > .workspace {
+  margin-left: var(--island-outer-gap);
+}
+.app-shell[data-shell-layout="islands"].right-collapsed > .workspace {
+  margin-right: var(--island-outer-gap);
+}
+
+/* Toolbar: outer clusters follow outer-gap; workspace cluster follows inter gap. */
+.app-shell[data-shell-layout="islands"] .toolbar-nav-cluster {
+  padding-left: var(--island-outer-gap);
+}
+.app-shell[data-shell-layout="islands"] .toolbar-workspace-cluster {
+  padding-left: var(--island-gap);
+  padding-right: var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"]:not(.left-collapsed) .toolbar-workspace-cluster:has(.workspace-tabs) {
+  padding-left: var(--island-gap);
+}
+.app-shell[data-shell-layout="islands"]:not(.right-collapsed) .toolbar-workspace-cluster:has(.workspace-tabs) {
+  padding-right: var(--island-gap);
 }
