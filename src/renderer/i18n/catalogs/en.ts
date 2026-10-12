@@ -1446,6 +1446,7 @@ export const en = {
     themeProfileSilver: "Silver",
     themeProfileGraphite: "Graphite",
     themeProfileSmoke: "Smoke",
+    themeProfileAsh: "Ash",
     themeProfileNotion: "Notion",
     themeProfileOnedark: "One Dark",
     themeProfileCode: "VS Code Dark+/Light+",

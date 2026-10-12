@@ -26,7 +26,7 @@ export const THEME_PROFILE_PREF_KEY = 'serpent.theme-profile.v3';
 /** v2 persisted key: four fixed presets (vscode-dark/serpent-dark/serpent-light/soft-light). */
 export const THEME_PROFILE_LEGACY_KEY = 'serpent.theme-profile.v2';
 
-export const THEME_PROFILE_IDS = ['serpent', 'vscode', 'soft', 'midnight', 'mist', 'sand', 'forest', 'indigo', 'rose', 'ocean', 'copper', 'ink', 'lilac', 'citrus', 'paper', 'slate', 'film', 'mono', 'blush', 'olive', 'charcoal', 'silver', 'graphite', 'smoke', 'notion', 'onedark', 'code'] as const;
+export const THEME_PROFILE_IDS = ['serpent', 'vscode', 'soft', 'midnight', 'mist', 'sand', 'forest', 'indigo', 'rose', 'ocean', 'copper', 'ink', 'lilac', 'citrus', 'paper', 'slate', 'film', 'mono', 'blush', 'olive', 'charcoal', 'silver', 'graphite', 'smoke', 'ash', 'notion', 'onedark', 'code'] as const;
 
 export type ThemeProfileId = (typeof THEME_PROFILE_IDS)[number];
 export type ThemeProfileColorToken = CustomThemeColorToken;
@@ -2472,6 +2472,102 @@ const smokeLight = tokens({
 });
 
 
+/** a54: true neutral chalky mid-gray — flatter ladder than charcoal, no warm/cool cast. */
+const ashDark = tokens({
+  canvas: '#282828',
+  pane: '#303030',
+  raised: '#363636',
+  raisedSubtle: '#3a3a3a',
+  overlay: '#383838',
+  scrim: '#000000cc',
+  hover: '#424242',
+  pressed: '#4a4a4a',
+  selected: '#404040',
+  disabled: '#2c2c2c',
+  primary: '#eeeeee',
+  secondary: '#aeaeae',
+  tertiary: '#808080',
+  contentDisabled: '#626262',
+  inverse: '#282828',
+  onAccent: '#161616',
+  accent: '#c8c8c8',
+  divider: '#444444',
+  subtle: '#4c4c4c',
+  control: '#565656',
+  focus: '#c8c8c8',
+  selection: '#404040',
+  dangerBorder: '#d8808c',
+  action: '#c0c0c0',
+  actionHover: '#d0d0d0',
+  actionPressed: '#b0b0b0',
+  actionSoft: '#c0c0c033',
+  actionHoverSurface: '#424242',
+  actionPressedSurface: '#4a4a4a',
+  actionSelected: '#404040',
+  actionDisabled: '#565656',
+  actionDanger: '#d8808c',
+  dangerHover: '#c06874',
+  info: '#b0b0b0',
+  infoSurface: '#343434',
+  infoContent: '#e8e8e8',
+  success: '#74c49a',
+  successSurface: '#243830',
+  successContent: '#d0f0e0',
+  warning: '#d0b070',
+  warningSurface: '#3e3828',
+  warningContent: '#f0e4c0',
+  danger: '#d8808c',
+  dangerSurface: '#3e2830',
+  dangerContent: '#f8d8de',
+});
+const ashLight = tokens({
+  canvas: '#e6e6e6',
+  pane: '#dcdcdc',
+  raised: '#f2f2f2',
+  raisedSubtle: '#ececec',
+  overlay: '#f2f2f2',
+  scrim: '#00000033',
+  hover: '#d2d2d2',
+  pressed: '#c8c8c8',
+  selected: '#cecece',
+  disabled: '#dedede',
+  primary: '#1c1c1c',
+  secondary: '#585858',
+  tertiary: '#848484',
+  contentDisabled: '#a6a6a6',
+  inverse: '#ffffff',
+  onAccent: '#ffffff',
+  accent: '#2e2e2e',
+  divider: '#c8c8c8',
+  subtle: '#d2d2d2',
+  control: '#b0b0b0',
+  focus: '#2e2e2e',
+  selection: '#c2c2c2',
+  dangerBorder: '#d94b5b',
+  action: '#262626',
+  actionHover: '#3a3a3a',
+  actionPressed: '#141414',
+  actionSoft: '#2626261f',
+  actionHoverSurface: '#d2d2d2',
+  actionPressedSurface: '#c8c8c8',
+  actionSelected: '#cecece',
+  actionDisabled: '#aeaeae',
+  actionDanger: '#d94b5b',
+  dangerHover: '#bf3948',
+  info: '#404040',
+  infoSurface: '#e2e2e2',
+  infoContent: '#202020',
+  success: '#2c9a62',
+  successSurface: '#e3f6eb',
+  successContent: '#226744',
+  warning: '#b57b18',
+  warningSurface: '#fff3d6',
+  warningContent: '#79530d',
+  danger: '#d94b5b',
+  dangerSurface: '#ffe6e9',
+  dangerContent: '#8d2b38',
+});
+
 /** a53: Notion / One Dark / VS Code Dark+·Light+ — full ladders, faithful-ish. */
 const notionDark = tokens({
   canvas: '#191919',
@@ -2880,6 +2976,11 @@ export const THEME_PROFILE_PRESETS: Readonly<
     id: 'smoke',
     label: '青烟',
     tokens: { dark: smokeDark, light: smokeLight },
+  },
+  ash: {
+    id: 'ash',
+    label: '石灰',
+    tokens: { dark: ashDark, light: ashLight },
   },
   notion: {
     id: 'notion',

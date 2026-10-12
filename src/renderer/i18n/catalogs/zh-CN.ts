@@ -1427,6 +1427,7 @@ export const zhCN = {
     themeProfileSilver: "银灰",
     themeProfileGraphite: "石墨",
     themeProfileSmoke: "青烟",
+    themeProfileAsh: "石灰",
     themeProfileNotion: "Notion",
     themeProfileOnedark: "One Dark",
     themeProfileCode: "VS Code 深色+/浅色+",

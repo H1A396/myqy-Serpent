@@ -45,6 +45,7 @@ const PROFILE_LABELS = {
   silver: 'settings.themeProfileSilver',
   graphite: 'settings.themeProfileGraphite',
   smoke: 'settings.themeProfileSmoke',
+  ash: 'settings.themeProfileAsh',
   notion: 'settings.themeProfileNotion',
   onedark: 'settings.themeProfileOnedark',
   code: 'settings.themeProfileCode',
