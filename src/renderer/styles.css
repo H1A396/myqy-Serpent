@@ -16886,10 +16886,10 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   );
 }
 
-/* ==== a64: remove tag body-tip vertical seam ==============================
-   a63 split ::before/::after double-painted the overlap (dark 72% → stripe).
-   One ::before fill + single mask-border silhouette (left R=3 + fixed tip
-   slice, stretchable middle) — continuous alpha, no join. a63 contrast kept. */
+/* ==== a65: slightly larger tag corner radii ===============================
+   a64 single ::before + mask-border silhouette kept (no body+tip double fill).
+   Left R 3→4, tip shoulder fillets 1.5→2, tip nose A1.05→1.2 (convex sweep=1).
+   Mask slice left 3→4px; tip-right + a63 contrast unchanged. */
 .app-shell[data-shell-layout="islands"] .tag-chip,
 .app-shell[data-shell-layout="islands"] .filter-tag-chip {
   --tag-tip-w: 16px;
@@ -16935,8 +16935,8 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   background: var(--tag-chip-fill);
   z-index: 0;
   pointer-events: none;
-  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3%200H68.29A1.5%201.5%200%200%200%2069.45%200.55L77.46%2010.34A1.05%201.05%200%200%201%2077.46%2011.66L69.45%2021.45A1.5%201.5%200%200%200%2068.29%2022H3A3%203%200%200%201%200%2019V3A3%203%200%200%201%203%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 3 fill / 0 var(--tag-tip-w) 0 3px / 0 stretch;
-  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M3%200H68.29A1.5%201.5%200%200%200%2069.45%200.55L77.46%2010.34A1.05%201.05%200%200%201%2077.46%2011.66L69.45%2021.45A1.5%201.5%200%200%200%2068.29%2022H3A3%203%200%200%201%200%2019V3A3%203%200%200%201%203%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 3 fill / 0 var(--tag-tip-w) 0 3px / 0 stretch;
+  -webkit-mask-box-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%200H68.05A2%202%200%200%200%2069.6%200.73L77.38%2010.24A1.2%201.2%200%200%201%2077.38%2011.76L69.6%2021.27A2%202%200%200%200%2068.05%2022H4A4%204%200%200%201%200%2018V4A4%204%200%200%201%204%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 4 fill / 0 var(--tag-tip-w) 0 4px / 0 stretch;
+  mask-border: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2722%27%20viewBox%3D%270%200%2080%2022%27%3E%3Cpath%20fill%3D%27black%27%20d%3D%27M4%200H68.05A2%202%200%200%200%2069.6%200.73L77.38%2010.24A1.2%201.2%200%200%201%2077.38%2011.76L69.6%2021.27A2%202%200%200%200%2068.05%2022H4A4%204%200%200%201%200%2018V4A4%204%200%200%201%204%200Z%27%2F%3E%3C%2Fsvg%3E") 0 16 0 4 fill / 0 var(--tag-tip-w) 0 4px / 0 stretch;
 }
 
 .app-shell[data-shell-layout="islands"] .tag-chip::after,
