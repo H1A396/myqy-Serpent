@@ -17520,3 +17520,38 @@ html.serpent-window-square {
   border-radius: 3px;
   line-height: calc(14px * var(--ui-font-scale));
 }
+
+/* ==== a83: island shadow actually paints ===================================
+   Root cause (verified in headless Chromium on the built renderer): a80 only
+   re-set --island-shadow, but later islands blocks (a72-era flattening) set
+   `box-shadow: none` directly on `.app-shell[islands] > .navigation-pane /
+   .inspector-pane / .workspace`, so the var was never used → computed none.
+   This rule outranks them (extra :root[data-elevation] specificity) and
+   scales with Settings → Elevation shadows (level 0–3 → --elev-size /
+   --elev-intensity, applied live by ElevationProvider). Level 0: none.
+   Offsets are mostly blur so it reads in the inter-panel gaps; at the window
+   edge it simply fades out under the frame. */
+:root:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] {
+  --island-shadow:
+    0 calc(1px * var(--elev-size)) calc(3px * var(--elev-size))
+      rgb(0 0 0 / calc(0.08 * var(--elev-intensity))),
+    0 calc(3px * var(--elev-size)) calc(14px * var(--elev-size))
+      rgb(0 0 0 / calc(0.14 * var(--elev-intensity)));
+}
+:root[data-theme="dark"]:not([data-elevation="0"]) .app-shell[data-shell-layout="islands"] {
+  --island-shadow:
+    0 calc(1px * var(--elev-size)) calc(3px * var(--elev-size))
+      rgb(0 0 0 / calc(0.30 * var(--elev-intensity))),
+    0 calc(3px * var(--elev-size)) calc(14px * var(--elev-size))
+      rgb(0 0 0 / calc(0.45 * var(--elev-intensity)));
+}
+:root[data-elevation] .app-shell[data-shell-layout="islands"] > .navigation-pane,
+:root[data-elevation] .app-shell[data-shell-layout="islands"] > .inspector-pane,
+:root[data-elevation] .app-shell[data-shell-layout="islands"] > .workspace {
+  box-shadow: var(--island-shadow);
+}
+:root[data-elevation="0"] .app-shell[data-shell-layout="islands"] > .navigation-pane,
+:root[data-elevation="0"] .app-shell[data-shell-layout="islands"] > .inspector-pane,
+:root[data-elevation="0"] .app-shell[data-shell-layout="islands"] > .workspace {
+  box-shadow: none;
+}
