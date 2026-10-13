@@ -257,7 +257,7 @@ async function downloadEmbeddingFileOnce(
       });
     }
     await new Promise<void>((resolve, reject) => {
-      output.end((error) => (error ? reject(error) : resolve()));
+      output.end((error: Error | null | undefined) => (error ? reject(error) : resolve()));
     });
     renameSync(temporary, destination);
   } catch (error) {

@@ -210,7 +210,9 @@ export function applyWindowBoundsFromEdgeDelta(options: {
   if (window.isMaximized() || window.isFullScreen()) {
     return { ok: false, code: "maximized" };
   }
-  const [minW, minH] = window.getMinimumSize();
+  const minimumSize = window.getMinimumSize();
+  const minW = minimumSize[0] ?? 1;
+  const minH = minimumSize[1] ?? 1;
   let { x, y, width, height } = startBounds;
 
   if (edge.includes("e")) width = startBounds.width + dx;
