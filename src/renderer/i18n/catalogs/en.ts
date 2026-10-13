@@ -1324,6 +1324,7 @@ export const en = {
     categoryBrowse: "Browse",
     categoryAi: "AI Analysis",
     categorySemanticSearch: "Semantic search",
+    experimental: "Experimental",
     categoryMcp: "MCP",
     categoryPlugins: "Plugins",
     categoryPluginSettings: "Plugin settings",

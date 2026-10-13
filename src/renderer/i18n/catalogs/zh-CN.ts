@@ -1305,6 +1305,7 @@ export const zhCN = {
     categoryBrowse: "浏览",
     categoryAi: "AI分析",
     categorySemanticSearch: "语义搜索",
+    experimental: "实验性",
     categoryMcp: "MCP",
     categoryPlugins: "插件",
     categoryPluginSettings: "插件设置",
