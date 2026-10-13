@@ -1618,7 +1618,7 @@ async function createMainWindow(): Promise<void> {
     ...(process.platform === "darwin"
       ? {
           titleBarStyle: "hiddenInset" as const,
-          trafficLightPosition: { x: 14, y: 14 },
+          trafficLightPosition: { x: 14, y: 16 },
         }
       : shouldUseFramelessTitleBar(process.platform)
         ? {

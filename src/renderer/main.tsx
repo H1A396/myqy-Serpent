@@ -35,6 +35,7 @@ import {
 import './styles.css';
 import './ui/tokens.css';
 import './ui/ui.css';
+import './ui/islands-surfaces.css';
 
 applyRendererPlatform(document.documentElement, navigator.userAgent);
 // Apply elev level before first paint so level 0 never flashes shell shadows.

@@ -93,7 +93,7 @@ export function FolderCard({
       onDragStart={onDragStart}
       onDrop={onDrop}
       onMouseDown={onMouseDown}
-      title={entry.name}
+      data-hover-tip={entry.name}
       type="button"
     >
       <div className="folder-card-cover">
@@ -196,7 +196,7 @@ export function FolderCard({
         </div>
       </div>
       <div className="folder-card-caption">
-        <strong className="folder-card-name" title={entry.name}>
+        <strong className="folder-card-name" data-hover-tip={entry.name}>
           {entry.name}
         </strong>
         <span className="folder-card-count">

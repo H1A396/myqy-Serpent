@@ -275,14 +275,11 @@ test("measures wheel scrolling and a real library switch", async () => {
       measurementError = "renderer crashed";
     });
     await window.waitForLoadState("domcontentloaded");
-    // Switching away from a busy library raises a native `window.confirm`
-    // warning (confirmLibrarySwitch). Playwright does not answer native modals,
-    // so without this the renderer blocks forever and the switch looks like a
-    // hang instead of a prompt.
+    // Record and accept the shared busy-switch confirmation in this benchmark.
     const dialogs: string[] = [];
-    window.on("dialog", (dialog) => {
-      dialogs.push(`${dialog.type()}: ${dialog.message()}`);
-      void dialog.accept();
+    await window.addLocatorHandler(window.locator('#local-confirmation-dialog'), async () => {
+      dialogs.push(await window.locator('#local-confirmation-dialog').innerText());
+      await window.locator('#local-confirmation-dialog .ui-button--primary').click();
     });
     await installScrollProbe(window);
 

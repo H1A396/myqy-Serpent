@@ -1,3 +1,4 @@
+import { requestConfirmation } from "./local-confirmation";
 import type { CollectionSummary, LinkedFolderSummary, TagSummary } from "../shared/asset-types";
 import type { SerpentLibraryApi } from "../shared/library-api";
 import type { RendererLibrarySummary } from "../shared/protocol/responses";
@@ -376,7 +377,7 @@ export function useBatchActions({
   ) {
     if (!api || !library || assetIds.length === 0) return;
     if (
-      !confirm(
+      !await requestConfirmation(
         translateForLocale(locale, "toast.copyToExternalConfirm", {
           count: assetIds.length,
           name: folder.displayName,
@@ -384,6 +385,7 @@ export function useBatchActions({
       )
     )
       return;
+    if (!isCurrentLibrary(library.libraryId)) return;
     setUiState("importing");
     try {
       const result = await api.copyAssetsToLinkedFolder({

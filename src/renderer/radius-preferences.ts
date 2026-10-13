@@ -39,6 +39,14 @@ export const RADIUS_LEVEL_PRESETS: Readonly<Record<RadiusLevel, RadiusPreset>> =
     3: { control: 10, surface: 14, dialog: 18, overlay: 18 },
   };
 
+/** Multiplier for hard-coded radii; level 2 (default) is the designed size. */
+export const RADIUS_LEVEL_SCALE: Readonly<Record<RadiusLevel, number>> = {
+  0: 0,
+  1: 0.6,
+  2: 1,
+  3: 1.5,
+};
+
 export const DEFAULT_RADIUS_PREFERENCES: RadiusPreferences = {
   version: 1,
   level: 2,
@@ -131,6 +139,10 @@ export function applyRadiusPreferences(
   root.style.setProperty("--ui-radius-surface", `${preset.surface}px`);
   root.style.setProperty("--ui-radius-dialog", `${preset.dialog}px`);
   root.style.setProperty("--ui-radius-overlay", `${preset.overlay}px`);
+  // Every hard-coded corner in styles.css is routed through this factor
+  // (calc(Npx * var(--ui-radius-scale))), so the tier drives islands,
+  // cards, tags, buttons, inputs, menus, tabs and thumbnails alike.
+  root.style.setProperty("--ui-radius-scale", String(RADIUS_LEVEL_SCALE[level]));
   // Keep pill as a true pill regardless of tier.
   root.style.setProperty("--ui-radius-pill", "999px");
 }

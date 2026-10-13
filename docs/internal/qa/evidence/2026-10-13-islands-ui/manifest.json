@@ -1,0 +1,778 @@
+{
+  "baseline": "33f29c65c88df0631a1fb49aecf4e839ee0ff50a",
+  "oldUi": "6a9f84495e1b40d7cc28e345d2b9a8b1c085f632",
+  "comparisons": [
+    {
+      "id": "01-shell",
+      "group": "01",
+      "title": "资源库根目录",
+      "note": "主壳背景作为对照，文件夹卡外框迁移",
+      "before": "01-shell-before.png",
+      "after": "01-shell-after.png"
+    },
+    {
+      "id": "01-folder-selected",
+      "group": "01",
+      "title": "文件夹选择态",
+      "note": "1px 选择边框与卡片阴影",
+      "before": "01-folder-selected-before.png",
+      "after": "01-folder-selected-after.png"
+    },
+    {
+      "id": "02-filter",
+      "group": "02",
+      "title": "筛选弹层",
+      "note": "Portal 继承 Islands；标签轮廓与文字层级",
+      "before": "02-filter-before.png",
+      "after": "02-filter-after.png"
+    },
+    {
+      "id": "03-plugin-dialog",
+      "group": "03",
+      "title": "插件对话框",
+      "note": "主次按钮统一；旧图补充稳定 CSS 重放",
+      "before": "03-plugin-dialog-baseline-replay.png",
+      "after": "03-plugin-dialog-after.png"
+    },
+    {
+      "id": "04-progress",
+      "group": "04",
+      "title": "删除进度",
+      "note": "主壳外进度面板继承 Islands",
+      "before": "04-progress-before.png",
+      "after": "04-progress-after.png"
+    },
+    {
+      "id": "05-trust",
+      "group": "05",
+      "title": "插件信任提示",
+      "note": "修正无效表面变量和固定圆角",
+      "before": "05-trust-before.png",
+      "after": "05-trust-after.png"
+    },
+    {
+      "id": "06-3d",
+      "group": "06",
+      "title": "3D 工具栏",
+      "note": "子控件圆角消费共享 token",
+      "before": "06-3d-before.png",
+      "after": "06-3d-after.png"
+    },
+    {
+      "id": "06-3d-stats",
+      "group": "06",
+      "title": "3D 统计",
+      "note": "统计外框圆角消费共享 token",
+      "before": "06-3d-stats-before.png",
+      "after": "06-3d-stats-after.png"
+    },
+    {
+      "id": "07-settings",
+      "group": "07",
+      "title": "通用设置",
+      "note": "导航选中态与设置卡片",
+      "before": "07-settings-before.png",
+      "after": "07-settings-after.png"
+    },
+    {
+      "id": "08-community",
+      "group": "08",
+      "title": "插件社区详情",
+      "note": "社区卡片表面与轻边线",
+      "before": "08-community-before.png",
+      "after": "08-community-after.png"
+    },
+    {
+      "id": "09-plugin-workspace",
+      "group": "09",
+      "title": "插件工作区外框",
+      "note": "Host 加载态；固定虚构容器尺寸",
+      "before": "09-plugin-workspace-baseline-replay.png",
+      "after": "09-plugin-workspace-after.png"
+    },
+    {
+      "id": "09-plugin-inspector",
+      "group": "09",
+      "title": "插件检查器外框",
+      "note": "Host 加载态；固定虚构容器尺寸",
+      "before": "09-plugin-inspector-baseline-replay.png",
+      "after": "09-plugin-inspector-after.png"
+    },
+    {
+      "id": "09-plugin-overlay",
+      "group": "09",
+      "title": "插件查看器浮层",
+      "note": "Host 加载态；固定虚构容器尺寸",
+      "before": "09-plugin-overlay-baseline-replay.png",
+      "after": "09-plugin-overlay-after.png"
+    },
+    {
+      "id": "10-widgets",
+      "group": "10",
+      "title": "插件 tabs / toggle",
+      "note": "中性选中态和控件圆角",
+      "before": "10-widgets-before.png",
+      "after": "10-widgets-after.png"
+    },
+    {
+      "id": "11-primary",
+      "group": "11",
+      "title": "通用 primary 按钮",
+      "note": "普通主操作与业务按钮一致",
+      "before": "11-primary-before.png",
+      "after": "11-primary-after.png"
+    },
+    {
+      "id": "12-tags",
+      "group": "12",
+      "title": "标签管理",
+      "note": "管理控件边线与圆角；保留管理语义",
+      "before": "12-tags-before.png",
+      "after": "12-tags-after.png"
+    },
+    {
+      "id": "13-jobs",
+      "group": "13",
+      "title": "后台任务列表",
+      "note": "行分隔线统一",
+      "before": "13-jobs-before.png",
+      "after": "13-jobs-after.png"
+    },
+    {
+      "id": "14-logs",
+      "group": "14",
+      "title": "诊断日志",
+      "note": "列表表面与轻边线",
+      "before": "14-logs-before.png",
+      "after": "14-logs-after.png"
+    },
+    {
+      "id": "15-relink",
+      "group": "15",
+      "title": "批量重新链接",
+      "note": "摘要/示例表面；不扩大到导入冲突",
+      "before": "15-relink-before.png",
+      "after": "15-relink-after.png"
+    },
+    {
+      "id": "16-ai",
+      "group": "16",
+      "title": "AI 模型列表",
+      "note": "共享菜单亚克力；模态内层级 700",
+      "before": "16-ai-before.png",
+      "after": "16-ai-after.png"
+    },
+    {
+      "id": "16-hdri",
+      "group": "16",
+      "title": "HDRI 列表",
+      "note": "共享菜单亚克力和圆角",
+      "before": "16-hdri-before.png",
+      "after": "16-hdri-after.png"
+    },
+    {
+      "id": "17-tooltip",
+      "group": "17",
+      "title": "统一悬停提示",
+      "note": "修改前原生 tooltip 未进入 PNG；修改后标准提示可见",
+      "before": "17-tooltip-before.png",
+      "after": "17-tooltip-after.png"
+    },
+    {
+      "id": "18-native-confirm",
+      "group": "18",
+      "title": "应用内确认",
+      "note": "系统确认替换为标准对话框；取消保留编辑",
+      "before": "18-native-confirm-before.png",
+      "after": "18-native-confirm-after.png"
+    },
+    {
+      "id": "19-theme-modal",
+      "group": "19",
+      "title": "主题小弹窗",
+      "note": "共享模糊遮罩，层级 700，窗口 caption 701",
+      "before": "19-theme-modal-before.png",
+      "after": "19-theme-modal-after.png"
+    }
+  ],
+  "images": [
+    {
+      "file": "01-folder-selected-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "773d8dc586c20a0e773e777a6ff3b72980e05896d82910aa343d2ecff2271149",
+      "kind": "captured-after"
+    },
+    {
+      "file": "01-folder-selected-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a60ffa285a106ce1ebce0fbfcdb29674f9e5013db043e7c089d9a590598ecd91",
+      "kind": "captured-before"
+    },
+    {
+      "file": "01-shell-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "8c96ee8045687fc465379d5ff3bc6f53cfa5b943178dc325c24d6c26be14e981",
+      "kind": "captured-after"
+    },
+    {
+      "file": "01-shell-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8f2e8381d1759702bd8df0e5397c321f385705d69c4c14ab74674953a914dc74",
+      "kind": "captured-before"
+    },
+    {
+      "file": "02-filter-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "c059eae33f3889e3c60f6bc4a91659ea23a6c0181c53a995660c37033ebe4256",
+      "kind": "captured-after"
+    },
+    {
+      "file": "02-filter-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "5387f555c92eccd9f858dc1810e67e30e2172e25991886651ab895014b73a605",
+      "kind": "captured-before"
+    },
+    {
+      "file": "03-plugin-dialog-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "a7d96be2f59c39eaac43a6dab0f1d959a0d09d587839f5f2bedfbd9ac5c3cabc",
+      "kind": "captured-after"
+    },
+    {
+      "file": "03-plugin-dialog-baseline-replay.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "ee914662fc05724250764b8f3b97f361557f8ea72ef96386f992948aad8c5266",
+      "kind": "css-baseline-replay"
+    },
+    {
+      "file": "03-plugin-dialog-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "56187bf9a79425cf319455b42c352c51214ae32376700d9c5fe898552af28fd6",
+      "kind": "captured-before"
+    },
+    {
+      "file": "04-progress-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "53c73ea374476b0e8acd15c3d095296d61256ef42b149e1649943be9f825d6e8",
+      "kind": "captured-after"
+    },
+    {
+      "file": "04-progress-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d1475d9ce5661dd854ed0e6e357fe19ad1542e8a2e202229fceb22659cf0cca1",
+      "kind": "captured-before"
+    },
+    {
+      "file": "05-trust-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "ca9758ba87f009a0be42fc68c31441be3378daaa197583bb2ee23ab65d7b5a7a",
+      "kind": "captured-after"
+    },
+    {
+      "file": "05-trust-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "0791729b1cfbb69f3108116cb0dc4b4113878a98c7d3ccd8da70f066e843cd41",
+      "kind": "captured-before"
+    },
+    {
+      "file": "06-3d-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "12a8ed7e10038ab9eae3873e987daf459a7731bf4ee1b63c3ad465b71b534960",
+      "kind": "captured-after"
+    },
+    {
+      "file": "06-3d-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "30aea0fae073580601a5b2f1dfac0f9934338783e641f82f1e509fec4ca17c20",
+      "kind": "captured-before"
+    },
+    {
+      "file": "06-3d-stats-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "f895108ee6595e03818205c2a0be4199a8c97cee9462afedd8a038d27714b5a4",
+      "kind": "captured-after"
+    },
+    {
+      "file": "06-3d-stats-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "68478c259d8f1e7867d5d086d50d605eaa29db6a5f4e4a3ca64ceeab1920ec70",
+      "kind": "captured-before"
+    },
+    {
+      "file": "07-settings-after.png",
+      "width": 900,
+      "height": 700,
+      "sha256": "440158c39fdc20e0d40d394912116110cf1463a190543ae5646e47b98982872e",
+      "kind": "captured-after"
+    },
+    {
+      "file": "07-settings-before.png",
+      "width": 900,
+      "height": 700,
+      "sha256": "6876970088dc8e03dea0f34131ceffdca7b79bffe1809e45fcca337f910f3ad8",
+      "kind": "captured-before"
+    },
+    {
+      "file": "08-community-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "a1ca105da3a1aeffdccf9813d3a49506e61945b69a6e9bc77b9bfd498e683488",
+      "kind": "captured-after"
+    },
+    {
+      "file": "08-community-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "458428cfbf3fd3857d1710f5b97e72cf04a5947d64581f7af5d6dcc6036ecf6d",
+      "kind": "captured-before"
+    },
+    {
+      "file": "09-plugin-inspector-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "d16a83eefc80755cb31538a5fb3fe7201e676385ef63671ec2e174222c526627",
+      "kind": "captured-after"
+    },
+    {
+      "file": "09-plugin-inspector-baseline-replay.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "008112b979349fe0721d8078a17d0351ae2947fa37a6c43c01691d82fe28cc67",
+      "kind": "css-baseline-replay"
+    },
+    {
+      "file": "09-plugin-overlay-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "09ad4ba2aabba3e75997f2091af3caa03ad72132ed8e7cbe2972389f7534d920",
+      "kind": "captured-after"
+    },
+    {
+      "file": "09-plugin-overlay-baseline-replay.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "8d6c5f90d60e635ac9286f2b1a8587c0d6f5b981b43fef8dce4d2438827d44e5",
+      "kind": "css-baseline-replay"
+    },
+    {
+      "file": "09-plugin-views-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "08a2a9e3cb6e8621ce1fcc53a9ca0158e413cdeea818a54a4b5f68a1de45de1b",
+      "kind": "captured-after"
+    },
+    {
+      "file": "09-plugin-views-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "2e01c8639286d1b4af53de51bc053e42ccc9f020b67b74d86aeeae84fd58d83f",
+      "kind": "captured-before"
+    },
+    {
+      "file": "09-plugin-workspace-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "16c3ed77ee7c3da6106c1b75d5b0e03dc6afac211f87e0daaf4c2e33f719d0ee",
+      "kind": "captured-after"
+    },
+    {
+      "file": "09-plugin-workspace-baseline-replay.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "7782e58c8d5f97f50922a473cf2a1dcb847d25a9a4162583d330b037612dceea",
+      "kind": "css-baseline-replay"
+    },
+    {
+      "file": "10-widgets-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "f7e44cbc70f57c286c497c12397cbceb18aee8894b5261080dc1d6baa70e39aa",
+      "kind": "captured-after"
+    },
+    {
+      "file": "10-widgets-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "30766e64ecc6e6814155886c99d6c66949fdcb35f92b78d82e3c25f94bce22f5",
+      "kind": "captured-before"
+    },
+    {
+      "file": "11-primary-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "43724bf6cc32d676a882b91e443726ad77abf0c93c51e8d8da3cacb51879b000",
+      "kind": "captured-after"
+    },
+    {
+      "file": "11-primary-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "0fd281774579222168ae911b5e8ad581e563a2d9ac223a089b98672aa111a167",
+      "kind": "captured-before"
+    },
+    {
+      "file": "12-tags-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "abdabaa9b6239deb847452ea845a7ab4d40ec2a376c55bb83c5fa9494cddca52",
+      "kind": "captured-after"
+    },
+    {
+      "file": "12-tags-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "e510b3d9c0d9cc253423500ec85cd5c627d5b9bad10b4791574bdb744207aebf",
+      "kind": "captured-before"
+    },
+    {
+      "file": "13-jobs-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "7f09d1e0d5d7f772ddfe8d7bf752c4fbd70fa3de95aee548563030ded29b67a7",
+      "kind": "captured-after"
+    },
+    {
+      "file": "13-jobs-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9115ee3b8b53603b084d8166a038ce418f2471a7f3713a0f2388236d70888f45",
+      "kind": "captured-before"
+    },
+    {
+      "file": "14-logs-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "e93e0020b03d0a030667bf94b0f65bdc7d4c80984b9f923f5f7f244c8397ad86",
+      "kind": "captured-after"
+    },
+    {
+      "file": "14-logs-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "6c33ce77db3fe647b9a1e745b119aaa2a2010bb2f134f5ab552617a47d43598d",
+      "kind": "captured-before"
+    },
+    {
+      "file": "15-relink-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "15a740e8a4e4e95b6ec8c59516e96a146551146a8b1ab0f9f7c6d2114896a7f8",
+      "kind": "captured-after"
+    },
+    {
+      "file": "15-relink-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "3725c76c513e88126ed40f04a8e495cc02bf585b7fd6ee25f8ab8f564d88adf2",
+      "kind": "captured-before"
+    },
+    {
+      "file": "16-ai-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "3e4404ecd38d50312bc26ea4e64713598f8f8a87ceffc4e3623e7d513e6d2930",
+      "kind": "captured-after"
+    },
+    {
+      "file": "16-ai-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "2a23919ca16e4f06ef002336a7e49cb8925f70d2cdd413089814a15a515538f5",
+      "kind": "captured-before"
+    },
+    {
+      "file": "16-hdri-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "fc457b00939090cf5e762f39d3f874f6cfcbb29df8aa336286f6861d3c80bb5b",
+      "kind": "captured-after"
+    },
+    {
+      "file": "16-hdri-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "cfde1b1313e849e790e512fe9ce90eb9002ee092c9476412de84d347c547005c",
+      "kind": "captured-before"
+    },
+    {
+      "file": "17-tooltip-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "5279d7429e8336e850695c6d3a02da0eec02adb4981b2bd6708414b732b7e53c",
+      "kind": "captured-after"
+    },
+    {
+      "file": "17-tooltip-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "3f092c1812ab20f0be05e00749cb47418767f06726967a89019feeb468590ff4",
+      "kind": "captured-before"
+    },
+    {
+      "file": "18-native-confirm-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "6bb0519f5493053e1387da25bd3cc598af6049ab8abd513b5dfed834efd89c70",
+      "kind": "captured-after"
+    },
+    {
+      "file": "18-native-confirm-before.png",
+      "width": 1382,
+      "height": 768,
+      "sha256": "8656da950b46e27fd74030f62b2e5ef8c0b5f716b165e467a8ef8692453b5c9f",
+      "kind": "captured-before"
+    },
+    {
+      "file": "19-theme-modal-after.png",
+      "width": 1400,
+      "height": 900,
+      "sha256": "51fe5d7cdfc20808a9ae04633f98574b0bf2e650ab457574cc1b5c0079287661",
+      "kind": "captured-after"
+    },
+    {
+      "file": "19-theme-modal-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b87fe3df3f14ce74a29696c460605a0bcd6ac2ff3053b1e3c52d6300888a2871",
+      "kind": "captured-before"
+    },
+    {
+      "file": "19-theme-modal-desktop-after.png",
+      "width": 1382,
+      "height": 768,
+      "sha256": "686fe31b9a414c2b0a779933eaa6d820c297f6b331eaa69a28844ee14d9e1308",
+      "kind": "captured-after"
+    }
+  ],
+  "implementationFiles": [
+    {
+      "file": "src/renderer/3d-viewer/viewer-surface.css",
+      "sha256": "3213a2c9ac4e3e5662469f1e4a6ddc68d69a9a148436e72d9feadb06a204da81"
+    },
+    {
+      "file": "src/renderer/3d-viewer/viewer-toolbar.tsx",
+      "sha256": "d48579d9fa43437a7055219fa2ec8d89555320fca23a638850e502e583b5917a"
+    },
+    {
+      "file": "src/renderer/AiConfigDialog.tsx",
+      "sha256": "6caa7088f8b98d4a58e69a13fc40cb9270f7b81c87ad05f603e4cdf466a4ec19"
+    },
+    {
+      "file": "src/renderer/App.tsx",
+      "sha256": "6589d0db1fc04890929651f6b60aa50d9e0f26082d13bb1d14d4cec151f29745"
+    },
+    {
+      "file": "src/renderer/BlockingProgressOverlay.tsx",
+      "sha256": "d833b46b36e6ea9d85ffc69d2e4dd4f9c4c4eb1be6055af36d6d084d413d4b65"
+    },
+    {
+      "file": "src/renderer/BrowseLayoutPreview.tsx",
+      "sha256": "d277d04904a5d8412462969c564c3222e98d4859696b10d8463cbf88ed012f2d"
+    },
+    {
+      "file": "src/renderer/CreateDialog.tsx",
+      "sha256": "a5da1a640729b23ce935bdae89357e530c491bbe387d79b1db826b60a589e5a8"
+    },
+    {
+      "file": "src/renderer/CriticalConfirmationDialog.tsx",
+      "sha256": "8f4291f1deff8730ddb263bb86da0f6b902014683824fb229ae90d1a7d555649"
+    },
+    {
+      "file": "src/renderer/DimensionFilterBar.tsx",
+      "sha256": "9f58e5e4b819bcd99e69cc0ece12f601a969974d2e317af6e61e870cb78bbde9"
+    },
+    {
+      "file": "src/renderer/FilterTagPicker.tsx",
+      "sha256": "2e00dce0fcb9b48eec2648c193e81017fa1b9f42f35f6078493ae0a58968df92"
+    },
+    {
+      "file": "src/renderer/FolderCard.tsx",
+      "sha256": "d3a881b1e07ed71fd4bfb45a87767ce3e18824bd9177f6d5bacdbb81535af4cd"
+    },
+    {
+      "file": "src/renderer/FontViewerSurface.tsx",
+      "sha256": "5199a48ea4566a6e079c0a26800ca6f11f46e471e698dcbf75970d381ff34008"
+    },
+    {
+      "file": "src/renderer/ImportConflictDialogShell.tsx",
+      "sha256": "414a420b33ef2e9b80809ffb044c630168f820314375c56efe335acf6a6893e7"
+    },
+    {
+      "file": "src/renderer/ImportSourceFailureDialog.tsx",
+      "sha256": "6f00f78e9775687ccfab88d5153ef1721928a4a31ba27d971543399aa2500ecc"
+    },
+    {
+      "file": "src/renderer/InspectorPanel.tsx",
+      "sha256": "b967dc13f864bc639ca979d217a94507335edd2fe22160adbdbed382b5181b84"
+    },
+    {
+      "file": "src/renderer/LibrarySettingsDialog.tsx",
+      "sha256": "3a546988a52605b41e65237eb85a3dcc843f932740028e2c375d8eebbd5248dd"
+    },
+    {
+      "file": "src/renderer/LibrarySwitcher.tsx",
+      "sha256": "a42414b9ef27a48d2b321ed27ad466a99eaacde2a11cb3bf86733c250e0098b0"
+    },
+    {
+      "file": "src/renderer/McpSettingsPage.tsx",
+      "sha256": "d5e58ec35c8b44a7b30329c84fbb97105737e34cd279e4862ef17c0c98e32319"
+    },
+    {
+      "file": "src/renderer/MediaJobsDialog.tsx",
+      "sha256": "3c5087e3175b099d1c282aa2c8ae340e1746aef8047b273ccb59a67e37bc0018"
+    },
+    {
+      "file": "src/renderer/NavigationSidebar.tsx",
+      "sha256": "0c5f586a205a2c6af313063708ecc293a27d6b1123e3c4bdac428b38f776803e"
+    },
+    {
+      "file": "src/renderer/PdfViewerSurface.tsx",
+      "sha256": "6260492a3c50fb9db55853d80dac391747a57478f43e617226aa36ce46b2edc3"
+    },
+    {
+      "file": "src/renderer/PluginJobActivityBanner.tsx",
+      "sha256": "5c9a119db595329faea1d9487621101ed2895ae58b83ffec7c00259878e7a6a0"
+    },
+    {
+      "file": "src/renderer/PluginSettingsPage.tsx",
+      "sha256": "ec84dde6b1e4f9ad1c97c699ec72b53718a7f6431393bb3f3d8310f3a7854154"
+    },
+    {
+      "file": "src/renderer/PortaledPopover.tsx",
+      "sha256": "8945e93e7c28560117f6b9c69964c1cbf068cc77ba0c18f61b0f8426fe3066f7"
+    },
+    {
+      "file": "src/renderer/ScriptSandboxPreviewDialog.tsx",
+      "sha256": "dcd1775a34020c8a0fa632c3bbf1ff01c40c530b6505bcad50fdc387990bb77b"
+    },
+    {
+      "file": "src/renderer/SearchHistoryPopover.tsx",
+      "sha256": "3fab501683e0d031aa3442a2d9c52e7f8d46ce077b1fe1a09fc1d9b46d48865c"
+    },
+    {
+      "file": "src/renderer/TagManagementWorkspace.tsx",
+      "sha256": "2c4b3ff19ddc24eb7c7f314383e490ab414ac3fbc9764c7093cb5af9a08bfe60"
+    },
+    {
+      "file": "src/renderer/TagPickerMenu.tsx",
+      "sha256": "cea8d83af54ddb287b3c586c7cdd832464dbdbeea4b962c4cfcb5a86a5b2a622"
+    },
+    {
+      "file": "src/renderer/WorkspaceToolsOverflow.tsx",
+      "sha256": "27141c800da7a553cf46f82dd63fd85047960e1dd0a0a9b1ebeaff1aeb755f86"
+    },
+    {
+      "file": "src/renderer/commands/sidebar-commands.ts",
+      "sha256": "363147d50c7b577d1f22db7f578ef91d2ff767d1cfa091d6163700a060978d76"
+    },
+    {
+      "file": "src/renderer/context-menu.tsx",
+      "sha256": "4f9302a8d694aa8734d18b9b21fd66906e1083ebfec78e2b2ed751582cf1c259"
+    },
+    {
+      "file": "src/renderer/folder-inspector.tsx",
+      "sha256": "1ef171f92366bdb94018ba3104aba10635c97e146d1e1f036a5d1458b14f7906"
+    },
+    {
+      "file": "src/renderer/main.tsx",
+      "sha256": "34a893a558c113e421c770778306048ef129fd53dc95d13b2a87691aa53ad8af"
+    },
+    {
+      "file": "src/renderer/plugin-host-settings-fields.tsx",
+      "sha256": "6d4aaa6ec270f09a5d05e1daebf1306fc1aaceb7cb8d8627b038bafc9d8f8327"
+    },
+    {
+      "file": "src/renderer/plugin-ui-dialog-host.tsx",
+      "sha256": "3e46e8125d1127efe3db69a89001db9f73d8dc4dabfb2cbe791edfae810f1831"
+    },
+    {
+      "file": "src/renderer/plugin-widget-renderer.tsx",
+      "sha256": "7d445ed09f69cbbcb5aa3a904087cfdac0b60238abb420397d4459baffa3a318"
+    },
+    {
+      "file": "src/renderer/styles.css",
+      "sha256": "2a0da8eb7f5edbd55e8c1972aac82cf18546051329b99190762bef427e3166e8"
+    },
+    {
+      "file": "src/renderer/theme/ThemeAppearanceControls.tsx",
+      "sha256": "20abe81b9f066c78c5a20555f8db52f04d90709e9c6dc1bd12f5b0af95e9a0a7"
+    },
+    {
+      "file": "src/renderer/theme/ThemeColorSettings.tsx",
+      "sha256": "5e32455b6641145fe2c7aa811f5e332a4887f801c291c046149e7d1287ed1c02"
+    },
+    {
+      "file": "src/renderer/theme/ThemeMiniDialog.tsx",
+      "sha256": "0302bea4323c08df47b56e3f66d6d8820387d32a43b47e4e666c6fa3dd014e08"
+    },
+    {
+      "file": "src/renderer/ui/patterns/feedback.tsx",
+      "sha256": "16c159181c9b18053f25f36b8c5b9c74e7aa56b1e490affa3f1b0cf2efc8e4b5"
+    },
+    {
+      "file": "src/renderer/use-folder-delete-actions.ts",
+      "sha256": "96bc8b4738d97d1c1776bb2f50de38b95304433caecb54e2e27b87f3ce51001c"
+    },
+    {
+      "file": "src/renderer/useAssetRename.ts",
+      "sha256": "28eb0cdbe54d414365b58edadba1ff96d46134e7e3f2c4a0145d1f4bf89670f3"
+    },
+    {
+      "file": "src/renderer/useBatchActions.ts",
+      "sha256": "d9b48241fea8beb65de9379929ec5c0ca46cb92243e06e387a53ee255a08856a"
+    },
+    {
+      "file": "tests/e2e/library-switch-benchmark.test.ts",
+      "sha256": "4241e39d25d059b2e5b17416113bc803fe0db7810e2ea633591d97e6decbf2f0"
+    },
+    {
+      "file": "tests/e2e/linked-folders.test.ts",
+      "sha256": "1dc483e498bd9a0e522b751c4cb279f6c6a8324b13faf9e2ec034aafbbcb060d"
+    },
+    {
+      "file": "tests/e2e/perf-bench-helpers.ts",
+      "sha256": "a9942cacd5734ae669b88e73451361fcaa524ba53d7e0a099cc52e172c54be81"
+    },
+    {
+      "file": "tests/e2e/plugin-management.test.ts",
+      "sha256": "781dd242f5613db950ec537304c927328513a924e359e6244feb2dc9a464943c"
+    },
+    {
+      "file": "tests/e2e/plugin-trusted-host-activation.test.ts",
+      "sha256": "a30dc0175be867d6c0e9a68ae96beaffcc40b64b3d0f986004b3250ffb2fd4b7"
+    },
+    {
+      "file": "tests/unit/sidebar-commands.test.ts",
+      "sha256": "cd9ed124641a1dcbaf84e6a88da1f20bcc0a4ad17ff6bbdb7a5e85b99429a6c8"
+    },
+    {
+      "file": "src/renderer/local-confirmation.tsx",
+      "sha256": "5b3db176ff167f3be824ea76ff9681c05303475a2dd3c68776cfcc616c81d690"
+    },
+    {
+      "file": "src/renderer/ui/ShellStyleScope.tsx",
+      "sha256": "e4b552852505e309a0b36cb6fbf95f2a8f7a62d5991a99ca0d60c783e2b9a47e"
+    },
+    {
+      "file": "src/renderer/ui/islands-surfaces.css",
+      "sha256": "aee83acb870e227d80c7ca6a10fdb6e0b9781f171f69031a8308f0468702c08b"
+    }
+  ]
+}
