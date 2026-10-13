@@ -229,3 +229,14 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
   color: var(--ui-content-secondary);
   font-size: var(--ui-font-size-body);
 }
+
+/* Center the filename and summary beneath the preview in the Islands Inspector. */
+.app-shell[data-shell-layout="islands"]
+  .inspector-hero-compact:not(.is-multi) .inspector-hero-title {
+  justify-content: center;
+  text-align: center;
+}
+.app-shell[data-shell-layout="islands"] .inspector-compact-meta {
+  justify-content: center;
+  text-align: center;
+}
