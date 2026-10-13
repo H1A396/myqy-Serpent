@@ -108,3 +108,12 @@
 | 说明自然语言查找、找相似与资源开销 | `src/renderer/SemanticSearchSettings.tsx:201`、`src/renderer/i18n/catalogs/zh-CN.ts:1723`、`src/renderer/i18n/catalogs/en.ts:1742` | `tests/e2e/semantic-sqlite-lifecycle.test.ts:147`：新增提示在真实设置页可见；最终 E2E 1/1 passed | Computer Use 未执行，真实窗口截图验收仍待用户操作 |
 
 本轮最终命令：`npm run typecheck` 通过；定向测试 77/77 通过；`npm run test:library-availability` 为 9 files / 233 tests passed；ESLint 0 errors、2 条 `App.tsx` 既有 hooks 警告（确切命令见[开发日志](../development/2026-10-13-semantic-sqlite-index.md)）；语义生命周期 Electron E2E 为 1/1 passed。测试生成截图已清理。由于 MP4 只在 Worker 合成夹具验证到 ready poster 来源，不能将“MP4 实际模型编码已端到端验证”写为通过。
+
+
+## Derived-preview path regression (2026-10-13)
+
+| Requirement | Implementation | Automated evidence (command and result) | Human/platform evidence |
+| --- | --- | --- | --- |
+| Read relative derived previews safely for semantic image preparation; successful vector writes reach ready, while a genuinely missing artifact still fails preparation | `src/worker/handlers/semantic-index.ts`; `tests/worker/semantic-index-handler.test.ts` | Old-code red: focused MP4 poster test failed with `ENOENT` at `stat 'clip-poster.jpg'`. Fixed: `node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/worker/semantic-index-handler.test.ts tests/worker/semantic-index-store.test.ts --reporter=verbose`, 2 files / 17 passed; `npx eslint src/worker/handlers/semantic-index.ts tests/worker/semantic-index-handler.test.ts` had no diagnostics; `npm run typecheck` passed; `npm run test:library-availability` passed 9 files / 233 tests, with Electron ABI and FTS5 preflight passing; root-agent background `SERPENT_E2E_HIDE_WINDOW=1 node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`, 1/1 passed in 13.2 seconds | Synthetic isolated Worker library only. The active library and its previously reported 16 failures were not rechecked. Real media/provider requests, Computer Use, packaged, and Windows were not verified. |
+
+This increment did not retry the active library's durable failures. Whether they converge after a new index generation remains unknown; this is not evidence that the reported 16 items are fixed and is not human acceptance.

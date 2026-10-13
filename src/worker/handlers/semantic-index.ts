@@ -853,9 +853,15 @@ export async function executeSemanticIndexWorkerCommand(
         sourceRevision: currentSource.revision, kind: 'text', text };
     }
     if (command.kind === 'image') {
-      const sourcePath = asset.mediaType === 'image' && source.revision === asset.currentRevisionId
-        ? service.resolveAssetPath(command.libraryId, command.assetId)
-        : service.getThumbnailArtifact(command.libraryId, command.assetId)?.filePath;
+      let sourcePath: string | null;
+      if (asset.mediaType === 'image' && source.revision === asset.currentRevisionId) {
+        sourcePath = service.resolveAssetPath(command.libraryId, command.assetId);
+      } else {
+        const artifact = service.getThumbnailArtifact(command.libraryId, command.assetId);
+        sourcePath = artifact
+          ? service.getArtifactAbsolutePath(command.libraryId, artifact.artifactId, 'preview')
+          : null;
+      }
       if (!sourcePath) throw new Error('Semantic image preview is unavailable.');
       const bytes = await hooks.runWithoutAdmission(async () => {
         const sourceStat = await stat(sourcePath);

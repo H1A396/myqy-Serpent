@@ -44,6 +44,11 @@ describe('semantic SQLite Worker handler', () => {
     const revisionId = randomUUID();
     const artifactId = randomUUID();
     const relativePath = `${folder.relativePath}/clip.mp4`;
+    const previewBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const previewRelativePath = 'clip-poster.jpg';
+    const previewPath = path.join(library.libraryPath, '.serpent', 'artifacts', previewRelativePath);
+    mkdirSync(path.dirname(previewPath), { recursive: true });
+    writeFileSync(previewPath, previewBytes);
     const now = new Date().toISOString();
     const db = new Database(path.join(library.libraryPath, '.serpent', 'library.db'));
     try {
@@ -58,8 +63,8 @@ describe('semantic SQLite Worker handler', () => {
       db.prepare('UPDATE assets SET current_revision_id = ? WHERE asset_id = ?').run(revisionId, assetId);
       db.prepare(`INSERT INTO revision_artifacts (artifact_id, revision_id, kind, mime_type, byte_size,
         file_path, width, height, generator_version, status, generated_at, invalidated_at)
-        VALUES (?, ?, 'video_poster', 'image/jpeg', 1, 'clip-poster.jpg', 1, 1, 'fixture', 'ready', ?, NULL)`)
-        .run(artifactId, revisionId, now);
+        VALUES (?, ?, 'video_poster', 'image/jpeg', ?, ?, 1, 1, 'fixture', 'ready', ?, NULL)`)
+        .run(artifactId, revisionId, previewBytes.byteLength, previewRelativePath, now);
     } finally {
       db.close();
     }
@@ -95,19 +100,25 @@ describe('semantic SQLite Worker handler', () => {
     });
 
     const sourceRevision = (targets as { targets: Array<{ sourceRevision: string }> }).targets[0]!.sourceRevision;
-    await expect(call({ type: 'semantic.index.prepare', libraryId: library.libraryId, sessionGeneration,
-      assetId, sourceRevision, kind: 'image', maxInputBytes: 1024 })).rejects.toThrow();
+    const prepared = await call({ type: 'semantic.index.prepare', libraryId: library.libraryId, sessionGeneration,
+      assetId, sourceRevision, kind: 'image', maxInputBytes: 1024 });
+    expect(prepared).toMatchObject({ ok: true, type: 'semantic.index.prepared', assetId,
+      sourceRevision, kind: 'image', mimeType: 'image/jpeg', bytesBase64: previewBytes.toString('base64') });
     const claimToken = randomUUID();
     expect(await call({ type: 'semantic.index.job', action: 'claim', libraryId: library.libraryId,
       sessionGeneration, assetId, sourceRevision, claimToken }))
       .toMatchObject({ ok: true, type: 'semantic.index.job-updated', updated: true });
-    expect(await call({ type: 'semantic.index.job', action: 'fail', libraryId: library.libraryId,
-      sessionGeneration, assetId, sourceRevision, claimToken, errorCategory: 'preparation' }))
-      .toMatchObject({ ok: true, type: 'semantic.index.job-updated', updated: true });
+    expect(await call({ type: 'semantic.index.write', libraryId: library.libraryId, sessionGeneration,
+      profileKey, vectors: [{ assetId, sourceRevision, claimToken, vector: [1, 0, 0] }] }))
+      .toMatchObject({ ok: true, type: 'semantic.index.written', accepted: [assetId], rejected: [] });
 
     expect(await call({ type: 'semantic.index.similar', libraryId: library.libraryId,
       sessionGeneration, queryId: randomUUID(), profileKey, sourceAssetId: assetId }))
-      .toMatchObject({ ok: true, type: 'semantic.index.ranked', sourceStatus: 'failed' });
+      .toMatchObject({ ok: true, type: 'semantic.index.ranked', sourceStatus: 'ready' });
+
+    rmSync(previewPath);
+    await expect(call({ type: 'semantic.index.prepare', libraryId: library.libraryId, sessionGeneration,
+      assetId, sourceRevision, kind: 'image', maxInputBytes: 1024 })).rejects.toThrow();
   });
 
   it('enumerates and reserves purge cleanup in bounded batches beyond 100,000 assets', () => {
