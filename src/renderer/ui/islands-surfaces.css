@@ -71,14 +71,31 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
   color: var(--ui-content-secondary);
 }
 
-.app-shell[data-shell-layout="islands"] :is(.app-settings-nav, .app-settings-content, .app-settings-card, .plugin-community-card, .plugin-community-readme, .plugin-community-readme table, .plugin-workspace-view-frame, .plugin-inspector-view-frame, .plugin-inspector-section, .plugin-viewer-overlay-panel, .app-log-list, .app-log-entry) {
+.app-shell[data-shell-layout="islands"] :is(.app-settings-nav, .app-settings-content, .app-settings-card, .plugin-community-card, .plugin-community-readme, .plugin-workspace-view-frame, .plugin-inspector-view-frame, .plugin-inspector-section, .plugin-viewer-overlay-panel, .app-log-list, .app-log-entry),
+.app-shell[data-shell-layout="islands"] .plugin-community-readme table {
   border-color: var(--island-hairline);
   border-width: var(--island-hairline-w);
+}
+.app-shell[data-shell-layout="islands"] :is(.app-settings-nav, .app-settings-card) {
+  border-color: var(--ui-border-control);
+  border-width: var(--ui-border-width-hairline);
+}
+.app-shell[data-shell-layout="islands"] .app-settings-card-divider {
+  height: var(--ui-border-width-hairline);
+  background: var(--ui-border-divider);
 }
 .app-shell[data-shell-layout="islands"] :is(.app-settings-card, .plugin-community-card, .plugin-trust-prompt-list li, .app-log-list, .app-log-entry, .plugin-inspector-section) {
   background: transparent;
   border-radius: var(--ui-radius-surface);
   box-shadow: var(--ui-shadow-none);
+}
+.app-shell[data-shell-layout="islands"] .workspace-toolstrip .dimension-filter-dims {
+  width: fit-content;
+  max-width: 100%;
+  background: color-mix(in srgb, var(--island-side) 55%, var(--ui-surface-raised));
+}
+.app-shell[data-shell-layout="islands"] .dimension-filter-popover[data-dimension] {
+  background: color-mix(in srgb, var(--island-side) 70%, var(--ui-surface-overlay));
 }
 .app-shell[data-shell-layout="islands"] .app-settings-nav-item.is-active {
   background: var(--island-select);
