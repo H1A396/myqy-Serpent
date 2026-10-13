@@ -1,10 +1,12 @@
+import { useState } from "react";
+
 import type { ManagedFolderBreadcrumbEntry } from "./folder-breadcrumb-trail";
 import { useT, type TranslateFn } from "./i18n";
 import type { TrashBreadcrumbHop } from "./trash-browse";
 
 export type ScopeBreadcrumbSegment =
   | { kind: "static"; id: string; label: string }
-  | { kind: "folder"; id: string; label: string; folderId: string }
+  | { kind: "folder"; id: string; label: string; folderId: string; coverSrc?: string }
   /** Trash hierarchy hop; tombstoneId null = trash root (Serpent-6pcd / whvm). */
   | {
       kind: "trash-path";
@@ -29,6 +31,7 @@ export function buildScopeBreadcrumbSegments(
     assetScope: string;
     folderTrail: ManagedFolderBreadcrumbEntry[];
     linkedFolderLabel?: string | null;
+    folderCoverSrcById?: ReadonlyMap<string, string>;
   },
   t: TranslateFn,
 ): ScopeBreadcrumbSegment[] {
@@ -82,12 +85,16 @@ export function buildScopeBreadcrumbSegments(
     return [{ kind: "static", id: "root", label: t("scope.rootFolder") }];
   }
   if (input.folderTrail.length > 0) {
-    return input.folderTrail.map((entry) => ({
-      kind: "folder" as const,
-      id: entry.folderId,
-      label: entry.name,
-      folderId: entry.folderId,
-    }));
+    return input.folderTrail.map((entry) => {
+      const coverSrc = input.folderCoverSrcById?.get(entry.folderId);
+      return {
+        kind: "folder" as const,
+        id: entry.folderId,
+        label: entry.name,
+        folderId: entry.folderId,
+        ...(coverSrc ? { coverSrc } : {}),
+      };
+    });
   }
   if (input.linkedFolderLabel) {
     return [
@@ -99,6 +106,19 @@ export function buildScopeBreadcrumbSegments(
     ];
   }
   return [{ kind: "static", id: "workspace", label: t("scope.workspace") }];
+}
+
+function ScopeCrumbCover({ src }: { src: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return null;
+  return (
+    <img
+      alt=""
+      className="scope-crumb-cover"
+      onError={() => setFailedSrc(src)}
+      src={src}
+    />
+  );
 }
 
 /**
@@ -126,6 +146,7 @@ export function ScopeBreadcrumbs({
                   onClick={() => onNavigateFolder(segment.folderId)}
                   type="button"
                 >
+                  {segment.coverSrc ? <ScopeCrumbCover src={segment.coverSrc} /> : null}
                   {segment.label}
                 </button>
               ) : segment.kind === "trash-path" && !isLast ? (
@@ -142,6 +163,9 @@ export function ScopeBreadcrumbs({
                 <span
                   className={`scope-crumb-label${isLast ? " is-current" : ""}`}
                 >
+                  {segment.kind === "folder" && segment.coverSrc ? (
+                    <ScopeCrumbCover src={segment.coverSrc} />
+                  ) : null}
                   {segment.label}
                 </span>
               )}

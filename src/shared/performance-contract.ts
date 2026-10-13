@@ -183,6 +183,7 @@ const MUTATION_COMMANDS = new Set([
   'folder.rename',
   'appearance.set',
   'folder.cover.set',
+  'folder.cover.set-asset',
   'folder.cover.clear',
   'folder.move',
   'folder.trash',

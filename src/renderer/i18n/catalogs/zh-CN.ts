@@ -533,7 +533,8 @@ export const zhCN = {
       addTags: "添加标签…",
       removeTags: "移除标签…",
       addTag: "添加标签",
-      removeTag: "移除标签"
+      removeTag: "移除标签",
+      useAsFolderCover: "设为所在文件夹封面"
       ,ignore: "忽略"
       ,unignore: "取消忽略"
     },
@@ -579,6 +580,8 @@ export const zhCN = {
       expandAll: "展开所有",
       appearance: "图标与颜色",
       chooseCover: "设置封面",
+      chooseCoverFromLibrary: "从资源库选择",
+      chooseCoverFromFile: "从文件选择",
       clearCover: "恢复自动封面",
     },
   collection: {
@@ -1037,6 +1040,18 @@ export const zhCN = {
       cancelAria: "取消转换",
       help: "复制过滤后的内容并保留资产信息；外部源目录不会删除或移动。",
       submit: "确认复制并转换"
+    },
+    folderCover: {
+      title: "设置文件夹封面",
+      search: "搜索名称或路径",
+      searchPlaceholder: "名称或路径",
+      empty: "资源库中没有可用的图片。",
+      noMatch: "没有匹配的图片。",
+      loading: "正在加载图片…",
+      loadMore: "加载更多",
+      loadFailed: "图片列表加载失败。",
+      save: "使用此封面",
+      help: "从资源库中的图片选择封面。封面记录保存在资源库中，重启后仍然有效。"
     },
     collectionEditor: {
       title: "编辑合集详情",

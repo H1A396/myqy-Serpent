@@ -411,6 +411,13 @@ export const library: SerpentLibraryApi = Object.freeze({
     return { ok: true as const, value: { folderIds: result.folderIds, hasCustomCover: result.hasCustomCover } };
   },
 
+  async setFolderCoverFromAsset(input: { libraryId: string; folderIds: string[]; assetId: string }) {
+    const result = await request({ type: 'folder.cover.set-asset.request', ...input });
+    if (!result.ok) return failure(result);
+    if (result.type !== 'folder.cover.updated') throw new Error('Unexpected set-folder-cover response.');
+    return { ok: true as const, value: { folderIds: result.folderIds, hasCustomCover: result.hasCustomCover } };
+  },
+
   async clearFolderCover(input: { libraryId: string; folderIds: string[] }) {
     const result = await request({ type: 'folder.cover.clear.request', ...input });
     if (!result.ok) return failure(result);

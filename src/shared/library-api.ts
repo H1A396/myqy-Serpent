@@ -301,6 +301,11 @@ export interface SerpentLibraryApi {
     libraryId: string;
     folderIds: string[];
   }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
+  setFolderCoverFromAsset(input: {
+    libraryId: string;
+    folderIds: string[];
+    assetId: string;
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
   clearFolderCover(input: {
     libraryId: string;
     folderIds: string[];
