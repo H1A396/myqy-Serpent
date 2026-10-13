@@ -2501,6 +2501,7 @@ async function commandFor(
     case "appearance.set.request":
     case "folder.cover.set.request":
     case "folder.cover.clear.request":
+    case "folder.cover.set-asset.request":
     case "folder.list.request":
     case "folder.browse-entries.request":
     case "folder.entries-request":

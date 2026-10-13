@@ -288,6 +288,43 @@ function descriptorKey(descriptor: ContextMenuDescriptor): string {
   }
 }
 
+function FolderCoverMenuItems({
+  folderIds,
+  onChooseFromLibrary,
+  onChooseFromFile,
+  onClear,
+}: {
+  folderIds: readonly string[];
+  onChooseFromLibrary: (folderIds: readonly string[]) => void;
+  onChooseFromFile: (folderIds: readonly string[]) => void;
+  onClear: (folderIds: readonly string[]) => void;
+}) {
+  const t = useT();
+  if (folderIds.length === 0) return null;
+  return (
+    <>
+      <ContextMenuSubmenu
+        icon={<Icon name="file" size={14} />}
+        label={t("command.folder.chooseCover")}
+      >
+        <ContextMenuItem
+          label={t("command.folder.chooseCoverFromLibrary")}
+          onAction={() => onChooseFromLibrary(folderIds)}
+        />
+        <ContextMenuItem
+          label={t("command.folder.chooseCoverFromFile")}
+          onAction={() => onChooseFromFile(folderIds)}
+        />
+      </ContextMenuSubmenu>
+      <ContextMenuItem
+        icon={<Icon name="eye-off" size={14} />}
+        label={t("command.folder.clearCover")}
+        onAction={() => onClear(folderIds)}
+      />
+    </>
+  );
+}
+
 interface AssetContextMenuProps {
   libraryId?: string;
   busy?: boolean;
@@ -345,6 +382,7 @@ interface AssetContextMenuProps {
     appearance: EntityAppearance | null,
   ) => void;
   onChooseFolderCover: (folderIds: readonly string[]) => void;
+  onChooseFolderCoverFromLibrary: (folderIds: readonly string[]) => void;
   onClearFolderCover: (folderIds: readonly string[]) => void;
   onBatchAssignTag: (tagId: string, assetIds: string[]) => void;
   onBatchRemoveTag: (tagId: string, assetIds: string[]) => void;
@@ -449,6 +487,7 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
     onRemoveLinkedFolder,
     onSetEntityAppearance,
     onChooseFolderCover,
+    onChooseFolderCoverFromLibrary,
     onClearFolderCover,
     onBatchAssignTag,
     onBatchRemoveTag,
@@ -1305,18 +1344,12 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                       </ContextMenuSubmenu>
                     )}
                     {!desc.isLibraryRoot ? (
-                      <>
-                        <ContextMenuItem
-                          icon={<Icon name="file" size={14} />}
-                          label={t("command.folder.chooseCover")}
-                          onAction={() => onChooseFolderCover([commandSubjectId])}
-                        />
-                        <ContextMenuItem
-                          icon={<Icon name="eye-off" size={14} />}
-                          label={t("command.folder.clearCover")}
-                          onAction={() => onClearFolderCover([commandSubjectId])}
-                        />
-                      </>
+                      <FolderCoverMenuItems
+                        folderIds={[commandSubjectId]}
+                        onChooseFromFile={onChooseFolderCover}
+                        onChooseFromLibrary={onChooseFolderCoverFromLibrary}
+                        onClear={onClearFolderCover}
+                      />
                     ) : null}
                     <PluginMenuItems
                       items={pluginItemsAtHostAnchor(pluginFolderMenuPlacement, "folder.rename", "after")}
@@ -1923,22 +1956,12 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
                 </ContextMenuSubmenu>
               )}
               {coverPlan.targets.length > 0 ? (
-                <>
-                  <ContextMenuItem
-                    icon={<Icon name="file" size={14} />}
-                    label={t("command.folder.chooseCover")}
-                    onAction={() =>
-                      onChooseFolderCover(coverPlan.targets.map((target) => target.folderId))
-                    }
-                  />
-                  <ContextMenuItem
-                    icon={<Icon name="eye-off" size={14} />}
-                    label={t("command.folder.clearCover")}
-                    onAction={() =>
-                      onClearFolderCover(coverPlan.targets.map((target) => target.folderId))
-                    }
-                  />
-                </>
+                <FolderCoverMenuItems
+                  folderIds={coverPlan.targets.map((target) => target.folderId)}
+                  onChooseFromFile={onChooseFolderCover}
+                  onChooseFromLibrary={onChooseFolderCoverFromLibrary}
+                  onClear={onClearFolderCover}
+                />
               ) : null}
               <PluginMenuItems
                 items={multiAssetPluginPlacement.organizeAfter}

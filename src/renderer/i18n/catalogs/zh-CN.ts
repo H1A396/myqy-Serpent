@@ -579,6 +579,8 @@ export const zhCN = {
       expandAll: "展开所有",
       appearance: "图标与颜色",
       chooseCover: "设置封面",
+      chooseCoverFromLibrary: "从资源库选择",
+      chooseCoverFromFile: "从文件选择",
       clearCover: "恢复自动封面",
     },
   collection: {
@@ -1037,6 +1039,14 @@ export const zhCN = {
       cancelAria: "取消转换",
       help: "复制过滤后的内容并保留资产信息；外部源目录不会删除或移动。",
       submit: "确认复制并转换"
+    },
+    folderCover: {
+      title: "设置文件夹封面",
+      asset: "封面资产",
+      none: "不设置",
+      empty: "当前页面没有可用的图片资产。",
+      save: "使用此封面",
+      help: "从当前页面的图片中选择。封面记录保存在资源库中，重启后仍然有效。"
     },
     collectionEditor: {
       title: "编辑合集详情",

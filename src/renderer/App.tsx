@@ -141,6 +141,7 @@ import {
 } from "./folder-browse-canvas";
 import { useFolderInspector } from "./folder-inspector";
 import { collectFolderCoverCandidateAssetIds } from "./folder-cover-refresh";
+import { folderNavigationCoverSrcMap } from "./folder-cover";
 import {
   decrementScopeCount,
   removeAssetIdsLocally,
@@ -255,6 +256,7 @@ import {
   type CreateLibraryPhase,
 } from "./CreateDialog";
 import { CollectionEditorDialog } from "./CollectionEditorDialog";
+import { FolderCoverPickerDialog } from "./FolderCoverPickerDialog";
 import {
   AiConfigDialog,
   type AiConnectionState,
@@ -891,6 +893,13 @@ function AppInner() {
   // REQ-FOLDER-001/002/003/010: direct child folder cards shown above assets
   // when the current browse parent is a managed folder or the managed root.
   const [folderBrowseEntries, setFolderBrowseEntries] = useState<FolderBrowseEntry[]>([]);
+  const [folderCoverSrcById, setFolderCoverSrcById] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
+  const [folderCoverPicker, setFolderCoverPicker] = useState<{
+    folderIds: string[];
+    assetId: string;
+  } | null>(null);
   // Serpent-d0nv: bump to re-fetch folder browse entries when a cover
   // candidate's thumbnail becomes ready (progressive cover refresh).
   const [folderBrowseRefreshToken, setFolderBrowseRefreshToken] = useState(0);
@@ -3414,6 +3423,7 @@ function AppInner() {
             : buildLinkedFolderBreadcrumbTrail(linkedFolders, assetScope)
           : [],
       linkedFolderLabel: null,
+      folderCoverSrcById,
     },
     t,
   );
@@ -4545,6 +4555,9 @@ function AppInner() {
         setCollections(summary.collections);
         setSmartCollections(summary.smartCollections);
         setTrashedFolders(summary.trashedFolders);
+        setFolderCoverSrcById(
+          folderNavigationCoverSrcMap(summary.libraryId, summary.folderCovers ?? []),
+        );
       };
       const loadNavigationSummary = () => {
         if (!isCurrentLibraryView(viewSession)) return Promise.resolve(undefined);
@@ -8551,6 +8564,37 @@ function AppInner() {
     })();
   }
 
+  function openFolderCoverLibraryPicker(folderIds: readonly string[]) {
+    if (!library || folderIds.length === 0) return;
+    const images = visibleAssets.filter(
+      (asset) => asset.mediaType === "image" && !asset.deletedAt,
+    );
+    const selected = images.find((asset) => selectedAssetIds.includes(asset.assetId));
+    setFolderCoverPicker({
+      folderIds: [...folderIds],
+      assetId: selected?.assetId ?? "",
+    });
+  }
+
+  function applyFolderCoverFromLibrary() {
+    if (!api || !library || !folderCoverPicker?.assetId) return;
+    const { folderIds, assetId } = folderCoverPicker;
+    void (async () => {
+      try {
+        const result = await api.setFolderCoverFromAsset({
+          libraryId: library.libraryId,
+          folderIds,
+          assetId,
+        });
+        if (!result.ok) throw new LibraryOperationError(result.error);
+        setFolderCoverPicker(null);
+        setFolderBrowseRefreshToken((token) => token + 1);
+      } catch (caught) {
+        setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
+      }
+    })();
+  }
+
   function clearFolderCover(folderIds: readonly string[]) {
     if (!api || !library || folderIds.length === 0) return;
     void (async () => {
@@ -10070,6 +10114,8 @@ function AppInner() {
     setThumbnailFailures(new Map());
     setOperationHistory(null);
     setCollectionEditor(null);
+    setFolderCoverPicker(null);
+    setFolderCoverSrcById(new Map());
     setInlineCollectionRename(null);
     setRenameTarget(null);
     setShowCollectionInput(false);
@@ -13705,6 +13751,7 @@ function AppInner() {
         collectionTree={collectionTree}
         smartCollections={smartCollections}
         linkedFolders={linkedFolders}
+        folderCoverSrcById={folderCoverSrcById}
         showCollectionInput={showCollectionInput}
         collectionInputValue={collectionInputValue}
         newCollectionParentId={newCollectionParentId}
@@ -15436,6 +15483,23 @@ function AppInner() {
         onSave={() => void saveCollectionDetails()}
         onCancel={() => setCollectionEditor(null)}
       />
+      <FolderCoverPickerDialog
+        open={folderCoverPicker !== null}
+        assetId={folderCoverPicker?.assetId ?? ""}
+        assetOptions={visibleAssets
+          .filter((asset) => asset.mediaType === "image" && !asset.deletedAt)
+          .map((asset) => ({
+            assetId: asset.assetId,
+            displayName: asset.displayName,
+          }))}
+        onAssetChange={(assetId) =>
+          setFolderCoverPicker((current) =>
+            current ? { ...current, assetId } : current,
+          )
+        }
+        onConfirm={applyFolderCoverFromLibrary}
+        onCancel={() => setFolderCoverPicker(null)}
+      />
       <RenameDialog
         open={renameTarget !== null}
         kind={renameTarget?.kind ?? "collection"}
@@ -16188,6 +16252,7 @@ function AppInner() {
         }}
         onSetEntityAppearance={setEntityAppearance}
         onChooseFolderCover={chooseFolderCover}
+        onChooseFolderCoverFromLibrary={openFolderCoverLibraryPicker}
         onClearFolderCover={clearFolderCover}
         onBatchAssignTag={(tagId, assetIds) => {
           void batchAssignTagToSelection(tagId, assetIds);

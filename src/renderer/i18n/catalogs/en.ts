@@ -593,6 +593,8 @@ export const en = {
       expandAll: "Expand all",
       appearance: "Icon & color",
       chooseCover: "Choose cover",
+      chooseCoverFromLibrary: "From library",
+      chooseCoverFromFile: "From file",
       clearCover: "Use automatic cover",
     },
   collection: {
@@ -1053,6 +1055,14 @@ export const en = {
       cancelAria: "Cancel conversion",
       help: "Copy filtered contents and keep asset info; the external source folder is not deleted or moved.",
       submit: "Confirm copy and convert"
+    },
+    folderCover: {
+      title: "Set folder cover",
+      asset: "Cover asset",
+      none: "None",
+      empty: "This page has no image assets to use as a cover.",
+      save: "Use this cover",
+      help: "Pick an image on this page. The cover is stored with the library and remains after restart."
     },
     collectionEditor: {
       title: "Edit collection details",

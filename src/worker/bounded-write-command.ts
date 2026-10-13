@@ -28,6 +28,7 @@ const BOUNDED_WRITE_COMMAND_TYPES = new Set<string>([
   'folder.create',
   'appearance.set',
   'folder.cover.set',
+  'folder.cover.set-asset',
   'folder.cover.clear',
   'collection.create',
   'collection.update',
@@ -291,6 +292,15 @@ export function executeBoundedWriteWorkerCommand(
     }
     case 'folder.cover.clear': {
       const result = libraryService.clearFolderCustomCovers(command);
+      return {
+        ok: true,
+        type: 'folder.cover.updated',
+        folderIds: result.folderIds,
+        hasCustomCover: result.hasCustomCover,
+      };
+    }
+    case 'folder.cover.set-asset': {
+      const result = libraryService.setFolderCustomCoverFromAsset(command);
       return {
         ok: true,
         type: 'folder.cover.updated',

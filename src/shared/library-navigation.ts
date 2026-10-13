@@ -15,6 +15,19 @@ import {
  * cannot mix folder rows from one mutation with collection counts from
  * another.
  */
+/** Custom folder cover for sidebar and breadcrumb chrome. */
+export const folderNavigationCoverSchema = z.strictObject({
+  folderId: z.string().min(1).max(4096),
+  /** Cache token for a cover file stored under the library. */
+  fileToken: z.string().min(1).max(64).optional(),
+  /** Library asset used as the cover. */
+  assetId: z.string().min(1).max(255).optional(),
+  artifactId: z.string().min(1).max(255).optional(),
+  revisionId: z.string().min(1).max(255).optional(),
+});
+
+export type FolderNavigationCover = z.infer<typeof folderNavigationCoverSchema>;
+
 export const libraryNavigationSummarySchema = z.strictObject({
   libraryId: z.string().min(1),
   changeSequence: z.number().int().nonnegative(),
@@ -27,6 +40,7 @@ export const libraryNavigationSummarySchema = z.strictObject({
   collections: z.array(collectionSummarySchema),
   smartCollections: z.array(smartCollectionSummarySchema),
   trashedFolders: z.array(trashedFolderSummarySchema),
+  folderCovers: z.array(folderNavigationCoverSchema).max(20_000).optional(),
 });
 
 export type LibraryNavigationSummary = z.infer<typeof libraryNavigationSummarySchema>;
