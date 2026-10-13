@@ -72,7 +72,7 @@ export async function renderEmbeddingAudioWindows(input: {
 }
 
 async function discardStaleEmbeddingAudioTemps(now = Date.now()): Promise<void> {
-  let names: string[] = [];
+  let names: string[];
   try {
     names = await readdir(tmpdir());
   } catch {

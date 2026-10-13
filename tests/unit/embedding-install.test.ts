@@ -13,7 +13,6 @@ import {
   resolveInstalledEmbeddingLayout,
   runtimeArchiveEntryAllowed,
   semanticModelPackageBytes,
-  EmbeddingInstallError,
   downloadEmbeddingFile,
   uninstallSemanticModelFiles,
 } from "../../src/main/embedding-install";

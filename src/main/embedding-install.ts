@@ -342,13 +342,6 @@ const TIER_PROJECTOR_BYTES = {
   BF16: 1_050_000_000,
 } as const;
 
-/** @deprecated Prefer per-file estimates; kept for older call sites in tests. */
-const TIER_DOWNLOAD_BYTES = {
-  Q4_K_XL: TIER_CORE_BYTES.Q4_K_XL + TIER_PROJECTOR_BYTES.Q4_K_XL,
-  Q8_0: TIER_CORE_BYTES.Q8_0 + TIER_PROJECTOR_BYTES.Q8_0,
-  BF16: TIER_CORE_BYTES.BF16 + TIER_PROJECTOR_BYTES.BF16,
-} as const;
-
 const RUNTIME_DOWNLOAD_BYTES: Partial<Record<NodeJS.Platform, number>> = {
   darwin: 80_000_000,
   win32: 900_000_000,

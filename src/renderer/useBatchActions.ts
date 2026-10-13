@@ -4,6 +4,7 @@ import type { RendererLibrarySummary } from "../shared/protocol/responses";
 import { LibraryOperationError, toMessage } from "./error-utils";
 import { formatBatchTagNotice } from "./batch-tag-notice";
 import { translateForLocale, useLocale } from "./i18n";
+import { appendSemanticCleanupNotice } from "./semantic-cleanup-notice";
 
 export interface UseBatchActionsParams {
   api: SerpentLibraryApi | null;
@@ -344,9 +345,10 @@ export function useBatchActions({
         throw new LibraryOperationError(result.error);
       }
       setNotice(
-        translateForLocale(locale, "toast.assetsDeletedFromDisk", {
+        appendSemanticCleanupNotice(translateForLocale(locale, "toast.assetsDeletedFromDisk", {
           count: result.value.deletedCount,
-        }),
+        }), result.value.semanticCleanupPending === true,
+        translateForLocale(locale, "toast.semanticCleanupPending")),
       );
       await refreshCollections(operationLibraryId);
       if (!isCurrentLibrary(operationLibraryId)) return;

@@ -1,0 +1,175 @@
+# Semantic SQLite Index Development Log
+
+- Spec: `docs/internal/implementation/2026-10-13-semantic-index-sqlite-plan.md`
+- Ticket: `Serpent-424d7b`
+- Branch: `dev`
+- Baseline: `b9604ac0` (local dev merged with `origin/dev` `6a9f8449`)
+- Started: 2026-10-13
+- Status: implementing; no acceptance claim
+
+## Scope and current baseline
+
+The local and HTTP indexers are currently Main-owned in-memory maps backed by
+per-library JSON files under application data. Each encoded entry rewrites the
+whole JSON file; searches copy the full map into JavaScript and sort cosine
+scores in Main. Both indexers already keep profile/revision keys and use the
+existing provider and permission flows. Current media preparation also reads
+asset files in Main (HTTP images and local model image/audio input), which this
+work must move behind bounded Worker-owned preparation.
+
+The intended store is a separate library-relative
+`.serpent/semantic/index.sqlite`, owned only by Library Worker. It uses normal
+SQLite tables, little-endian Float32 BLOBs, versioned profile/revision identity,
+jobs, and idempotent legacy import metadata. Query correctness remains exact
+raw cosine with all matching results available to the existing progressive
+browser. sqlite-vec 0.1.9 scalar functions are the intended primary query path;
+an exact chunked Float32 fallback must preserve correctness if extension loading
+fails, while such a fallback does not establish the latency target.
+
+## Implementation stages
+
+1. Add bounded, validated Worker commands and an isolated semantic database
+   service; preserve the core catalog if the sidecar is missing or unusable.
+2. Move local and HTTP vector persistence/ranking to the Worker. Main retains
+   inference, provider credentials, grants, and model lifecycle, but no longer
+   stores or ranks the corpus.
+3. Move bounded text/image/audio source preparation into Worker-owned code;
+   reject writes whose profile, library generation, asset, or source revision
+   changed while inference ran. Add cancellation and bounded transaction tests.
+4. Add legacy JSON migration, lifecycle recovery, and isolated 10k/20k+ query
+   performance characterization. Keep full-media, provider, packaged, Windows,
+   Computer Use, and core library-availability evidence distinct.
+
+## Decisions and evidence
+
+- Reuse the existing provider interfaces and raw-cosine ranking semantics.
+- Keep the vector sidecar independent from `library.db`; no cross-database
+  atomicity is assumed.
+- Root agent owns ticket, proposal/ADR, review, QA report, and human checklist.
+  This log and implementation/test changes belong to this implementation lane.
+- Do not edit `.beads/issues.jsonl`, the proposal/research, or foreign
+  untracked workspace content.
+
+## Validation log
+
+- `git pull --ff-only`: no updates; baseline remains `b9604ac0`.
+- Required repository docs, the implementation plan, research, and ticket were
+  read before implementation.
+- Earlier focused store/provider/search run: 127 tests passed across five files
+  (recorded by the implementation agent before this continuation).
+- `node scripts/run-vitest-with-electron.mjs tests/unit/embedding-http-index.test.ts tests/worker/semantic-index-store.test.ts --reporter=verbose`:
+  12 tests passed across two files after adding a library-generation handoff
+  regression. An initial run exposed that the corrupt-sidecar mock also failed
+  the deliberate close request; the mock was narrowed to fail only opening.
+- 10,000-asset direct Worker retrieval benchmark, with real catalog entries,
+  controlled precomputed vectors, and provider inference/IPC/UI excluded:
+  768D first query 156.51 ms; candidate IDs 12.08 ms, source projection
+  76.92 ms, vector scan 53.39 ms, score sort 12.72 ms; eight warm queries
+  p50 111.66 ms, p95/max 137.52 ms; filtered 5,000-asset query 53.28 ms.
+  `nativeCosineAvailable=true`.
+- The same run at 4096D measured 205.16 ms first query; eight warm queries
+  p50 197.87 ms, p95/max 205.24 ms; filtered 5,000-asset query 100.42 ms.
+  Session-reopened first query was 110.54 ms at 768D. Reopening a semantic
+  session is not a process restart, and these retrieval measurements exclude
+  embedding, IPC, UI, and provider latency.
+- Command for the most recent 10k run:
+  `SERPENT_RUN_SEMANTIC_PERF=1 node scripts/run-vitest-with-electron.mjs tests/worker/semantic-index-performance.test.ts --reporter=verbose --silent=false`
+- `shasum -a 256` matched the pinned macOS arm64 sqlite-vec manifest hash;
+  `codesign --verify --verbose=2` reported the dylib valid on disk and meeting
+  its designated requirement. This verifies the installed resource only, not
+  the packaged Electron Worker.
+- `npm run typecheck`: passed after async stop-hook integration, claim-token
+  fencing, and bounded source reads moved outside scheduler admission.
+- `node scripts/run-vitest-with-electron.mjs tests/unit/embedding-http-index.test.ts tests/worker/semantic-index-store.test.ts tests/worker/semantic-index-handler.test.ts tests/worker/search.test.ts --reporter=verbose`:
+  107 tests passed across four files. This includes filtered candidate
+  pagination, preferred thumbnail source parity, HTTP response reordering,
+  store claim/restart tests, and a scheduler/handler seam proving a yielded
+  search can be cancelled while an interactive browse request runs. It is not
+  a UtilityProcess end-to-end test.
+- `node scripts/run-vitest-with-electron.mjs tests/worker/semantic-index-store.test.ts --reporter=verbose`:
+  10 tests passed, including running-job restart recovery, claim fencing,
+  native/fallback cosine equivalence, unknown-storage journaling, and symlink
+  rejection.
+- `node scripts/run-vitest-with-electron.mjs tests/worker/semantic-index-handler.test.ts --reporter=verbose`:
+  1 test passed. It opens/reopens the Worker-owned sidecar and confirms a stale
+  claim is reported only as rejected and does not persist a vector.
+- `node scripts/run-vitest-with-electron.mjs tests/worker/semantic-index-handler.test.ts tests/unit/legacy-semantic-cache.test.ts tests/worker/semantic-index-store.test.ts tests/unit/embedding-http-index.test.ts tests/unit/embedding-library-binding.test.ts --reporter=verbose`:
+  24 tests passed across five files after adding the bounded legacy parser,
+  current-revision legacy vector import/reopen checks, and provider request
+  ordering coverage. Text vectors from the prior revision format are rejected
+  because their historical title input cannot be proven.
+- Legacy JSON migration now runs in the Library Worker from a Main-injected
+  application cache root. It accepts only regular files under the two known
+  legacy cache directories, validates schema/profile/current source revision
+  and dimensions, parses entries incrementally under a 256 MiB total limit,
+  records a SHA-256 import marker, and removes the owned cache file only after
+  the next Main process session confirms the same completed digest. Malformed
+  or incompatible caches remain in place for provider re-encoding.
+- `npm run typecheck`: passed after migration protocol, schema v3, and persisted
+  failed-job progress reporting were added.
+- Hidden E2E command `node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`:
+  1 test passed after rebuilding. With a mock HTTP provider, it indexed two
+  text assets, verified the semantic UI showed both in cosine order, exercised
+  filtered search and find-similar, closed and relaunched the full Electron
+  process, and confirmed the reopened library reported 2/2 ready without
+  additional corpus embedding requests before searching again. Earlier failed
+  attempts were test assumptions: the first expected one card despite raw
+  cosine returning both; later attempts used the wrong recent-library API and
+  accessible-name selector. The final trace and screenshot show both result
+  cards; no product search failure remained.
+- `node scripts/run-vitest-with-electron.mjs tests/worker/semantic-index-handler.test.ts tests/unit/legacy-semantic-cache.test.ts tests/unit/embedding-http-index.test.ts tests/unit/semantic-cleanup-notice.test.ts --reporter=dot`:
+  13 tests passed across four files. The migration test forces a 128-row batch
+  flush before malformed trailing bytes and confirms an existing valid vector
+  remains unchanged.
+- `npm run typecheck`: passed after the migration rollback guard and restart
+  E2E corrections. `npm run lint`: passed with zero errors and seven existing
+  React hook dependency warnings.
+- `node scripts/run-vitest-with-electron.mjs tests/worker/library-export-import.test.ts -t 'exports and reimports the semantic index through an SQLite backup snapshot' --reporter=verbose`:
+  1 test passed. It backs up a vector for a real catalog text asset, closes the
+  source library, imports the folder, and confirms a Worker search returns the
+  asset without re-encoding; a ZIP export/import check also reads the preserved
+  vector. The fixture now uses the file's actual byte size and mtime.
+
+## Remaining risks
+
+- Native loading now resolves and checks one package resource path, then loads
+  that exact path. Forge excludes the locked macOS dylib from re-signing, and
+  package verification checks its SHA-256. Packaged runtime loading, Windows
+  packaging, and macOS package verification remain untested.
+- The final retrieval-only 10,000-asset run measured 96.35ms first / 105.10ms
+  warm p95 at 768 dimensions, and 147.27ms first / 148.97ms warm p95 at 4096
+  dimensions. Both use precomputed vectors and exclude provider inference,
+  process-cold startup, IPC, and rendering; they do not prove 500ms end-to-end.
+- The semantic E2E verified persistence through full Electron exit/relaunch.
+  Durable job claim recovery after a UtilityProcess crash, and simultaneous
+  indexing/cancellation under a real UtilityProcess, remain unverified.
+- Export now uses SQLite backup for active stores and read-only backup for an
+  inactive sidecar, with destination space preflight and owned-partial cleanup.
+  Folder and ZIP import paths have a synthetic correctness test; all export
+  failure/cancellation and disk-full paths still need direct coverage.
+- Legacy migration is implemented for local and HTTP cache roots, but only a
+  synthetic current-revision image row has been shown to import and rank; the
+  full provider-driven legacy migration and post-full-app-restart cleanup path
+  still need an end-to-end test. Old text rows are intentionally rejected.
+- Durable failed-job counts are reconstructed from Worker job state when a
+  claim remains in retry backoff; full UtilityProcess restart recovery remains
+  unverified.
+- `npm run test:library-availability` passed in the final `verify:mainline` run
+  (9 files / 231 tests). The complete hidden-window E2E ran 107 tests: 83
+  passed, 20 failed, and 4 skipped; the new semantic SQLite full-restart E2E
+  passed, while unrelated-area attribution has not been established. See the
+  QA report for the exact command and failure categories.
+- A controlled 10k Worker retrieval benchmark passed below 500ms at 768D and
+  4096D. Query embedding, IPC/rendering, process-cold latency, and the complete
+  end-to-end 500ms result remain unmeasured.
+- The 20k mixed-media baseline completed two of three tests; the metadata-cache
+  browse statement expectation failed in the same assertion as the
+  pre-integration baseline (Serpent-38b190). The measured 20k values and result
+  are in the QA report.
+- The full `verify:mainline` stopped at the all-unit suite: 11 files failed,
+  703 passed, 18 skipped, with 17 individual failures. Lint (0 errors, 7
+  warnings), typecheck, extension verification, and library-availability
+  passed. No failures were attributed to this feature without a baseline.
+- Native packaging, Windows, Computer Use visual acceptance, and independent
+  final reviewer sign-off remain unverified. The independent review agent did
+  not complete its final pass.

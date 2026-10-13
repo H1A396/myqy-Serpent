@@ -22,7 +22,9 @@ export type LlamaEmbeddingFiles = {
 export type LlamaEmbeddingSession = {
   embedText: (text: string) => Promise<number[]>;
   embedImage: (imagePath: string) => Promise<number[]>;
+  embedImagePayload: (mimeType: string, bytesBase64: string) => Promise<number[]>;
   embedAudio: (wavPath: string) => Promise<number[]>;
+  embedAudioPayload: (bytesBase64: string) => Promise<number[]>;
   close: () => Promise<void>;
 };
 
@@ -185,7 +187,29 @@ export async function startLlamaEmbeddingSession(input: {
       if (fileInfo.size > MAX_IMAGE_BYTES) throw new Error("Image is too large to embed.");
       const mimeType = MIME_TYPES.get(path.extname(imagePath).toLowerCase());
       if (!mimeType) throw new Error("Image format is not supported.");
-      const dataUrl = `data:${mimeType};base64,${(await readFile(imagePath)).toString("base64")}`;
+      return embedImagePayload(mimeType, (await readFile(imagePath)).toString("base64"));
+    },
+    embedImagePayload: (mimeType, bytesBase64) => embedImagePayload(mimeType, bytesBase64),
+    embedAudio: async (wavPath) => {
+      const fileInfo = await stat(wavPath);
+      if (fileInfo.size <= 0 || fileInfo.size > MAX_AUDIO_WAV_BYTES) {
+        throw new Error("Audio window is too large to embed.");
+      }
+      return embedAudioPayload((await readFile(wavPath)).toString("base64"));
+    },
+    embedAudioPayload: (bytesBase64) => embedAudioPayload(bytesBase64),
+    close: async () => {
+      if (closed) return;
+      closed = true;
+      await stopProcessTree(child);
+    },
+  };
+
+  function embedImagePayload(mimeType: string, bytesBase64: string): Promise<number[]> {
+    if (![...MIME_TYPES.values()].includes(mimeType) || bytesBase64.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8) {
+      throw new Error("Image payload is too large or unsupported.");
+    }
+    const dataUrl = `data:${mimeType};base64,${bytesBase64}`;
       return postEmbedding({
         baseUrl,
         timeoutMs: requestTimeoutMs,
@@ -196,22 +220,16 @@ export async function startLlamaEmbeddingSession(input: {
           }],
         },
       });
-    },
-    embedAudio: async (wavPath) => {
-      const fileInfo = await stat(wavPath);
-      if (fileInfo.size <= 0 || fileInfo.size > MAX_AUDIO_WAV_BYTES) {
+  }
+
+  function embedAudioPayload(bytesBase64: string): Promise<number[]> {
+      if (!bytesBase64 || bytesBase64.length > Math.ceil(MAX_AUDIO_WAV_BYTES * 4 / 3) + 8) {
         throw new Error("Audio window is too large to embed.");
       }
       return postEmbedding({
         baseUrl,
         timeoutMs: requestTimeoutMs,
-        body: embeddingAudioRequestBody((await readFile(wavPath)).toString("base64")),
+        body: embeddingAudioRequestBody(bytesBase64),
       });
-    },
-    close: async () => {
-      if (closed) return;
-      closed = true;
-      await stopProcessTree(child);
-    },
-  };
+  }
 }

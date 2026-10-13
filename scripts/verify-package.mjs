@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -16,10 +17,22 @@ const asar = require('@electron/asar');
 // file:///E:/repo/scripts/verify-package.mjs → E:\repo\scripts\verify-package.mjs
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const platformDirectory = `Serpent-${process.platform}-${process.arch}`;
+const targetPlatform = process.env.SERPENT_PACKAGE_PLATFORM
+  ?? path.basename(process.env.SERPENT_PACKAGE_ROOT ?? path.resolve('out', `Serpent-${process.platform}-${process.arch}`))
+    .replace(/^Serpent-/u, '');
+const targetSeparator = targetPlatform.lastIndexOf('-');
+const packagePlatform = targetPlatform.slice(0, targetSeparator);
+const packageArch = targetPlatform.slice(targetSeparator + 1);
+if (targetSeparator <= 0 || !packageArch) {
+  throw new Error('Set SERPENT_PACKAGE_PLATFORM or use a Serpent-<platform>-<arch> package directory.');
+}
+if (packagePlatform !== process.platform || packageArch !== process.arch) {
+  throw new Error(`Package verification requires a matching host; target is ${packagePlatform}-${packageArch}, host is ${process.platform}-${process.arch}.`);
+}
+const platformDirectory = `Serpent-${packagePlatform}-${packageArch}`;
 const packageRoot = process.env.SERPENT_PACKAGE_ROOT ?? path.resolve('out', platformDirectory);
 const resourcesPath =
-  process.platform === 'darwin'
+  packagePlatform === 'darwin'
     ? path.join(packageRoot, 'Serpent.app', 'Contents', 'Resources')
     : path.join(packageRoot, 'resources');
 
@@ -36,11 +49,39 @@ const requiredPaths = [
   ),
 ];
 
+const sqliteVecPackage = packagePlatform === 'darwin'
+  ? `sqlite-vec-darwin-${packageArch}`
+  : packagePlatform === 'win32'
+    ? `sqlite-vec-windows-${packageArch}`
+    : packagePlatform === 'linux'
+      ? `sqlite-vec-linux-${packageArch}`
+      : null;
+const sqliteVecExtension = packagePlatform === 'darwin' ? 'dylib' : packagePlatform === 'win32' ? 'dll' : 'so';
+if (sqliteVecPackage) {
+  requiredPaths.push(path.join(resourcesPath, 'app.asar.unpacked', 'node_modules', sqliteVecPackage,
+    `vec0.${sqliteVecExtension}`));
+}
+
 // 2026-09-15：链接资产/文件夹的删除改为永久删除源文件，产品不再使用系统回收站，
 // 因此不再校验 `trash` 的本地 helper 是否随包解包。
 const missingPaths = requiredPaths.filter((requiredPath) => !existsSync(requiredPath));
 if (missingPaths.length > 0) {
   throw new Error(`Package is missing required runtime files:\n${missingPaths.join('\n')}`);
+}
+
+if (sqliteVecPackage) {
+  const integrity = JSON.parse(readFileSync(path.join(projectRoot, 'scripts', 'sqlite-vec-integrity.json'), 'utf8'));
+  const packageManifest = JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+  if (packageManifest.dependencies?.['sqlite-vec'] !== integrity.version) {
+    throw new Error('Packaged sqlite-vec version does not match its pinned binary integrity manifest.');
+  }
+  const extensionPath = requiredPaths.find((entry) => entry.includes(sqliteVecPackage) && entry.includes('vec0.'));
+  if (!extensionPath) throw new Error('Could not locate the packaged sqlite-vec extension.');
+  const actualHash = createHash('sha256').update(readFileSync(extensionPath)).digest('hex');
+  const expectedHash = integrity.sha256?.[`${packagePlatform}-${packageArch}`];
+  if (!expectedHash || actualHash !== expectedHash) {
+    throw new Error(`Packaged sqlite-vec binary integrity check failed for ${packagePlatform}-${packageArch}.`);
+  }
 }
 
 // Serpent Windows 事故（2026-08-21）：vcpkg 用户级 MSBuild 集成会把
@@ -159,7 +200,7 @@ if (!mainSource.includes(`AUTOMATION_API_VERSION`) || !mainSource.includes(Strin
 
 // Linux AppImage packages do not ship a pinned media bundle; they use system
 // ffmpeg / ffprobe / oiiotool from PATH (forge.config.ts skips the same gates).
-if (process.platform !== 'linux') {
+if (packagePlatform !== 'linux') {
   const mediaResourcesPath = path.join(resourcesPath, 'resources');
   const mediaPlatform = currentPlatformKey();
   verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
@@ -175,7 +216,7 @@ if (process.platform !== 'linux') {
   console.log('Skipping media bundle verification on Linux (system tools from PATH).');
 }
 
-if (process.platform === 'darwin') {
+if (packagePlatform === 'darwin') {
   const appPath = path.join(packageRoot, 'Serpent.app');
   const codeResources = path.join(appPath, 'Contents', '_CodeSignature', 'CodeResources');
   if (!existsSync(codeResources)) {

@@ -1,5 +1,7 @@
 # Serpent 项目状态
 
+- **2026-10-13 正式语义索引实现已落地，整体验收受阻（Serpent-424d7b）**：Worker 资源库独立 SQLite/Float32 BLOB、sqlite-vec 检索、旧 JSON 迁移与恢复路径已实现；完整 Electron 退出/重启语义搜索 E2E 通过。受控 10k/768D 和 4096D Worker 检索分别为 96ms 与 147ms 首次查询，不含 embedding/IPC/UI，不能代表端到端 500ms。核心资源库可用性、typecheck、extension verify 通过，但完整单测、107 项 E2E 和 20k 性能套件有失败；独立最终审查、Computer Use、packaged/Windows 未验证。工单保持开放，见[QA](qa/2026-10-13-semantic-sqlite-index.md)与[方案](implementation/2026-10-13-semantic-index-sqlite-plan.md)。
+
 - **2026-09-25 macOS 临时签名**：`osxSign.identity: '-'` 会去钥匙串找名为 `-` 的证书，失败后被 packager 的 `continueOnError` 吞掉，已发布的包只有链接器签名、没有 `_CodeSignature`，隔离后被说成「已损坏」。现关闭身份校验，并在打包校验里要求 `codesign --verify --strict` 通过。ffmpeg、ffprobe、oiiotool 不重复签名，避免改写被锁定的文件字节。临时签名彼此 Team ID 不同，默认加固运行时会在启动时拒绝加载 Electron Framework，系统提示「因为出现问题而无法打开」；授权里已允许加载同包框架。临时签名不消除「无法验证开发者」。0.2.8 的 macOS 安装镜像和便携包已换成这份签名。清单 `MAC-SIGN-001` 用户已确认能进入主界面；隔离后的系统对话框仍未点验。
 
 - **2026-09-25 库内拖拽误显示导入提示**：把当前文件夹里的文件拖走时，系统拖放只带 Files，画布把它当成外部导入。现改为手势真正结束后才收起蓝框，并预热整页、按下时再补预热。清单 `DND-IMPORT-001` 用户已确认通过。WebP 拖拽图标不做转换，系统读不了时仍用应用图标。

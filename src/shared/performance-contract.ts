@@ -255,6 +255,7 @@ const VIEWER_UPGRADE_COMMANDS = new Set([
  * to this default) and starved navigation on a packaged network library.
  */
 const INTERACTIVE_CONTROL_COMMANDS = new Set([
+  'semantic.index.cancel-search',
   'asset.search',
   'asset.list',
   'asset.list-trash',
@@ -277,6 +278,8 @@ const VISIBLE_MEDIA_COMMANDS = new Set([
 ]);
 
 const BACKGROUND_PRIMARY_COMMANDS = new Set([
+  'semantic.index.search',
+  'semantic.index.similar',
   'asset.refresh',
   'asset.metadata.backfill',
   'library.export',
@@ -317,6 +320,16 @@ const BACKGROUND_PRIMARY_COMMANDS = new Set([
 ]);
 
 const BACKGROUND_SECONDARY_COMMANDS = new Set([
+  'semantic.index.begin',
+  'semantic.index.rebuild',
+  'semantic.index.targets',
+  'semantic.index.prepare',
+  'semantic.index.write',
+  'semantic.index.audio-window',
+  'semantic.index.audio.release',
+  'semantic.index.close',
+  'semantic.index.job',
+  'semantic.index.import-legacy',
   'asset.analyze',
   'assets.analyze',
   'ai.process-queue',

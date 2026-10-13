@@ -626,13 +626,13 @@ export interface SerpentLibraryApi {
     byteSize: number;
     lineCount: number;
   }>>;
-  deleteAssetsPermanent(input: { libraryId: string; assetIds: string[] }): Promise<LibraryApiResult<{ deletedCount: number; skippedCount: number; skippedReasons: Array<{ assetId: string; reason: PublicErrorReason }> }>>;
+  deleteAssetsPermanent(input: { libraryId: string; assetIds: string[] }): Promise<LibraryApiResult<{ deletedCount: number; skippedCount: number; skippedReasons: Array<{ assetId: string; reason: PublicErrorReason }>; semanticCleanupPending?: boolean }>>;
   deleteAssetsFromDisk(input: {
     libraryId: string;
     assetIds: string[];
     /** Confirmation-copy hint only; the worker resolves the real location kinds. */
     locationKind?: 'managed' | 'linked' | 'mixed';
-  }): Promise<LibraryApiResult<{ deletedCount: number }>>;
+  }): Promise<LibraryApiResult<{ deletedCount: number; semanticCleanupPending?: boolean }>>;
   cancelDiskDelete(input: { operationId: string }): Promise<LibraryApiResult<{ operationId: string }>>;
   listTrash(input: { libraryId: string }): Promise<LibraryApiResult<AssetSummary[]>>;
   listTrashedFolders(input: { libraryId: string }): Promise<LibraryApiResult<TrashedFolderSummary[]>>;
@@ -645,7 +645,7 @@ export interface SerpentLibraryApi {
     folders: ManagedFolderSummary[];
     historyEntryId?: string;
   }>>;
-  purgeTrash(input: { libraryId: string }): Promise<LibraryApiResult<{ purgedCount: number; skippedCount: number; failures: Array<{ assetId: string; reason: PublicErrorReason }> }>>;
+  purgeTrash(input: { libraryId: string }): Promise<LibraryApiResult<{ purgedCount: number; skippedCount: number; failures: Array<{ assetId: string; reason: PublicErrorReason }>; semanticCleanupPending?: boolean }>>;
   // Linked delete
   deleteLinkedAssets(input: { libraryId: string; assetIds: string[]; deleteSourceFile: boolean }): Promise<LibraryApiResult<LinkedAssetDeleteResult>>;
   // Relink
@@ -804,20 +804,27 @@ export interface SerpentLibraryApi {
     modelId: string;
     run: boolean;
     restart: boolean;
+    rebuild?: boolean;
   }): Promise<LibraryApiResult<EmbeddingIndexSnapshot>>;
   embeddingSearch(input: {
     libraryId: string;
     modelId: string;
     query: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+    showIgnored?: boolean;
   }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
     assetIds: string[];
     /** Optional for compatibility with older Main processes. */
     scores?: SemanticSearchAssetScore[];
+    cancelled?: boolean;
   }>>;
   embeddingSimilar(input: {
     libraryId: string;
     modelId: string;
     assetId: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
   }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
     status: "ready" | "preparing" | "unsupported" | "unavailable";
     sourceAssetId: string;

@@ -10,6 +10,7 @@ function createNavigationId(): string {
 import { ipcRenderer, webUtils } from 'electron';
 
 import type { AiJobStatus, LibraryApiResult, LinkedAssetDeleteResult, MediaJobStatus, PluginJobStatus, PreviewResolution, RelinkAssetResult, SerpentLibraryApi, SyncCapabilities, SyncReport } from '../../shared/library-api';
+import type { EmbeddingInstallProgress } from '../../shared/embedding/install-progress';
 import type { MutationReceipt } from '../../shared/performance-contract';
 import { summarizePluginJobs } from '../../shared/plugin-job-status';
 import type { RecentLibraryEntry } from '../../shared/recent-libraries';
@@ -2120,9 +2121,9 @@ export const library: SerpentLibraryApi = Object.freeze({
       },
     };
   },
-  onEmbeddingInstallProgress(listener: (event: import('../../shared/embedding/install-progress').EmbeddingInstallProgress) => void) {
+  onEmbeddingInstallProgress(listener: (event: EmbeddingInstallProgress) => void) {
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
-      listener(payload as import('../../shared/embedding/install-progress').EmbeddingInstallProgress);
+      listener(payload as EmbeddingInstallProgress);
     };
     ipcRenderer.on(EMBEDDING_INSTALL_PROGRESS_CHANNEL, handler);
     return () => ipcRenderer.removeListener(EMBEDDING_INSTALL_PROGRESS_CHANNEL, handler);
@@ -2132,6 +2133,7 @@ export const library: SerpentLibraryApi = Object.freeze({
     modelId: string;
     run: boolean;
     restart: boolean;
+    rebuild?: boolean;
   }) {
     const result = await request({ type: 'embedding.index.status.request', ...input });
     if (!result.ok) return failure(result);
@@ -2151,6 +2153,9 @@ export const library: SerpentLibraryApi = Object.freeze({
     libraryId: string;
     modelId: string;
     query: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+    showIgnored?: boolean;
   }) {
     const result = await request({ type: 'embedding.search.request', ...input });
     if (!result.ok) return failure(result);
@@ -2162,6 +2167,7 @@ export const library: SerpentLibraryApi = Object.freeze({
         done: result.done,
         total: result.total,
         failedCount: result.failedCount,
+        ...(result.cancelled ? { cancelled: true } : {}),
         assetIds: result.assetIds,
         scores: result.scores,
         ...(result.hold ? { hold: result.hold } : {}),
@@ -2247,6 +2253,8 @@ export const library: SerpentLibraryApi = Object.freeze({
     libraryId: string;
     modelId: string;
     assetId: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
   }) {
     const result = await request({ type: 'embedding.similar.request', ...input });
     if (!result.ok) return failure(result);

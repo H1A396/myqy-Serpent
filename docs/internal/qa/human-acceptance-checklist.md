@@ -23,6 +23,10 @@
 > 记为“人类验收通过”；该授权不自动延伸到后续会话或未实际操作的条目。
 > 2026-08-01：插件/脚本轨道改走自动化验收（见下表），与上条 Computer Use 人类等价授权无关。
 
+## 正式语义索引实施中（不进入待验收队列）
+
+`EMBED-INDEX-001` / `Serpent-424d7b`：2026-10-13 用户授权 dev 使用资源库内独立 SQLite 取代 Main JSON 向量缓存，Luna 开发，主 agent 设计监督审查。Worker 语义索引完整退出/重启、过滤与找相似自动化通过；10k 预计算向量 Worker 检索两种维度均小于 500ms，不能代表端到端搜索。资源库可用性通过；完整 `npm test`、E2E 与 20k 性能基线未全绿，独立最终审查、Computer Use、packaged/Windows 和端到端总时长未完成。保持实施中，不改变历史人工验收结论、不登记待人类验收。见[方案](../implementation/2026-10-13-semantic-index-sqlite-plan.md)、[QA](2026-10-13-semantic-sqlite-index.md)与 [ADR-0034](../adr/0034-worker-owned-semantic-index.md)。
+
 ## API 格式实现的验证阻断（不进入待验收队列）
 
 `EMBED-API-001`：2026-10-12 仅调整 Embedding API 格式。三个短名、一行中英文介绍、显式 llama.cpp 图片格式及严格响应映射已实现；5 文件/152 条定向测试、9 文件/231 条资源库可用性测试通过。后台隔离 Electron 在启动连接阶段两次超时，未执行 UI 与重启断言；Computer Use 只获取空白内容区，亮暗主题和交互未验证。已有类型检查和 preload ESLint 阻断另见 [开发记录](../development/2026-10-12-embedding-api-formats.md)。尚不满足「待人类验收」条件；`EMBED-SEARCH-001` 状态与原始排序决定不变。

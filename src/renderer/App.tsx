@@ -502,6 +502,7 @@ import {
   type SemanticSearchPageSize,
 } from "./semantic-search-preferences";
 import { semanticSearchNotice } from "./semantic-index-copy";
+import { appendSemanticCleanupNotice } from "./semantic-cleanup-notice";
 import { mergeKeywordAndSemanticRanks, semanticBrowseRegistration } from "./semantic-browse";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
 import { embeddingServiceTextOnly } from "../shared/embedding/modalities";
@@ -8774,7 +8775,7 @@ function AppInner() {
     if (source) setFindSimilarSource(source);
   }
 
-  async function runSemanticSearch(query: string, silent?: boolean) {
+  async function runSemanticSearch(query: string, silent?: boolean, cancellationRetry = 0) {
     if (!api || !library) return;
     if (silent && (previewAssetRef.current || previewRestoringRef.current)) return;
     const modelId = embeddingSelectionRef.current;
@@ -8794,6 +8795,9 @@ function AppInner() {
           libraryId: library.libraryId,
           modelId,
           query,
+          filters: definition.filters,
+          scope: searchScope,
+          showIgnored: showIgnoredItems,
         }),
         api.searchAssets({
           libraryId: library.libraryId,
@@ -8806,6 +8810,13 @@ function AppInner() {
       ]);
       if (!request.isCurrent()) return;
       if (!ranked.ok) throw new LibraryOperationError(ranked.error);
+      if (ranked.value.cancelled) {
+        if (cancellationRetry < 1 && request.isCurrent()) {
+          await new Promise((resolve) => window.setTimeout(resolve, 50));
+          if (request.isCurrent()) await runSemanticSearch(query, silent, cancellationRetry + 1);
+        }
+        return;
+      }
       const keywordAssetIds = keyword.ok ? (keyword.value.assetIds ?? []) : [];
       const rankedAssetIds = mergeKeywordAndSemanticRanks({
         keywordAssetIds,
@@ -8899,6 +8910,8 @@ function AppInner() {
             libraryId: library.libraryId,
             modelId,
             assetId,
+            filters: currentQueryDefinition().filters,
+            scope: currentSearchScope(currentQueryDefinition().search !== undefined),
           });
           if (!result.ok) throw new LibraryOperationError(result.error);
           return { status: result.value.status, assetIds: result.value.assetIds };
@@ -10417,6 +10430,8 @@ function AppInner() {
       let msg = t("toast.permanentDeleted", {
         count: result.value.deletedCount,
       });
+      msg = appendSemanticCleanupNotice(msg, result.value.semanticCleanupPending === true,
+        t("toast.semanticCleanupPending"));
       if (result.value.skippedCount > 0) {
         const skippedNames = new Map(
           trashedAssets.map((asset) => [asset.assetId, asset.displayName]),
@@ -10576,6 +10591,7 @@ function AppInner() {
     try {
       let deletedAssets = 0;
       let deletedFolders = 0;
+      let semanticCleanupPending = false;
       if (assetIds.length > 0) {
         const result = await api.deleteAssetsFromDisk({
           libraryId: library.libraryId,
@@ -10591,6 +10607,7 @@ function AppInner() {
           throw new LibraryOperationError(result.error);
         }
         deletedAssets = result.value.deletedCount;
+        semanticCleanupPending = result.value.semanticCleanupPending === true;
         const collectionResult = await api.listCollections({
           libraryId: library.libraryId,
         });
@@ -10606,10 +10623,10 @@ function AppInner() {
         deletedAssets += result.value.deletedAssetCount;
       }
       setNotice(
-        t("toast.selectionDeletedFromDisk", {
+        appendSemanticCleanupNotice(t("toast.selectionDeletedFromDisk", {
           folders: deletedFolders,
           assets: deletedAssets,
-        }),
+        }), semanticCleanupPending, t("toast.semanticCleanupPending")),
       );
       clearAssetSelection();
       applyLocalAssetRemoval(assetIds, { removedCount: deletedAssets });
@@ -10731,6 +10748,8 @@ function AppInner() {
                 reasons: failureReasons.join("；"),
               })
             : "") +
+          appendSemanticCleanupNotice("", result.value.semanticCleanupPending === true,
+            t("toast.semanticCleanupPending")) +
           t("common.sentenceEnd"),
       );
       await loadContent(library, "all", { trashMode: true });
@@ -15738,6 +15757,13 @@ function AppInner() {
             const result = await api.embeddingSaveBinding(input);
             if (!result.ok) return { ok: false };
             return { ok: true };
+          },
+          async rebuildIndex(input) {
+            if (!api) return { ok: false };
+            const result = await api.embeddingIndexStatus({
+              libraryId: input.libraryId, modelId: input.modelId, run: true, restart: false, rebuild: true,
+            });
+            return result.ok ? { ok: true } : { ok: false };
           },
         }}
       />

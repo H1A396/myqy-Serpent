@@ -65,7 +65,7 @@ export type EmbeddingModelRuntime = {
   embeddingIndex?: EmbeddingTestIndex;
   embeddingHttpIndex?: EmbeddingHttpIndex;
   stopGemmaIndex?: () => void;
-  stopHttpIndex?: () => void;
+  stopHttpIndex?: () => void | Promise<void>;
   onInstallProgress?: (event: EmbeddingInstallProgress) => void;
   logError?: (scope: string, error: unknown, context?: Record<string, unknown>) => void;
 };
@@ -120,7 +120,7 @@ export async function tryHandleEmbeddingModelRequest(
         runtime.stopGemmaIndex?.();
         return runtime.embeddingHttpIndex?.handleStatus(request) ?? unavailableIndex();
       }
-      runtime.stopHttpIndex?.();
+      await runtime.stopHttpIndex?.();
       if (!isSemanticSearchModelId(request.modelId)) return unavailableIndex();
       return runtime.embeddingIndex?.handleStatus({ ...request, modelId: request.modelId }) ?? unavailableIndex();
     case "embedding.search.request":
@@ -128,7 +128,7 @@ export async function tryHandleEmbeddingModelRequest(
         runtime.stopGemmaIndex?.();
         return runtime.embeddingHttpIndex?.handleSearch(request) ?? emptySearch();
       }
-      runtime.stopHttpIndex?.();
+      await runtime.stopHttpIndex?.();
       if (!isSemanticSearchModelId(request.modelId)) return emptySearch();
       return runtime.embeddingIndex?.handleSearch({ ...request, modelId: request.modelId }) ?? emptySearch();
     case "embedding.similar.request":
@@ -146,7 +146,7 @@ export async function tryHandleEmbeddingModelRequest(
           assetIds: [],
         };
       }
-      runtime.stopHttpIndex?.();
+      await runtime.stopHttpIndex?.();
       if (!isSemanticSearchModelId(request.modelId)) {
         return {
           ok: true,
@@ -337,10 +337,10 @@ function listServices(runtime: EmbeddingModelRuntime): RendererResult {
   };
 }
 
-function saveService(
+async function saveService(
   request: Extract<RendererRequest, { type: "embedding.services.save.request" }>,
   runtime: EmbeddingModelRuntime,
-): RendererResult {
+): Promise<RendererResult> {
   if (!runtime.readServices || !runtime.writeServices || !runtime.serviceCredentials) {
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
   }
@@ -351,6 +351,7 @@ function saveService(
       request,
     );
     runtime.writeServices(next);
+    await runtime.stopHttpIndex?.();
     const id = request.id ?? next.services.at(-1)?.id;
     if (!id) return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
     return { ok: true, type: "embedding.service.saved", id };
@@ -362,7 +363,7 @@ function saveService(
   }
 }
 
-function removeService(id: string, runtime: EmbeddingModelRuntime): RendererResult {
+async function removeService(id: string, runtime: EmbeddingModelRuntime): Promise<RendererResult> {
   if (!runtime.readServices || !runtime.writeServices || !runtime.serviceCredentials) {
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
   }
@@ -371,6 +372,7 @@ function removeService(id: string, runtime: EmbeddingModelRuntime): RendererResu
     runtime.serviceCredentials,
     id,
   ));
+  await runtime.stopHttpIndex?.();
   return { ok: true, type: "embedding.service.deleted", id };
 }
 
@@ -460,17 +462,18 @@ function readBinding(libraryId: string, runtime: EmbeddingModelRuntime): Rendere
   };
 }
 
-function saveBinding(
+async function saveBinding(
   libraryId: string,
   selectionId: string | null,
   runtime: EmbeddingModelRuntime,
   inherit = false,
-): RendererResult {
+): Promise<RendererResult> {
   if (!runtime.readBindings || !runtime.writeBindings) {
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
   }
   if (inherit) {
     runtime.writeBindings(clearEmbeddingBinding(runtime.readBindings(), libraryId));
+    await runtime.stopHttpIndex?.();
     return {
       ok: true,
       type: "embedding.binding",
@@ -486,6 +489,7 @@ function saveBinding(
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
   }
   runtime.writeBindings(next);
+  await runtime.stopHttpIndex?.();
   return {
     ok: true,
     type: "embedding.binding",
@@ -496,7 +500,7 @@ function saveBinding(
   };
 }
 
-function grantService(id: string, libraryId: string, runtime: EmbeddingModelRuntime): RendererResult {
+async function grantService(id: string, libraryId: string, runtime: EmbeddingModelRuntime): Promise<RendererResult> {
   if (!runtime.readServices || !runtime.writeServices) {
     return { ok: false, error: createPublicError("EMBEDDING_SERVICE_INVALID") };
   }
@@ -506,6 +510,7 @@ function grantService(id: string, libraryId: string, runtime: EmbeddingModelRunt
       id,
       libraryId,
     ));
+    await runtime.stopHttpIndex?.();
     return { ok: true, type: "embedding.service.granted", id };
   } catch (error) {
     if (error instanceof EmbeddingServiceRegistryError) {

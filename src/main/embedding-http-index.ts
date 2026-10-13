@@ -1,16 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import path from "node:path";
-
-import { readEmbeddingDocument } from "./embedding-text";
+import { randomUUID } from "node:crypto";
+import type { FilterClause, SearchScope } from "../shared/asset-types";
 import { EMBEDDING_HTTP_IMAGE_MAX_BYTES, postEmbeddingHttp } from "./embedding-http";
 import { DASHSCOPE_VISUAL_SEARCH_INSTRUCT } from "../shared/embedding/http-service";
-import {
-  embeddingSkipKey,
-  embeddingTargetsToEncode,
-  resolveContainedPath,
-  rankSimilarAssetIds,
-  scoreEmbeddings,
-} from "./embedding-test-index";
+import { embeddingSkipKey } from "./embedding-test-index";
 import {
   embeddingHttpProfileKey,
   type EmbeddingHttpAdapter,
@@ -19,42 +11,29 @@ import {
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
 import {
-  modalityForMediaType,
-  type EmbeddingModality,
-} from "../shared/embedding/modalities";
-import {
-  embeddingSourcePlan,
-  embeddingTextRevision,
-  embeddingThumbnailRevision,
-  normalizeEmbedding,
   type EmbeddingIndexSnapshot,
 } from "../shared/embedding/profile";
+import type { EmbeddingModality } from "../shared/embedding/modalities";
 import type { WorkerCommand } from "../shared/protocol/requests";
 import type { RendererResult, WorkerResult } from "../shared/protocol/responses";
+import { createPublicError } from "../shared/protocol/errors";
 
-type StoredEntry = { assetId: string; revisionId: string; vector: number[] };
 type JobState = EmbeddingIndexSnapshot & {
   generation: number;
   libraryId: string;
   serviceId: string;
-  entries: Map<string, StoredEntry>;
+  sessionGeneration: string;
+  profileKey: string;
 };
 
 type HttpEmbeddingTarget = {
   assetId: string;
   revisionId: string;
-  filePath: string;
   kind: "text" | "image";
+  modality: EmbeddingModality;
+  alreadyIndexed: boolean;
+  jobStatus?: "pending" | "running" | "ready" | "failed";
 };
-
-const THUMBNAIL_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-const IMAGE_MIME_TYPES = new Map([
-  [".jpg", "image/jpeg"],
-  [".jpeg", "image/jpeg"],
-  [".png", "image/png"],
-  [".webp", "image/webp"],
-  [".bmp", "image/bmp"],
-]);
 
 export type EmbeddingHttpServiceView = {
   id: string;
@@ -72,19 +51,42 @@ export class EmbeddingHttpIndex {
   #generation = 0;
   #state: JobState | null = null;
   #skipped = new Set<string>();
-  #running = false;
+  #runningGeneration: number | null = null;
+  #activeQueryId: string | null = null;
+  #activeQuerySessionGeneration: string | null = null;
+  #activeQueryLibraryId: string | null = null;
+  #queryControllers = new Map<string, AbortController>();
+  #activeRequestControllers = new Set<AbortController>();
 
   constructor(private readonly options: {
-    cacheDirectory: string;
     requestWorker: (command: WorkerCommand) => Promise<WorkerResult>;
     loadService: (id: string) => EmbeddingHttpServiceView | null;
     readKey: (id: string) => string | null;
+    isLibraryEnabled?: (libraryId: string, serviceId: string) => boolean;
   }) {}
 
-  close(): void {
+  async close(): Promise<void> {
+    const state = this.#state;
+    const activeQueryId = this.#activeQueryId;
+    const activeQuerySessionGeneration = this.#activeQuerySessionGeneration;
+    const activeQueryLibraryId = this.#activeQueryLibraryId;
     this.#generation += 1;
+    this.#abortRequests();
+    this.#activeQueryId = null;
+    this.#activeQuerySessionGeneration = null;
+    this.#activeQueryLibraryId = null;
+    this.#queryControllers.clear();
     this.#state = null;
     this.#skipped.clear();
+    if (activeQueryId && activeQuerySessionGeneration && activeQueryLibraryId) {
+      await this.options.requestWorker({ type: "semantic.index.cancel-search", libraryId: activeQueryLibraryId,
+        sessionGeneration: activeQuerySessionGeneration, queryId: activeQueryId }).catch(() => undefined);
+    }
+    if (state) await this.options.requestWorker({
+      type: "semantic.index.close",
+      libraryId: state.libraryId,
+      sessionGeneration: state.sessionGeneration,
+    });
   }
 
   catchUp(libraryId: string): void {
@@ -97,7 +99,18 @@ export class EmbeddingHttpIndex {
     libraryId: string;
     modelId: string;
     run: boolean;
+    rebuild?: boolean;
   }): RendererResult {
+    const service = this.options.loadService(request.modelId);
+    if (service && !this.#isLibraryEnabled(request.libraryId, request.modelId)) {
+      return { ok: true, type: "embedding.index.status", phase: "unavailable", done: 0, total: 0,
+        failedCount: 0, hold: "grant" };
+    }
+    if (request.rebuild === true) {
+      if (this.#state?.phase === "failed" && this.#state.libraryId === request.libraryId
+        && this.#state.serviceId === request.modelId) this.#rebuild(request.libraryId, request.modelId);
+      return { ok: true, type: "embedding.index.status", ...this.#snapshot() };
+    }
     if (request.run) {
       const current = this.#state;
       const active = current
@@ -113,104 +126,227 @@ export class EmbeddingHttpIndex {
     libraryId: string;
     modelId: string;
     query: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+    showIgnored?: boolean;
   }): Promise<RendererResult> {
-    const generation = this.#begin(request.libraryId, request.modelId);
-    void this.#encode(generation, request.libraryId, request.modelId);
-    const snapshot = this.#snapshot();
+    const queryId = this.#startQuery(request.libraryId);
+    let requestController: AbortController | null = null;
     const service = this.options.loadService(request.modelId);
-    if (!httpServiceReady(service)) {
-      this.#write(generation, { phase: "unavailable" });
-      return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
+    if (!httpServiceReady(service) || !this.#isLibraryEnabled(request.libraryId, request.modelId)) {
+      const grantMissing = Boolean(service && !this.#isLibraryEnabled(request.libraryId, request.modelId));
+      return { ok: true, type: "embedding.search", phase: "unavailable", done: 0, total: 0,
+        failedCount: 0, ...(grantMissing ? { hold: "grant" as const } : {}), assetIds: [], scores: [] };
     }
+    const generation = this.#begin(request.libraryId, request.modelId);
+    const indexedState = this.#state;
+    if (indexedState?.phase !== "ready" || indexedState.generation !== generation) {
+      void this.#encode(generation, request.libraryId, request.modelId);
+    }
+    const snapshot = this.#snapshot();
     const state = this.#state;
-    if (!state || state.entries.size === 0) {
+    if (state?.phase === "failed" && state.libraryId === request.libraryId && state.serviceId === request.modelId) {
+      return { ok: false, error: createPublicError("INTERNAL_ERROR") };
+    }
+    if (!state || state.done === 0 || this.#activeQueryId !== queryId) {
       return { ok: true, type: "embedding.search", ...snapshot, assetIds: [], scores: [] };
     }
     try {
+      const controller = new AbortController();
+      requestController = controller;
+      this.#activeRequestControllers.add(controller);
+      this.#queryControllers.set(queryId, controller);
+      const checkedService = this.#currentService(state);
+      if (!checkedService) throw new Error("Embedding service configuration changed.");
       const [vector] = await postEmbeddingHttp({
-        baseUrl: service.baseUrl,
-        modelName: service.modelName,
-        adapter: service.adapter,
-        dimensions: service.dimensions,
+        baseUrl: checkedService.baseUrl,
+        modelName: checkedService.modelName,
+        adapter: checkedService.adapter,
+        dimensions: checkedService.dimensions,
         inputs: [request.query],
-        apiKey: this.options.readKey(service.id),
-        instruct: service.adapter === "dashscope-multimodal-v1"
+        apiKey: this.options.readKey(checkedService.id),
+        signal: controller.signal,
+        instruct: checkedService.adapter === "dashscope-multimodal-v1"
           ? DASHSCOPE_VISUAL_SEARCH_INSTRUCT
           : null,
       });
-      if (!vector || this.#state?.generation !== generation) {
+      if (!vector || this.#activeQueryId !== queryId
+        || this.#state?.generation !== generation || !this.#currentService(state)) {
         return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
       }
-      const scores = scoreEmbeddings(
-        normalizeEmbedding(vector, service.dimensions),
-        [...state.entries.values()],
-      );
+      const ranked = await this.options.requestWorker({
+        type: "semantic.index.search",
+        libraryId: request.libraryId,
+        sessionGeneration: state.sessionGeneration,
+        queryId,
+        profileKey: state.profileKey,
+        vector,
+        filters: request.filters,
+        scope: request.scope,
+        showIgnored: request.showIgnored,
+      });
+      if (!ranked.ok || ranked.type !== "semantic.index.ranked") {
+        return { ok: false, error: createPublicError("INTERNAL_ERROR") };
+      }
+      if (ranked.cancelled || this.#activeQueryId !== queryId || this.#state?.generation !== generation) {
+        return { ok: true, type: "embedding.search", ...this.#snapshot(), cancelled: true, assetIds: [], scores: [] };
+      }
       return {
         ok: true,
         type: "embedding.search",
         ...this.#snapshot(),
-        assetIds: scores.map(({ assetId }) => assetId),
-        scores,
+        assetIds: ranked.assetIds,
+        scores: ranked.scores,
       };
     } catch {
-      return { ok: true, type: "embedding.search", ...snapshot, assetIds: [], scores: [] };
+      if (this.#activeQueryId !== queryId || requestController?.signal.aborted) {
+        return { ok: true, type: "embedding.search", ...this.#snapshot(), assetIds: [], scores: [] };
+      }
+      return { ok: false, error: createPublicError("INTERNAL_ERROR") };
+    } finally {
+      if (requestController && this.#queryControllers.get(queryId) === requestController) {
+        this.#queryControllers.delete(queryId);
+      }
+      if (requestController) this.#activeRequestControllers.delete(requestController);
     }
   }
 
-  handleSimilar(request: { libraryId: string; modelId: string; assetId: string }): RendererResult {
+  async handleSimilar(request: {
+    libraryId: string;
+    modelId: string;
+    assetId: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+  }): Promise<RendererResult> {
+    const queryId = this.#startQuery(request.libraryId);
     const state = this.#state;
     const snapshot = this.#snapshot();
+    const service = this.options.loadService(request.modelId);
+    const grantMissing = Boolean(service && !this.#isLibraryEnabled(request.libraryId, request.modelId));
     if (
       !state
       || state.libraryId !== request.libraryId
       || state.serviceId !== request.modelId
       || state.phase === "unavailable"
       || state.phase === "failed"
+      || !httpServiceReady(service)
+      || !this.#isLibraryEnabled(request.libraryId, request.modelId)
     ) {
       return {
         ok: true,
         type: "embedding.similar",
         ...snapshot,
         status: "unavailable",
+        ...(grantMissing ? { hold: "grant" as const } : {}),
         sourceAssetId: request.assetId,
         assetIds: [],
       };
     }
-    const skipped = [...this.#skipped].some((key) => key.startsWith(`${request.assetId}\0`));
-    if (!state.entries.has(request.assetId)) {
-      if (state.phase === "ready" || skipped) {
-        return {
-          ok: true,
-          type: "embedding.similar",
-          ...snapshot,
-          status: "unsupported",
-          sourceAssetId: request.assetId,
-          assetIds: [],
-        };
+    let ranked = await this.options.requestWorker({
+      type: "semantic.index.similar",
+      libraryId: request.libraryId,
+      sessionGeneration: state.sessionGeneration,
+      queryId,
+      profileKey: state.profileKey,
+      sourceAssetId: request.assetId,
+      filters: request.filters,
+      scope: request.scope,
+    });
+    if (this.#activeQueryId !== queryId) {
+      return { ok: true, type: "embedding.similar", ...this.#snapshot(), status: "preparing", sourceAssetId: request.assetId, assetIds: [] };
+    }
+    if (ranked.ok && ranked.type === "semantic.index.ranked" && ranked.sourceStatus === "preparing"
+      && ranked.sourceTarget && this.#state?.generation === state.generation) {
+      const supported = encodeModalitiesForAdapter(service.adapter, service.modalities);
+      if (!supported.has(ranked.sourceTarget.modality)) {
+        return { ok: true, type: "embedding.similar", ...snapshot, status: "unsupported", sourceAssetId: request.assetId, assetIds: [] };
       }
-      void this.#encode(state.generation, state.libraryId, state.serviceId);
-      return {
-        ok: true,
-        type: "embedding.similar",
-        ...snapshot,
-        status: "preparing",
-        sourceAssetId: request.assetId,
-        assetIds: [],
-      };
+      let preparingTarget: HttpEmbeddingTarget | null = null;
+      const claimToken = randomUUID();
+      try {
+        const targetPage = await this.#listTargets(request.libraryId, state, service, 0, null, request.assetId);
+        const target = targetPage.targets.find((entry) => entry.assetId === request.assetId);
+        if (target && !target.alreadyIndexed) {
+          preparingTarget = target;
+          const claimed = await this.#setDurableJob(state.generation, target.assetId, target.revisionId, claimToken, "claim");
+          if (!claimed) throw new Error("Semantic source changed.");
+          const prepared = await this.options.requestWorker({
+            type: "semantic.index.prepare", libraryId: request.libraryId,
+            sessionGeneration: state.sessionGeneration, assetId: target.assetId,
+            sourceRevision: target.revisionId, kind: target.kind,
+            maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+          });
+          if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
+          const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
+            ? [prepared.text ?? ""]
+            : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
+          const checkedService = this.#currentService(state);
+          if (!checkedService) throw new Error("Embedding service configuration changed.");
+          const controller = this.#newRequestController();
+          let vector: number[] | undefined;
+          try {
+            [vector] = await postEmbeddingHttp({
+              baseUrl: checkedService.baseUrl, modelName: checkedService.modelName, adapter: checkedService.adapter,
+              dimensions: checkedService.dimensions, inputs, apiKey: this.options.readKey(checkedService.id),
+              signal: controller.signal,
+            });
+          } finally {
+            this.#activeRequestControllers.delete(controller);
+          }
+          if (!vector || this.#state?.generation !== state.generation || !this.#currentService(state)) {
+            throw new Error("Semantic source changed.");
+          }
+          const written = await this.options.requestWorker({
+            type: "semantic.index.write", libraryId: request.libraryId,
+            sessionGeneration: state.sessionGeneration, profileKey: state.profileKey,
+            vectors: [{ assetId: target.assetId, sourceRevision: target.revisionId, vector, claimToken }],
+          });
+          if (written.ok && written.type === "semantic.index.written" && written.accepted.includes(target.assetId)) {
+            this.#write(state.generation, { done: this.#state.done + 1 });
+          }
+        }
+      } catch {
+        if (preparingTarget && this.#state?.generation === state.generation) {
+          await this.#setDurableJob(state.generation, preparingTarget.assetId, preparingTarget.revisionId,
+            claimToken, "fail", "provider").catch(() => false);
+        }
+        this.#write(state.generation, { failedCount: this.#state.failedCount + 1 });
+      }
+      if (this.#state?.generation === state.generation) {
+        ranked = await this.options.requestWorker({
+          type: "semantic.index.similar", libraryId: request.libraryId,
+          sessionGeneration: state.sessionGeneration, queryId,
+          profileKey: state.profileKey, sourceAssetId: request.assetId,
+          filters: request.filters, scope: request.scope,
+        });
+      }
     }
+    if (this.#activeQueryId !== queryId || this.#state?.generation !== state.generation) {
+      return { ok: true, type: "embedding.similar", ...this.#snapshot(), status: "preparing", sourceAssetId: request.assetId, assetIds: [] };
+    }
+    if (!ranked.ok || ranked.type !== "semantic.index.ranked") {
+      return { ok: false, error: createPublicError("INTERNAL_ERROR") };
+    }
+    if (ranked.cancelled) return { ok: true, type: "embedding.similar", ...this.#snapshot(), status: "preparing", sourceAssetId: request.assetId, assetIds: [] };
     return {
       ok: true,
       type: "embedding.similar",
       ...snapshot,
-      status: "ready",
+      status: ranked.sourceStatus ?? (ranked.sourceTarget ? "preparing" : "ready"),
       sourceAssetId: request.assetId,
-      assetIds: rankSimilarAssetIds(request.assetId, [...state.entries.values()]),
+      assetIds: ranked.assetIds,
     };
   }
 
   #begin(libraryId: string, serviceId: string): number {
     const current = this.#state;
-    if (current && current.libraryId === libraryId && current.serviceId === serviceId) return current.generation;
+    const service = this.options.loadService(serviceId);
+    const profileKey = service?.dimensions
+      ? embeddingHttpProfileKey({ adapter: service.adapter, baseUrl: service.baseUrl, modelName: service.modelName, dimensions: service.dimensions })
+      : "";
+    if (current && current.libraryId === libraryId && current.serviceId === serviceId
+      && current.profileKey === profileKey) return current.generation;
+    this.#abortRequests();
     this.#generation += 1;
     this.#skipped.clear();
     this.#state = {
@@ -221,80 +357,150 @@ export class EmbeddingHttpIndex {
       generation: this.#generation,
       libraryId,
       serviceId,
-      entries: new Map(),
+      sessionGeneration: randomUUID(),
+      profileKey,
     };
     return this.#generation;
   }
 
-  async #encode(generation: number, libraryId: string, serviceId: string): Promise<void> {
-    if (this.#running) return;
-    const service = this.options.loadService(serviceId);
-    if (!httpServiceReady(service)) {
-      this.#write(generation, { phase: "unavailable", hold: undefined });
-      return;
-    }
-    this.#running = true;
-    try {
-      const targets = await this.#listTargets(libraryId, service);
-      if (this.#state?.generation !== generation) return;
-      const profileKey = embeddingHttpProfileKey({
-        adapter: service.adapter,
-        baseUrl: service.baseUrl,
-        modelName: service.modelName,
-        dimensions: service.dimensions,
+  #rebuild(libraryId: string, serviceId: string): void {
+    const failed = this.#state;
+    if (!failed || failed.phase !== "failed" || failed.libraryId !== libraryId || failed.serviceId !== serviceId) return;
+    this.#abortRequests();
+    this.#generation += 1;
+    const generation = this.#generation;
+    const state: JobState = { ...failed, phase: "starting", done: 0, total: 0, failedCount: 0,
+      generation, sessionGeneration: randomUUID() };
+    this.#state = state;
+    void (async () => {
+      const rebuilt = await this.options.requestWorker({
+        type: "semantic.index.rebuild", libraryId, sessionGeneration: state.sessionGeneration, confirmed: true,
       });
-      const cached = this.#readCache(libraryId, serviceId, profileKey);
-      const entries = new Map<string, StoredEntry>();
-      for (const target of targets) {
-        const stored = cached.get(target.assetId);
-        if (stored?.revisionId === target.revisionId) entries.set(target.assetId, stored);
-      }
-      const pending = embeddingTargetsToEncode(targets, entries, this.#skipped);
-      this.#write(generation, {
-        entries,
-        done: entries.size,
-        total: targets.length,
-        phase: pending.length > 0 ? "indexing" : "ready",
-        hold: undefined,
-      });
-      for (const target of pending) {
-        if (this.#state?.generation !== generation) return;
-        try {
-          const inputs = await this.#buildInputs(target);
-          const [vector] = await postEmbeddingHttp({
-            baseUrl: service.baseUrl,
-            modelName: service.modelName,
-            adapter: service.adapter,
-            dimensions: service.dimensions,
-            inputs,
-            apiKey: this.options.readKey(service.id),
-          });
-          if (!vector || this.#state?.generation !== generation) return;
-          entries.set(target.assetId, {
-            assetId: target.assetId,
-            revisionId: target.revisionId,
-            vector: normalizeEmbedding(vector, service.dimensions),
-          });
-          this.#write(generation, { entries, done: entries.size });
-          this.#writeCache(libraryId, serviceId, profileKey, entries);
-        } catch {
-          if (this.#state?.generation !== generation) return;
-          this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
-          this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
-        }
-      }
-      if (this.#state?.generation === generation) this.#write(generation, { phase: "ready" });
-    } finally {
-      this.#running = false;
-    }
+      if (!rebuilt.ok || rebuilt.type !== "semantic.index.rebuilt") throw new Error("Semantic index rebuild failed.");
+      if (this.#state?.generation === generation) void this.#encode(generation, libraryId, serviceId);
+    })().catch(() => this.#write(generation, { phase: "failed" }));
   }
 
-  async #buildInputs(target: HttpEmbeddingTarget): Promise<EmbeddingHttpContent[] | string[]> {
-    if (target.kind === "text") {
-      const document = await readEmbeddingDocument(target.filePath, path.basename(target.filePath));
-      return [document];
+  async #encode(generation: number, libraryId: string, serviceId: string): Promise<void> {
+    if (this.#runningGeneration !== null) return;
+    const service = this.options.loadService(serviceId);
+    if (!httpServiceReady(service) || !this.#isLibraryEnabled(libraryId, serviceId)) {
+      this.#write(generation, { phase: "unavailable", ...(service ? { hold: "grant" } : {}) });
+      return;
     }
-    return [{ image: readImageDataUri(target.filePath) }];
+    this.#runningGeneration = generation;
+    try {
+      const state = this.#state;
+      if (!state) return;
+      const begun = await this.options.requestWorker({
+        type: "semantic.index.begin", libraryId,
+        sessionGeneration: state.sessionGeneration,
+        profileKey: state.profileKey,
+        dimensions: service.dimensions,
+        modelRevision: "http-embedding-v1",
+        modality: "mixed",
+        maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+      });
+      if (!begun.ok || begun.type !== "semantic.index.started") throw new Error("Semantic index is unavailable.");
+      const imported = await this.options.requestWorker({ type: "semantic.index.import-legacy", libraryId,
+        sessionGeneration: state.sessionGeneration, cacheKind: "http", cacheId: serviceId });
+      if (!imported.ok || imported.type !== "semantic.index.legacy-imported") {
+        throw new Error("Legacy semantic cache migration could not be checked.");
+      }
+      let offset = 0;
+      let revisionSnapshot: number | null = null;
+      let done = 0;
+      let total = 0;
+      do {
+        if (this.#state?.generation !== generation) return;
+        const page = await this.#listTargets(libraryId, state, service, offset, revisionSnapshot);
+        if (page.snapshotChanged) {
+          offset = 0;
+          revisionSnapshot = null;
+          done = 0;
+          total = 0;
+          this.#write(generation, { done, total });
+          continue;
+        }
+        revisionSnapshot = page.revisionSnapshot;
+        total += page.targets.length;
+        done += page.targets.filter((target) => target.alreadyIndexed).length;
+        this.#write(generation, { total, done, phase: "indexing", hold: undefined });
+        for (const target of page.targets) {
+          if (target.alreadyIndexed) continue;
+          if (this.#state?.generation !== generation) return;
+          const claimToken = randomUUID();
+          try {
+            const claimed = await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "claim");
+            if (!claimed) {
+              if (target.jobStatus === "failed") {
+                this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
+              }
+              continue;
+            }
+            const checkedService = this.#currentService(state);
+            if (!checkedService) throw new Error("Embedding service configuration changed.");
+            const prepared = await this.options.requestWorker({
+              type: "semantic.index.prepare", libraryId,
+              sessionGeneration: state.sessionGeneration,
+              assetId: target.assetId,
+              sourceRevision: target.revisionId,
+              kind: target.kind,
+              maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+            });
+            if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
+            const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
+              ? [prepared.text ?? ""]
+              : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
+            const controller = this.#newRequestController();
+            const [vector] = await postEmbeddingHttp({
+              baseUrl: checkedService.baseUrl, modelName: checkedService.modelName, adapter: checkedService.adapter,
+              dimensions: checkedService.dimensions, inputs, apiKey: this.options.readKey(checkedService.id),
+              signal: controller.signal,
+            });
+            this.#activeRequestControllers.delete(controller);
+            if (!vector || this.#state?.generation !== generation || !this.#currentService(state)) return;
+            const written = await this.options.requestWorker({
+              type: "semantic.index.write", libraryId,
+              sessionGeneration: state.sessionGeneration,
+              profileKey: state.profileKey,
+              vectors: [{ assetId: target.assetId, sourceRevision: target.revisionId, vector, claimToken }],
+            });
+            if (written.ok && written.type === "semantic.index.written" && written.accepted.includes(target.assetId)) {
+              done += 1;
+              this.#write(generation, { done });
+            } else {
+              this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
+              this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
+            }
+          } catch {
+            if (this.#state?.generation !== generation) return;
+            await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", "provider").catch(() => false);
+            this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
+            this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
+          }
+        }
+        offset = page.nextOffset ?? 100_001;
+      } while (offset <= 100_000);
+      if (this.#state?.generation === generation) this.#write(generation, { phase: "ready" });
+    } catch {
+      if (this.#state?.generation === generation) this.#write(generation, { phase: "failed" });
+    } finally {
+      this.#abortRequests();
+      if (this.#runningGeneration === generation) this.#runningGeneration = null;
+      const latest = this.#state;
+      if (latest && latest.generation !== generation && latest.phase === "starting") {
+        // A library/service switch can begin while an old provider request is
+        // unwinding. The old generation owns the running slot until cleanup;
+        // hand that slot to the newest request once, after it is released.
+        queueMicrotask(() => {
+          const current = this.#state;
+          if (this.#runningGeneration === null && current?.phase === "starting") {
+            void this.#encode(current.generation, current.libraryId, current.serviceId);
+          }
+        });
+      }
+    }
   }
 
   /**
@@ -304,104 +510,60 @@ export class EmbeddingHttpIndex {
    */
   async #listTargets(
     libraryId: string,
+    state: JobState,
     service: EmbeddingHttpServiceView & { dimensions: number },
-  ): Promise<HttpEmbeddingTarget[]> {
-    const listed = await this.options.requestWorker({ type: "library.list" });
-    if (!listed.ok || listed.type !== "library.list") return [];
-    const library = listed.libraries.find((entry) => entry.libraryId === libraryId);
-    if (!library) return [];
-    const assets = await this.options.requestWorker({ type: "asset.list", libraryId, recursive: true });
-    if (!assets.ok || assets.type !== "asset.list") return [];
-    const linked = await this.options.requestWorker({ type: "linked-folder.list", libraryId });
-    const roots = new Map<string, string>();
-    if (linked.ok && linked.type === "linked-folder.list") {
-      for (const folder of linked.folders) {
-        const id = folder.linkedFolderId ?? folder.folderId;
-        if (folder.relativePath === "" || !roots.has(id)) roots.set(id, folder.absoluteRootPath);
-      }
-    }
-
+    offset: number,
+    revisionSnapshot: number | null,
+    assetId?: string,
+  ): Promise<{ targets: HttpEmbeddingTarget[]; revisionSnapshot: number; nextOffset: number | null; snapshotChanged: boolean }> {
     const encodeModalities = encodeModalitiesForAdapter(service.adapter, service.modalities);
-    const targets: HttpEmbeddingTarget[] = [];
-    const thumbnailIds: string[] = [];
-    const thumbnailTargets: Array<{ assetId: string; revisionId: string; artifactId: string }> = [];
-
-    for (const asset of assets.assets) {
-      const modality = modalityForMediaType(asset.mediaType);
-      if (!encodeModalities.has(modality)) continue;
-      const plan = embeddingSourcePlan(asset);
-      if (plan === "text") {
-        const root = asset.locationKind === "managed"
-          ? path.join(library.libraryPath, "Assets")
-          : asset.linkedFolderId ? roots.get(asset.linkedFolderId) : undefined;
-        if (!root) continue;
-        const filePath = resolveContainedPath(root, asset.relativeFilePath);
-        if (!filePath || !existsSync(filePath)) continue;
-        targets.push({
-          assetId: asset.assetId,
-          revisionId: embeddingTextRevision(asset.currentRevisionId),
-          filePath,
-          kind: "text",
-        });
-        continue;
-      }
-      if (plan === "file") {
-        const root = asset.locationKind === "managed"
-          ? path.join(library.libraryPath, "Assets")
-          : asset.linkedFolderId ? roots.get(asset.linkedFolderId) : undefined;
-        if (!root) continue;
-        const filePath = resolveContainedPath(root, asset.relativeFilePath);
-        if (!filePath || !existsSync(filePath)) continue;
-        targets.push({
-          assetId: asset.assetId,
-          revisionId: asset.currentRevisionId,
-          filePath,
-          kind: "image",
-        });
-        continue;
-      }
-      if (plan === "thumbnail" && asset.thumbnailArtifactId) {
-        thumbnailIds.push(asset.thumbnailArtifactId);
-        thumbnailTargets.push({
-          assetId: asset.assetId,
-          revisionId: embeddingThumbnailRevision(asset.currentRevisionId, asset.thumbnailArtifactId),
-          artifactId: asset.thumbnailArtifactId,
-        });
-      }
-    }
-
-    const thumbnailPaths = await this.#thumbnailPaths(libraryId, thumbnailIds);
-    for (const target of thumbnailTargets) {
-      const filePath = thumbnailPaths.get(target.artifactId);
-      if (!filePath) continue;
-      const extension = path.extname(filePath).toLowerCase();
-      if (!THUMBNAIL_EXTENSIONS.has(extension) || !existsSync(filePath)) continue;
-      targets.push({
+    const result = await this.options.requestWorker({
+      type: "semantic.index.targets",
+      libraryId,
+      sessionGeneration: state.sessionGeneration,
+      modalities: [...encodeModalities],
+      offset,
+      limit: 500,
+      revisionSnapshot,
+      ...(assetId ? { assetId } : {}),
+    });
+    if (!result.ok || result.type !== "semantic.index.targets") throw new Error("Semantic targets are unavailable.");
+    return {
+      revisionSnapshot: result.revisionSnapshot,
+      snapshotChanged: result.snapshotChanged === true,
+      nextOffset: result.nextOffset,
+      targets: result.targets.filter((target) => encodeModalities.has(target.modality)).map((target) => ({
         assetId: target.assetId,
-        revisionId: target.revisionId,
-        filePath,
-        kind: "image",
-      });
-    }
-    return targets;
+        revisionId: target.sourceRevision,
+        kind: target.kind === "text" ? "text" : "image",
+        modality: target.modality,
+        alreadyIndexed: target.alreadyIndexed,
+        ...(target.jobStatus ? { jobStatus: target.jobStatus } : {}),
+    })),
+    };
   }
 
-  async #thumbnailPaths(libraryId: string, artifactIds: readonly string[]): Promise<Map<string, string>> {
-    const paths = new Map<string, string>();
-    const unique = [...new Set(artifactIds)];
-    for (let index = 0; index < unique.length; index += 500) {
-      const artifactChunk = unique.slice(index, index + 500);
-      if (artifactChunk.length === 0) continue;
-      const result = await this.options.requestWorker({
-        type: "media.get-artifact-paths",
-        libraryId,
-        artifactIds: artifactChunk,
-        usage: "preview",
-      });
-      if (!result.ok || result.type !== "media.artifact-paths") continue;
-      for (const entry of result.entries) paths.set(entry.artifactId, entry.absolutePath);
-    }
-    return paths;
+  async #setDurableJob(
+    generation: number,
+    assetId: string,
+    sourceRevision: string,
+    claimToken: string,
+    action: "claim" | "fail",
+    errorCategory?: "provider" | "preparation",
+  ): Promise<boolean> {
+    const state = this.#state;
+    if (!state || state.generation !== generation) return false;
+    const result = await this.options.requestWorker({
+      type: "semantic.index.job",
+      libraryId: state.libraryId,
+      sessionGeneration: state.sessionGeneration,
+      action,
+      claimToken,
+      assetId,
+      sourceRevision,
+      ...(errorCategory ? { errorCategory } : {}),
+    });
+    return result.ok && result.type === "semantic.index.job-updated" && result.updated;
   }
 
   #snapshot(): EmbeddingIndexSnapshot {
@@ -420,50 +582,57 @@ export class EmbeddingHttpIndex {
     this.#state = { ...this.#state, ...patch };
   }
 
-  #cachePath(libraryId: string, serviceId: string): string {
-    if (!/^[A-Za-z0-9_-]+$/.test(libraryId) || !/^svc_[a-z0-9]{8,40}$/.test(serviceId)) {
-      throw new Error("Unsafe embedding cache name.");
-    }
-    return path.join(this.options.cacheDirectory, libraryId, `${serviceId}.json`);
+  #currentService(state: JobState): EmbeddingHttpServiceView & { dimensions: number } | null {
+    const service = this.options.loadService(state.serviceId);
+    if (!httpServiceReady(service) || !this.#isLibraryEnabled(state.libraryId, state.serviceId)) return null;
+    const profileKey = embeddingHttpProfileKey({
+      adapter: service.adapter,
+      baseUrl: service.baseUrl,
+      modelName: service.modelName,
+      dimensions: service.dimensions,
+    });
+    const active = this.#state;
+    return profileKey === state.profileKey && active?.generation === state.generation
+      && active.libraryId === state.libraryId && active.serviceId === state.serviceId
+      ? service
+      : null;
   }
 
-  #readCache(libraryId: string, serviceId: string, profileKey: string): Map<string, StoredEntry> {
-    const entries = new Map<string, StoredEntry>();
-    try {
-      const parsed = JSON.parse(readFileSync(this.#cachePath(libraryId, serviceId), "utf8")) as {
-        profileKey?: unknown;
-        entries?: unknown;
-      };
-      if (parsed.profileKey !== profileKey || !Array.isArray(parsed.entries)) return entries;
-      for (const entry of parsed.entries) {
-        if (!entry || typeof entry !== "object") continue;
-        const row = entry as Partial<StoredEntry>;
-        if (typeof row.assetId !== "string" || typeof row.revisionId !== "string" || !Array.isArray(row.vector)) continue;
-        if (row.vector.some((value) => typeof value !== "number" || !Number.isFinite(value))) continue;
-        entries.set(row.assetId, { assetId: row.assetId, revisionId: row.revisionId, vector: row.vector });
-      }
-    } catch {
-      return entries;
+  #startQuery(libraryId: string): string {
+    const previousQueryId = this.#activeQueryId;
+    const previousSessionGeneration = this.#activeQuerySessionGeneration;
+    const previousLibraryId = this.#activeQueryLibraryId;
+    if (previousQueryId) this.#queryControllers.get(previousQueryId)?.abort();
+    const queryId = randomUUID();
+    this.#activeQueryId = queryId;
+    this.#activeQuerySessionGeneration = this.#state?.libraryId === libraryId
+      ? this.#state.sessionGeneration
+      : null;
+    this.#activeQueryLibraryId = libraryId;
+    if (previousQueryId && previousSessionGeneration) {
+      void this.options.requestWorker({
+        type: "semantic.index.cancel-search",
+        libraryId: previousLibraryId ?? libraryId,
+        sessionGeneration: previousSessionGeneration,
+        queryId: previousQueryId,
+      }).catch(() => undefined);
     }
-    return entries;
+    return queryId;
   }
 
-  #writeCache(
-    libraryId: string,
-    serviceId: string,
-    profileKey: string,
-    entries: ReadonlyMap<string, StoredEntry>,
-  ): void {
-    const filePath = this.#cachePath(libraryId, serviceId);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    const temporary = `${filePath}.partial`;
-    writeFileSync(temporary, JSON.stringify({ version: 1, profileKey, entries: [...entries.values()] }));
-    try {
-      rmSync(filePath, { force: true });
-      renameSync(temporary, filePath);
-    } catch {
-      rmSync(temporary, { force: true });
-    }
+  #newRequestController(): AbortController {
+    const controller = new AbortController();
+    this.#activeRequestControllers.add(controller);
+    return controller;
+  }
+
+  #abortRequests(): void {
+    for (const controller of this.#activeRequestControllers) controller.abort();
+    this.#activeRequestControllers.clear();
+  }
+
+  #isLibraryEnabled(libraryId: string, serviceId: string): boolean {
+    return this.options.isLibraryEnabled?.(libraryId, serviceId) ?? false;
   }
 }
 
@@ -491,15 +660,4 @@ export function encodeModalitiesForAdapter(
     }
   }
   return allowed;
-}
-
-function readImageDataUri(filePath: string): string {
-  const extension = path.extname(filePath).toLowerCase();
-  const mimeType = IMAGE_MIME_TYPES.get(extension);
-  if (!mimeType) throw new Error("Image format is not supported.");
-  const bytes = readFileSync(filePath);
-  if (bytes.byteLength <= 0 || bytes.byteLength > EMBEDDING_HTTP_IMAGE_MAX_BYTES) {
-    throw new Error("Image is too large to embed.");
-  }
-  return `data:${mimeType};base64,${bytes.toString("base64")}`;
 }

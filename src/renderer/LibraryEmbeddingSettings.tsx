@@ -30,6 +30,7 @@ export type LibraryEmbeddingCallbacks = {
   installStatus: () => Promise<{ ok: true; value: InstallSnapshot } | { ok: false }>;
   getBinding: (input: { libraryId: string }) => Promise<{ ok: true; value: { selectionId: string | null; enabled: boolean; inherit: boolean } } | { ok: false }>;
   saveBinding: (input: { libraryId: string; selectionId: string | null; inherit?: boolean }) => Promise<{ ok: true } | { ok: false }>;
+  rebuildIndex: (input: { libraryId: string; modelId: string }) => Promise<{ ok: true } | { ok: false }>;
 };
 
 function toSelectValue(binding: { selectionId: string | null; enabled: boolean; inherit: boolean }): string {
@@ -102,11 +103,12 @@ export function LibraryEmbeddingSettings({
     (install?.models ?? []).filter((model) => model.installed).map((model) => model.modelId),
   );
   const nothingReady = installed.size === 0 && services.length === 0;
-  const savedBinding = savedValue === INHERIT_VALUE
-    ? null
-    : savedValue === OFF_VALUE
-      ? { selectionId: null, enabled: false }
-      : { selectionId: savedValue, enabled: true };
+  const effectiveSelectionId = savedValue === INHERIT_VALUE
+    ? globalPrefs.enabled ? globalPrefs.modelId : null
+    : savedValue === OFF_VALUE ? null : savedValue;
+  const savedBinding = effectiveSelectionId
+    ? { selectionId: effectiveSelectionId, enabled: true }
+    : { selectionId: null, enabled: false };
   const issue = embeddingBindingIssue({
     binding: savedBinding,
     services: new Map(services.map((service) => [service.id, service])),
@@ -123,8 +125,7 @@ export function LibraryEmbeddingSettings({
   const showIndex = Boolean(
     issue === "ready"
     && index
-    && savedValue !== INHERIT_VALUE
-    && savedValue !== OFF_VALUE,
+    && effectiveSelectionId,
   );
 
   async function save(): Promise<void> {
@@ -141,6 +142,18 @@ export function LibraryEmbeddingSettings({
       setSavedValue(selectionValue);
       setNotice(t("settings.librarySemantic.saved"));
       notifyEmbeddingCatalogChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rebuildIndex(): Promise<void> {
+    if (!effectiveSelectionId) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await callbacks.rebuildIndex({ libraryId, modelId: effectiveSelectionId });
+      if (!result.ok) setNotice(t("settings.librarySemantic.rebuildFailed"));
     } finally {
       setBusy(false);
     }
@@ -218,6 +231,16 @@ export function LibraryEmbeddingSettings({
                 <span>{t(indexPhaseLabelKey(index.phase))}</span>
               </span>
             </div>
+            {index.phase === "failed" ? (
+              <>
+                <p className="app-settings-help-note">{t("settings.librarySemantic.rebuildHint")}</p>
+                <div className="library-settings-gitignore-actions library-sync-actions">
+                  <button className="primary-button" disabled={busy} onClick={() => { void rebuildIndex(); }} type="button">
+                    {t("settings.librarySemantic.rebuildIndex")}
+                  </button>
+                </div>
+              </>
+            ) : null}
           </>
         ) : null}
 

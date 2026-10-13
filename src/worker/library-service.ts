@@ -4910,6 +4910,13 @@ export interface LibraryServiceOptions {
   }) => NetworkMetadataSourceState | undefined;
   /** Test-only seam for injecting a concurrent writer during SQLite backup. */
   onNetworkMetadataSnapshotProgress?: (progress: NetworkMetadataSnapshotProgress) => void;
+  /** Worker-owned SQLite backup for the independent semantic sidecar. */
+  backupSemanticIndex?: (input: {
+    libraryId: string;
+    libraryPath: string;
+    storageKind: LibraryStorageKind;
+    destinationPath: string;
+  }) => Promise<boolean>;
   afterSourceSnapshotCopy?: (sourcePath: string) => void;
   assetLstat?: (assetPath: string) => Stats;
   /** Test-only seams for classifying linked-root access failures on open. */
@@ -28696,8 +28703,8 @@ export class LibraryService {
   } | null {
     const openLibrary = this.requireOpenLibrary(libraryId);
     const assetRow = openLibrary.connection
-      .prepare('SELECT current_revision_id FROM assets WHERE asset_id = ?')
-      .get(assetId) as { current_revision_id: string | null } | undefined;
+      .prepare('SELECT current_revision_id, relative_file_path FROM assets WHERE asset_id = ?')
+      .get(assetId) as { current_revision_id: string | null; relative_file_path: string } | undefined;
     if (!assetRow?.current_revision_id) return null;
 
     const row = openLibrary.connection
@@ -28705,13 +28712,18 @@ export class LibraryService {
         `SELECT artifact_id, file_path, width, height
            FROM revision_artifacts
           WHERE revision_id = ?
-            AND kind IN ('thumbnail', 'video_poster')
+            AND kind = CASE
+              WHEN LOWER(?) LIKE '%.mp4' OR LOWER(?) LIKE '%.webm' OR LOWER(?) LIKE '%.mov'
+                OR LOWER(?) LIKE '%.avi' OR LOWER(?) LIKE '%.wmv' OR LOWER(?) LIKE '%.mkv'
+                OR LOWER(?) LIKE '%.m4v' OR LOWER(?) LIKE '%.flv'
+              THEN 'video_poster' ELSE 'thumbnail' END
             AND status = 'ready'
             AND invalidated_at IS NULL
-          ORDER BY CASE kind WHEN 'video_poster' THEN 0 ELSE 1 END
+          ORDER BY CASE mime_type WHEN 'image/jpeg' THEN 0 WHEN 'image/webp' THEN 1
+            WHEN 'image/png' THEN 2 ELSE 3 END, rowid DESC
           LIMIT 1`,
       )
-      .get(assetRow.current_revision_id) as {
+      .get(assetRow.current_revision_id, ...Array(8).fill(assetRow.relative_file_path)) as {
         artifact_id: string;
         file_path: string;
         width: number | null;
@@ -28726,6 +28738,61 @@ export class LibraryService {
           height: row.height,
         }
       : null;
+  }
+
+  /**
+   * Narrow Worker-only projection for semantic revision checks. It avoids
+   * materializing complete AssetSummary objects (metadata, layout and folder
+   * adornments) when the vector index only needs source identity.
+   */
+  getSemanticAssetSources(libraryId: string, assetIds: readonly string[]): Array<{
+    assetId: string;
+    currentRevisionId: string;
+    relativeFilePath: string;
+    displayName: string;
+    mediaType: AssetSummary['mediaType'];
+    availability: AssetSummary['availability'];
+    deletedAt: string | null;
+    thumbnailArtifactId: string | null;
+    sequence: boolean;
+  }> {
+    const openLibrary = this.requireOpenLibrary(libraryId);
+    const ids = [...new Set(assetIds.filter((assetId) => assetId.length > 0))];
+    if (ids.length === 0) return [];
+    const hasFrames = hasTable(openLibrary.connection, 'asset_sequence_frames');
+    const hasSequences = hasTable(openLibrary.connection, 'asset_sequences');
+    const sequenceSql = hasFrames && hasSequences
+      ? `EXISTS (SELECT 1 FROM asset_sequence_frames sf WHERE sf.asset_id = a.asset_id)
+         OR EXISTS (SELECT 1 FROM asset_sequences ss WHERE ss.primary_asset_id = a.asset_id)`
+      : '0';
+    const rows = withSqliteInPredicate(openLibrary.connection, 'a.asset_id', ids, (predicate, parameters) =>
+      openLibrary.connection.prepare(`
+        SELECT a.asset_id, a.current_revision_id, a.relative_file_path, a.availability, a.deleted_at,
+               (${sequenceSql}) AS is_sequence,
+               (SELECT chosen.artifact_id FROM revision_artifacts chosen
+                 WHERE chosen.revision_id = a.current_revision_id
+                   AND chosen.kind = ${DISPLAY_PREVIEW_KIND_SQL}
+                   AND chosen.status = 'ready' AND chosen.invalidated_at IS NULL
+                 ORDER BY CASE chosen.mime_type WHEN 'image/jpeg' THEN 0 WHEN 'image/webp' THEN 1
+                   WHEN 'image/png' THEN 2 ELSE 3 END, chosen.rowid DESC LIMIT 1) AS thumbnail_artifact_id
+          FROM assets a WHERE ${predicate}
+      `).all(...parameters) as Array<{
+        asset_id: string; current_revision_id: string; relative_file_path: string;
+        availability: 'available' | 'missing'; deleted_at: string | null;
+        is_sequence: number;
+        thumbnail_artifact_id: string | null;
+      }>);
+    return rows.map((row) => ({
+      assetId: row.asset_id,
+      currentRevisionId: row.current_revision_id,
+      relativeFilePath: row.relative_file_path,
+      displayName: path.posix.basename(row.relative_file_path),
+      mediaType: LibraryService.toSummaryMediaType(LibraryService.detectMediaType(row.relative_file_path)),
+      availability: row.availability,
+      deletedAt: row.deleted_at,
+      thumbnailArtifactId: row.thumbnail_artifact_id,
+      sequence: row.is_sequence !== 0,
+    }));
   }
 
   /** Persist bounded Main-brokered plugin media as the normal thumbnail artifact. */
@@ -34129,6 +34196,8 @@ export class LibraryService {
      * plus `assetIds` (capped at the browse-scope cap like scopeMode).
      */
     idsOnly?: boolean | null;
+    /** Worker-internal bounded page mode; ordinary idsOnly remains full-scope. */
+    idsPage?: boolean | null;
     /** Compact full-scope real-asset geometry for virtualized layout. */
     layoutOnly?: boolean | null;
     /** Worker-internal ordered snapshot source for BrowseSession pages. */
@@ -34159,6 +34228,7 @@ export class LibraryService {
     const hasSearchFts = hasTable(connection, 'asset_search');
     const scopeMode = input.scopeMode === true;
     const idsOnly = input.idsOnly === true;
+    const idsPage = idsOnly && input.idsPage === true;
     const layoutOnly = input.layoutOnly === true;
     const sessionAssetIds = input.sessionAssetIds === undefined
       ? undefined
@@ -34180,12 +34250,16 @@ export class LibraryService {
     }
     const limit = sessionMode
       ? Math.min(500, Math.max(1, input.limit ?? 100))
-      : scopeMode || idsOnly || layoutOnly
-        ? BROWSE_SCOPE_MAX_ASSETS
-        : (input.limit ?? 50);
+      : idsPage
+        ? Math.min(BROWSE_SCOPE_MAX_ASSETS, Math.max(1, input.limit ?? BROWSE_SCOPE_MAX_ASSETS))
+        : scopeMode || idsOnly || layoutOnly
+          ? BROWSE_SCOPE_MAX_ASSETS
+          : (input.limit ?? 50);
     const offset = sessionMode
       ? Math.max(0, input.offset ?? 0)
-      : scopeMode || idsOnly || layoutOnly ? 0 : (input.offset ?? 0);
+      : idsPage
+        ? Math.max(0, input.offset ?? 0)
+        : scopeMode || idsOnly || layoutOnly ? 0 : (input.offset ?? 0);
 
     const searchGroups = input.query ? normalizedSearchGroups(input.query) : [];
     const hasQuery = searchGroups.length > 0;
@@ -34516,7 +34590,7 @@ export class LibraryService {
       return {
         items: [],
         total,
-        offset: 0,
+        offset,
         assetIds: rows.map((row) => row.asset_id),
       };
     }
@@ -47085,6 +47159,7 @@ export class LibraryService {
     canonicalPath: string;
     serpentPath: string;
     networkStorage?: boolean;
+    storageKind?: LibraryStorageKind;
     libraryVersion?: number;
     supportedSchemaVersion?: number;
     migrationStuck?: boolean;
@@ -47152,6 +47227,7 @@ export class LibraryService {
       libraryPath: input.canonicalPath,
       readOnly: false,
       ...(input.networkStorage ? { networkStorage: true } : {}),
+      storageKind: input.storageKind ?? 'unknown',
       ...(input.libraryVersion === undefined ? {} : { libraryVersion: input.libraryVersion }),
       ...(input.supportedSchemaVersion === undefined
         ? {}
@@ -47500,6 +47576,7 @@ export class LibraryService {
         canonicalPath,
         serpentPath,
         networkStorage,
+        storageKind,
         startServices: true,
         replaceExisting: options?.replaceExisting,
       });
@@ -48491,6 +48568,22 @@ export class LibraryService {
       // snapshot for the exported database.
       await this.createConsistentDatabaseSnapshot(openLibrary.writeConnection, tempDbPath, cancelState);
 
+      let semanticBackupPath: string | null = null;
+      if (this.options.backupSemanticIndex) {
+        semanticBackupPath = path.join(canonicalDest, '.serpent', 'semantic', 'index.sqlite');
+        mkdirSync(path.dirname(semanticBackupPath), { recursive: true });
+        const copied = await this.options.backupSemanticIndex({
+          libraryId: input.libraryId,
+          libraryPath: openLibrary.summary.libraryPath,
+          storageKind: openLibrary.summary.storageKind ?? 'unknown',
+          destinationPath: semanticBackupPath,
+        });
+        if (!copied) {
+          rmSync(path.join(canonicalDest, '.serpent'), { recursive: true, force: true });
+          semanticBackupPath = null;
+        }
+      }
+
       // Phase 2: enumerate
       this.emitProgress({
         type: 'export.progress', exportId,
@@ -48506,6 +48599,11 @@ export class LibraryService {
       }
       const entries: ExportEntry[] = [];
       let excludedPreviewCount = 0;
+      if (semanticBackupPath) {
+        const semanticStat = statSync(semanticBackupPath);
+        entries.push({ sourcePath: semanticBackupPath, relativePath: '.serpent/semantic/index.sqlite',
+          byteSize: semanticStat.size });
+      }
 
       const walkDir = async (dirPath: string, relPrefix: string): Promise<void> => {
         if (cancelState.cancelled) return;
@@ -48524,8 +48622,10 @@ export class LibraryService {
           if (child.isSymbolicLink()) continue; // Never follow symlinks in export.
 
           if (child.isDirectory()) {
-            // Exclude .serpent/previews and .serpent/operations.
-            if (childRel === '.serpent/previews' || childRel === '.serpent/operations') {
+            // Exclude generated sidecar trees; the semantic DB is added from
+            // a verified SQLite backup snapshot above, never copied live.
+            if (childRel === '.serpent/previews' || childRel === '.serpent/operations'
+              || childRel === '.serpent/semantic') {
               if (childRel === '.serpent/previews') {
                 // Count preview files for excludedPreviewCount.
                 try {
@@ -49116,6 +49216,22 @@ export class LibraryService {
       tempDbPath = path.join(tempDir, `library-${exportId}.db`);
       await this.createConsistentDatabaseSnapshot(openLibrary.writeConnection, tempDbPath, cancelState);
 
+      let semanticBackupPath: string | null = null;
+      if (this.options.backupSemanticIndex) {
+        semanticBackupPath = path.join(tempDir, '.serpent', 'semantic', 'index.sqlite');
+        mkdirSync(path.dirname(semanticBackupPath), { recursive: true });
+        const copied = await this.options.backupSemanticIndex({
+          libraryId: input.libraryId,
+          libraryPath: openLibrary.summary.libraryPath,
+          storageKind: openLibrary.summary.storageKind ?? 'unknown',
+          destinationPath: semanticBackupPath,
+        });
+        if (!copied) {
+          rmSync(path.join(tempDir, '.serpent'), { recursive: true, force: true });
+          semanticBackupPath = null;
+        }
+      }
+
       // Phase 2: enumerate
       this.emitProgress({
         type: 'export.progress', exportId,
@@ -49131,6 +49247,11 @@ export class LibraryService {
       }
       const entries: ZipEntry[] = [];
       let excludedPreviewCount = 0;
+      if (semanticBackupPath) {
+        const semanticStat = statSync(semanticBackupPath);
+        entries.push({ sourcePath: semanticBackupPath, relativePath: '.serpent/semantic/index.sqlite',
+          byteSize: semanticStat.size });
+      }
 
       const walkDir = async (dirPath: string, relPrefix: string): Promise<void> => {
         if (cancelState.cancelled) return;
@@ -49149,7 +49270,8 @@ export class LibraryService {
           if (child.isSymbolicLink()) continue;
 
           if (child.isDirectory()) {
-            if (childRel === '.serpent/previews' || childRel === '.serpent/operations') {
+            if (childRel === '.serpent/previews' || childRel === '.serpent/operations'
+              || childRel === '.serpent/semantic') {
               if (childRel === '.serpent/previews') {
                 try {
                   excludedPreviewCount += countFilesRecursive(childPath);

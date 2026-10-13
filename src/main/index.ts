@@ -91,6 +91,8 @@ import {
   type EmbeddingServiceCatalog,
 } from "./embedding-service-registry";
 import type { EmbeddingModelCatalog } from "./embedding-model-catalog";
+import { parseEmbeddingModelCatalog } from "./embedding-model-catalog";
+import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-binding";
 import { tryHandlePreviewOwnedRequest } from "./library-request/preview";
 import { tryHandleMediaShellWorkerResult } from "./library-request/media-shell";
 import { maybePrimeNativeDrag } from "./library-request/native-drag";
@@ -517,6 +519,7 @@ const hasSingleInstanceLock = allowMultiInstance
   : app.requestSingleInstanceLock();
 
 let mainWindow: BrowserWindow | undefined;
+const mainProcessSessionId = randomUUID();
 /** Effective UI locale for native dialogs; synced from Renderer (Serpent-bwb). */
 let appLocale: AppLocale = "en";
 let workerClient: LibraryWorkerClient | undefined;
@@ -525,7 +528,6 @@ let embeddingHttpIndex: EmbeddingHttpIndex | undefined;
 
 function embeddingIndex(): EmbeddingTestIndex {
   embeddingTestIndex ??= new EmbeddingTestIndex({
-    cacheDirectory: path.join(app.getPath("userData"), "embedding-test-index"),
     configDirectories: [process.cwd(), app.getAppPath()],
     requestWorker: (command) => {
       if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
@@ -541,13 +543,25 @@ function embeddingIndex(): EmbeddingTestIndex {
 
 function embeddingHttp(): EmbeddingHttpIndex {
   embeddingHttpIndex ??= new EmbeddingHttpIndex({
-    cacheDirectory: path.join(app.getPath("userData"), "embedding-http-index"),
     requestWorker: (command) => {
       if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
       return workerClient.request(command);
     },
     loadService: (id) => parseEmbeddingServiceCatalog(readEmbeddingServices()).services.find((service) => service.id === id) ?? null,
     readKey: readEmbeddingServiceKey,
+    isLibraryEnabled: (libraryId, serviceId) => {
+      const binding = readEmbeddingBindings()[libraryId];
+      // Renderer selects the global default when the library inherits settings.
+      // Main does not own that preference; an absent per-library binding must
+      // therefore allow the already-routed service request.
+      if (!binding) return true;
+      const defaultModelId = parseEmbeddingModelCatalog(readEmbeddingModels()).defaultModelId ?? "";
+      return resolveEffectiveEmbeddingSelection({
+        globalEnabled: true,
+        defaultModelId,
+        libraryBinding: binding,
+      }) === serviceId;
+    },
   });
   return embeddingHttpIndex;
 }
@@ -2918,7 +2932,7 @@ async function handleLibraryRequest(
       embeddingIndex: embeddingIndex(),
       embeddingHttpIndex: embeddingHttp(),
       stopGemmaIndex: () => { void embeddingTestIndex?.close(); },
-      stopHttpIndex: () => { embeddingHttpIndex?.close(); },
+      stopHttpIndex: async () => { await embeddingHttpIndex?.close(); },
       onInstallProgress: (event) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send(EMBEDDING_INSTALL_PROGRESS_CHANNEL, event);
@@ -3920,6 +3934,8 @@ async function startApplication(): Promise<void> {
         app.getPath('userData'),
         'library-metadata-cache',
       ),
+      SERPENT_SEMANTIC_LEGACY_CACHE_ROOT: app.getPath('userData'),
+      SERPENT_MAIN_PROCESS_SESSION_ID: mainProcessSessionId,
     },
   );
   await workerClient.start();
@@ -6286,7 +6302,9 @@ if (!hasSingleInstanceLock) {
 
   app.on("will-quit", () => {
     void embeddingTestIndex?.close();
-    embeddingHttpIndex?.close();
+    void embeddingHttpIndex?.close().catch((error) => {
+      logger?.error('embedding.http-index.close', error, { reason: 'application-quit' });
+    });
     void cleanupAllExternalSources();
     syncAutoScheduler?.stop();
     syncAutoScheduler = undefined;

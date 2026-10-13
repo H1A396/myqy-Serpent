@@ -30,6 +30,7 @@ export async function postEmbeddingHttp(input: {
   dimensions?: number | null;
   instruct?: string | null;
   timeoutMs?: number;
+  signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }): Promise<number[][]> {
   const adapter = input.adapter ?? "openai-embeddings-v1";
@@ -55,7 +56,9 @@ export async function postEmbeddingHttp(input: {
       headers,
       body,
       redirect: "error",
-      signal: AbortSignal.timeout(input.timeoutMs ?? 60_000),
+      signal: input.signal
+        ? AbortSignal.any([input.signal, AbortSignal.timeout(input.timeoutMs ?? 60_000)])
+        : AbortSignal.timeout(input.timeoutMs ?? 60_000),
     });
   } catch {
     throw new EmbeddingHttpRequestError("network");
