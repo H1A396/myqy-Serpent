@@ -1278,6 +1278,10 @@ export const en = {
     dialogSubmit: "Start",
   },
   settings: {
+    interfaceStyle: "Interface style",
+    interfaceNew: "New UI",
+    interfaceLegacy: "Legacy UI",
+
     title: "Settings",
     categoriesLabel: "Settings categories",
     categoryGeneral: "General",

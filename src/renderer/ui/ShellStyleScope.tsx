@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useShellLayout } from './use-shell-layout';
 
 /** The same visual boundary as App, without a box or stacking context. */
-export const APP_SHELL_LAYOUT = 'islands';
 
 export function ShellStyleScope({ children }: { readonly children: ReactNode }) {
+  const layout = useShellLayout();
   return (
-    <div className="app-shell ui-shell-style-scope" data-shell-layout={APP_SHELL_LAYOUT}>
+    <div className="app-shell ui-shell-style-scope" data-shell-layout={layout}>
       {children}
     </div>
   );

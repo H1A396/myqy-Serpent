@@ -326,7 +326,7 @@ import { MediaJobsDialog } from "./MediaJobsDialog";
 import { PluginJobActivityBanner } from "./PluginJobActivityBanner";
 import { AiConnectionFailureDialog } from "./AiConnectionFailureDialog";
 import { FatalAlertDialog } from "./FatalAlertDialog";
-import { APP_SHELL_LAYOUT } from "./ui/ShellStyleScope";
+import { useShellLayout } from "./ui/use-shell-layout";
 import { CriticalConfirmationDialog } from "./CriticalConfirmationDialog";
 import { useCriticalConfirmationPrompt } from "./use-critical-confirmation-prompt";
 import { useAiConnectionFailure } from "./use-ai-connection-failure";
@@ -820,6 +820,7 @@ function ToolButton({
 }
 
 function AppInner() {
+  const shellLayout = useShellLayout();
   const localConfirmation = useLocalConfirmation();
   const t = useT();
   const { locale } = useLocale();
@@ -12978,7 +12979,7 @@ function AppInner() {
       />
     ) : null}
     <main
-      data-shell-layout={APP_SHELL_LAYOUT}
+      data-shell-layout={shellLayout}
       className={`app-shell${leftOpen ? "" : " left-collapsed"}${rightOpen ? "" : " right-collapsed"}${panelResizing ? " is-resizing" : ""}`}
       style={panelResizeShellStyle as React.CSSProperties}
     >

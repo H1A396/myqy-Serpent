@@ -1,3 +1,4 @@
+import { setShellLayout, useShellLayout } from "./ui/use-shell-layout";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -373,6 +374,7 @@ export function AssetsSettingsPage({
 }
 
 export function AppearanceSettingsPage(): ReactNode {
+  const shellLayout = useShellLayout();
   const t = useT();
   const { preferences: fontSizePrefs, setPreference: setFontSizePreference } = useFontSize();
   const { preferences: shadowPrefs, setValues: setShadowValues } = useElevation();
@@ -386,6 +388,26 @@ export function AppearanceSettingsPage(): ReactNode {
 
   return (
     <SettingsCard className="app-settings-appearance-card">
+      <div className="app-settings-row app-settings-row-stack">
+        <div className="app-settings-row-copy">
+          <strong>{t("settings.interfaceStyle")}</strong>
+        </div>
+        <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.interfaceStyle")}>
+          {(["islands", "legacy"] as const).map((layout) => (
+            <button
+              key={layout}
+              className="app-settings-option"
+              role="radio"
+              aria-checked={shellLayout === layout}
+              onClick={() => setShellLayout(layout)}
+              type="button"
+            >
+              {t(layout === "islands" ? "settings.interfaceNew" : "settings.interfaceLegacy")}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="app-settings-card-divider" />
       <div className="app-settings-theme-section">
         <div className="app-settings-theme-summary">
           <div className="app-settings-row-copy">

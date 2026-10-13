@@ -1259,6 +1259,10 @@ export const zhCN = {
     dialogSubmit: "开始处理",
   },
   settings: {
+    interfaceStyle: "界面样式",
+    interfaceNew: "新 UI",
+    interfaceLegacy: "旧 UI",
+
     title: "通用设置",
     categoriesLabel: "设置分类",
     categoryGeneral: "常规",
