@@ -388,33 +388,23 @@ export function AppearanceSettingsPage(): ReactNode {
 
   return (
     <SettingsCard className="app-settings-appearance-card">
-      <div className="app-settings-row app-settings-row-stack">
-        <div className="app-settings-row-copy">
-          <strong>{t("settings.interfaceStyle")}</strong>
-        </div>
-        <div className="app-settings-option-group" role="radiogroup" aria-label={t("settings.interfaceStyle")}>
-          {(["islands", "legacy"] as const).map((layout) => (
-            <button
-              key={layout}
-              className="app-settings-option"
-              role="radio"
-              aria-checked={shellLayout === layout}
-              onClick={() => setShellLayout(layout)}
-              type="button"
-            >
-              {t(layout === "islands" ? "settings.interfaceNew" : "settings.interfaceLegacy")}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="app-settings-card-divider" />
       <div className="app-settings-theme-section">
         <div className="app-settings-theme-summary">
           <div className="app-settings-row-copy">
             <strong>{t("shell.theme")}</strong>
             <span>{t("settings.themeHint")}</span>
           </div>
-          <ThemeModePicker />
+          <div className="app-settings-theme-actions">
+            <label className="app-settings-layout-toggle">
+              <span>{t("settings.interfaceNew")}</span>
+              <Switch
+                aria-label={t("settings.interfaceNew")}
+                checked={shellLayout === "islands"}
+                onCheckedChange={(enabled) => setShellLayout(enabled ? "islands" : "legacy")}
+              />
+            </label>
+            <ThemeModePicker />
+          </div>
         </div>
         <ThemeProfilePicker />
         <ThemeAccentPicker />

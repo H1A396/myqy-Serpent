@@ -196,3 +196,19 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
   position: relative;
   z-index: 1;
 }
+
+/* Appearance controls use the same row in both layouts. */
+.app-settings-theme-actions,
+.app-settings-layout-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+.app-settings-theme-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.app-settings-layout-toggle {
+  color: var(--ui-content-secondary);
+  font-size: var(--ui-font-size-body);
+}
