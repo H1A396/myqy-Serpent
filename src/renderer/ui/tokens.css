@@ -148,6 +148,7 @@
   --ui-radius-scale: 1;
   --ui-border-width-hairline: 1px;
   --ui-border-width-focus: 2px;
+  --ui-border-width-selection: 2px;
 
   /* Typography */
   /* App font scale is independent from OS/Chromium display scaling. */

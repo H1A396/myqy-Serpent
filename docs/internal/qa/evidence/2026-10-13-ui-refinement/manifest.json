@@ -1,0 +1,50 @@
+[
+  {
+    "file": "01-filter-before.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "5b42ce3acbc9576972bc03ed22218af809cf1bad751d6c2c3b3fc60b187f160b"
+  },
+  {
+    "file": "01-filter-after.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "48ae57ed68c3d109ea92d440eaafa44c096d312b46d9dc6214de867e39f15db9"
+  },
+  {
+    "file": "02-settings-before.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "9b8015cca1737b7c4ffe8565581c7f951c9c80ab8958edc8ccf24351285ccfb4"
+  },
+  {
+    "file": "02-settings-after.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "b1265402cbc9f8533959e4ee279dece81b4441e6098f738064358f8df08a9777"
+  },
+  {
+    "file": "03-selection-before.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "e429fc35c60457d467a39d0d16238d753236a16dfa61983f3a7ba9b2ded7e579"
+  },
+  {
+    "file": "03-selection-after.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "c68eeb92d52e2f84537608892121a30d80ffb672b029a89d46cccc218f8f6597"
+  },
+  {
+    "file": "04-confirmation-before.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "e1a43233a36a625149572e0006146d0b6848453b9ee97f7deb185fb9159892c0"
+  },
+  {
+    "file": "04-confirmation-after.png",
+    "width": 1100,
+    "height": 800,
+    "sha256": "848d80091dc25feac1df3237601b474851c97eecf8e255e309ab38ca47d6668b"
+  }
+]

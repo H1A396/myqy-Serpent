@@ -22,8 +22,33 @@ export function CriticalConfirmationDialog({
   return (
     <div className="dialog-backdrop" role="presentation">
       <DialogShell
-        className="create-dialog"
+        className="create-dialog confirmation-dialog"
         description={request.message}
+        footer={(
+          <div className="dialog-actions">
+            <button
+              className="secondary-button"
+              onClick={() => onDecide("cancel")}
+              type="button"
+              {...(confirmIsDefault ? {} : { "data-dialog-initial-focus": "true" })}
+            >
+              {request.cancelLabel}
+            </button>
+            <button
+              className={`ui-button ui-button--${confirmVariant}`}
+              onClick={() => onDecide("confirm")}
+              type="button"
+              {...(confirmIsDefault
+                ? {
+                    "data-dialog-default-action": "true",
+                    "data-dialog-initial-focus": "true",
+                  }
+                : {})}
+            >
+              {request.confirmLabel}
+            </button>
+          </div>
+        )}
         dialogId={dialogId}
         headerActions={(
           <button
@@ -40,29 +65,6 @@ export function CriticalConfirmationDialog({
         title={request.heading}
       >
         {request.detail ? <p className="dialog-body-copy">{request.detail}</p> : null}
-        <div className="dialog-actions">
-          <button
-            className="secondary-button"
-            onClick={() => onDecide("cancel")}
-            type="button"
-            {...(confirmIsDefault ? {} : { "data-dialog-initial-focus": "true" })}
-          >
-            {request.cancelLabel}
-          </button>
-          <button
-            className={`ui-button ui-button--${confirmVariant}`}
-            onClick={() => onDecide("confirm")}
-            type="button"
-            {...(confirmIsDefault
-              ? {
-                  "data-dialog-default-action": "true",
-                  "data-dialog-initial-focus": "true",
-                }
-              : {})}
-          >
-            {request.confirmLabel}
-          </button>
-        </div>
       </DialogShell>
     </div>
   );

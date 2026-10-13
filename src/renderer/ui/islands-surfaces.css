@@ -55,13 +55,28 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
 .app-shell[data-shell-layout="islands"] .folder-card.is-selected:hover {
   box-shadow: var(--card-shadow-hover);
 }
+.app-shell[data-shell-layout="islands"] :is(.asset-card, .folder-card).is-selected {
+  outline: var(--ui-border-width-selection) solid var(--island-accent-loud);
+  outline-offset: 0;
+}
+
+/* Sorting criteria are choices within the picker, rather than applied filters. */
+:root .app-shell[data-shell-layout="islands"] .tag-management-sort .dimension-filter-btn.is-active:not(:disabled) {
+  background: var(--island-pressed-wash);
+  color: var(--ui-content-primary);
+  font-weight: var(--ui-font-weight-medium);
+  box-shadow: var(--ui-shadow-none);
+}
+:root .app-shell[data-shell-layout="islands"] .tag-management-sort .dimension-filter-btn.is-active .icon {
+  color: var(--ui-content-secondary);
+}
 
 .app-shell[data-shell-layout="islands"] :is(.app-settings-nav, .app-settings-content, .app-settings-card, .plugin-community-card, .plugin-community-readme, .plugin-community-readme table, .plugin-workspace-view-frame, .plugin-inspector-view-frame, .plugin-inspector-section, .plugin-viewer-overlay-panel, .app-log-list, .app-log-entry) {
   border-color: var(--island-hairline);
   border-width: var(--island-hairline-w);
 }
-.app-shell[data-shell-layout="islands"] :is(.app-settings-card, .plugin-community-card, .plugin-trust-prompt-list li, .app-log-list) {
-  background: var(--island-surface-soft);
+.app-shell[data-shell-layout="islands"] :is(.app-settings-card, .plugin-community-card, .plugin-trust-prompt-list li, .app-log-list, .app-log-entry, .plugin-inspector-section) {
+  background: transparent;
   border-radius: var(--ui-radius-surface);
   box-shadow: var(--ui-shadow-none);
 }
@@ -76,7 +91,7 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
 .app-shell[data-shell-layout="islands"] .app-settings-nav-item:hover:not(.is-active) {
   background: var(--island-hover-wash);
 }
-.app-shell[data-shell-layout="islands"] :is(.plugin-workspace-view-frame, .plugin-inspector-view-frame, .plugin-inspector-section, .plugin-community-readme pre) {
+.app-shell[data-shell-layout="islands"] :is(.plugin-workspace-view-frame, .plugin-inspector-view-frame, .plugin-community-readme pre) {
   background: var(--island-surface-recess);
   border-radius: var(--ui-radius-surface);
 }
@@ -127,7 +142,28 @@ body.serpent-modal-open .ui-shell-style-scope > [data-modal-popover="true"] {
 .app-shell[data-shell-layout="islands"] #batch-relink-dialog :is(.conflict-summary, .conflict-examples) {
   border: var(--island-hairline-w) solid var(--island-hairline);
   border-radius: var(--ui-radius-surface);
-  background: var(--island-surface-soft);
+  background: transparent;
+}
+
+.app-shell[data-shell-layout="islands"] .ui-dialog-shell > [data-dialog-content="true"]:empty {
+  display: none;
+}
+.app-shell[data-shell-layout="islands"] .ui-dialog-shell > [data-dialog-footer="true"] > .dialog-actions {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.app-shell[data-shell-layout="islands"] .confirmation-dialog > [data-dialog-header="true"] {
+  padding: var(--ui-space-5) var(--ui-space-6) var(--ui-space-3);
+  gap: var(--ui-space-3);
+  border: 0;
+}
+.app-shell[data-shell-layout="islands"] .confirmation-dialog > [data-dialog-header="true"] p {
+  font-size: var(--ui-font-size-body);
+}
+.app-shell[data-shell-layout="islands"] .confirmation-dialog > [data-dialog-footer="true"] {
+  padding: var(--ui-space-3) var(--ui-space-6) var(--ui-space-5);
+  border: 0;
 }
 .app-shell[data-shell-layout="islands"] .media-jobs-list,
 .app-shell[data-shell-layout="islands"] .media-jobs-section {
