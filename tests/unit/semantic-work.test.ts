@@ -10,7 +10,7 @@ import {
   mergeKeywordAndSemanticRanks,
   semanticBrowseRegistration,
 } from "../../src/renderer/semantic-browse";
-import { embeddingServiceTextOnly, similarMenuBlock } from "../../src/shared/embedding/modalities";
+import { embeddingServiceTextOnly } from "../../src/shared/embedding/modalities";
 import { encodeModalitiesForAdapter } from "../../src/main/embedding-http-index";
 
 describe("semantic readiness", () => {
@@ -61,35 +61,6 @@ describe("semantic readiness", () => {
     expect(registration.total).toBe(1);
   });
 
-  it("blocks find-similar when the model does not claim the asset or the adapter cannot run it", () => {
-    expect(similarMenuBlock({
-      mediaType: "image",
-      implementation: "http",
-      declared: ["text"],
-    })).toBe("modality");
-    expect(similarMenuBlock({
-      mediaType: "image",
-      implementation: "http",
-      declared: ["text"],
-      localSimilarReady: true,
-    })).toBe("modality");
-    expect(similarMenuBlock({
-      mediaType: "image",
-      implementation: "http",
-      declared: ["text", "image"],
-    })).toBeNull();
-    expect(similarMenuBlock({
-      mediaType: "audio",
-      implementation: "gemma",
-      declared: ["image", "text"],
-    })).toBe("modality");
-    expect(similarMenuBlock({
-      mediaType: "image",
-      implementation: "gemma",
-      declared: ["image", "video", "audio", "text"],
-    })).toBeNull();
-  });
-
 });
 
 describe("semantic index jobs copy", () => {
@@ -106,17 +77,19 @@ describe("semantic index jobs copy", () => {
     )).toBe("dialog.mediaJobs.embeddingReadyEmptyText");
     expect(embeddingServiceTextOnly(["text"])).toBe(true);
     expect(embeddingServiceTextOnly(["text", "image"])).toBe(false);
+    expect(embeddingServiceTextOnly(["text", "video"])).toBe(true);
     expect([...encodeModalitiesForAdapter("openai-embeddings-v1", ["text", "image"])]).toEqual(["text"]);
     expect([...encodeModalitiesForAdapter("llamacpp-multimodal-v1", ["text", "image", "video", "audio"])].sort())
-      .toEqual(["image", "text", "video"]);
+      .toEqual(["image", "text"]);
     expect([...encodeModalitiesForAdapter("dashscope-multimodal-v1", ["text", "image", "video"])].sort())
-      .toEqual(["image", "text", "video"]);
+      .toEqual(["image", "text"]);
   });
 
-  it("hides the jobs panel semantic section once the index is ready", () => {
+  it("keeps failed vector work visible in the background jobs panel after indexing ends", () => {
     expect(embeddingIndexJobsVisible({ phase: "starting", done: 0, total: 0, failedCount: 0 })).toBe(true);
     expect(embeddingIndexJobsVisible({ phase: "indexing", done: 1, total: 3, failedCount: 0 })).toBe(true);
     expect(embeddingIndexJobsVisible({ phase: "ready", done: 3, total: 3, failedCount: 0 })).toBe(false);
+    expect(embeddingIndexJobsVisible({ phase: "ready", done: 3, total: 4, failedCount: 1 })).toBe(true);
   });
 });
 

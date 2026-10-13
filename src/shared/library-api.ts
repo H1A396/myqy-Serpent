@@ -831,7 +831,7 @@ export interface SerpentLibraryApi {
     filters?: FilterClause[];
     scope?: SearchScope | null;
   }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
-    status: "ready" | "preparing" | "unsupported" | "unavailable";
+    status: "ready" | "preparing" | "failed" | "unsupported" | "unavailable";
     sourceAssetId: string;
     assetIds: string[];
   }>>;

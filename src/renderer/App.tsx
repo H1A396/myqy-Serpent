@@ -141,7 +141,7 @@ import {
 } from "./folder-browse-canvas";
 import { useFolderInspector } from "./folder-inspector";
 import { collectFolderCoverCandidateAssetIds } from "./folder-cover-refresh";
-import { folderNavigationCoverSrcMap, patchFolderNavigationCoverArtifact } from "./folder-cover";
+import { patchFolderNavigationCoverArtifact } from "./folder-cover";
 import {
   FOLDER_COVER_PICKER_PAGE_SIZE,
   folderCoverPickerAssetMatches,
@@ -513,9 +513,12 @@ import { semanticSearchNotice } from "./semantic-index-copy";
 import { appendSemanticCleanupNotice } from "./semantic-cleanup-notice";
 import { mergeKeywordAndSemanticRanks, semanticBrowseRegistration } from "./semantic-browse";
 import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service";
-import { embeddingServiceTextOnly } from "../shared/embedding/modalities";
 import {
-  resolveLocalSimilarModelId,
+  embeddingInputModalitiesForAdapter,
+  embeddingServiceTextOnly,
+  LOCAL_GEMMA_INPUT_MODALITIES,
+} from "../shared/embedding/modalities";
+import {
   semanticBackgroundWorkActive,
   semanticToolbarReady,
 } from "./semantic-work";
@@ -523,9 +526,10 @@ import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-
 import { subscribeEmbeddingCatalog, subscribeEmbeddingInstallActivity } from "./embedding-catalog-events";
 import {
   resolveFindSimilar,
+  canFindSimilarForAsset,
   type FindSimilarSource,
 } from "./find-similar";
-import { type EmbeddingIndexSnapshot, type SemanticSearchModelId } from "../shared/embedding/profile";
+import { isSemanticSearchModelId, type EmbeddingIndexSnapshot, type SemanticSearchModelId } from "../shared/embedding/profile";
 import { hasMeaningfulSmartCollectionCondition } from "../shared/smart-collection-query";
 import { compactFormatFilterTokens } from "../shared/text-media";
 import type {
@@ -900,11 +904,11 @@ function AppInner() {
   // REQ-FOLDER-001/002/003/010: direct child folder cards shown above assets
   // when the current browse parent is a managed folder or the managed root.
   const [folderBrowseEntries, setFolderBrowseEntries] = useState<FolderBrowseEntry[]>([]);
-  const [folderCoverSrcById, setFolderCoverSrcById] = useState<ReadonlyMap<string, string>>(
-    () => new Map(),
-  );
   const [folderNavigationCovers, setFolderNavigationCovers] = useState<readonly FolderNavigationCover[]>(
     [],
+  );
+  const [folderCustomCoverIds, setFolderCustomCoverIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
   );
   const folderNavigationCoversRef = useRef<readonly FolderNavigationCover[]>([]);
   const [folderCoverPicker, setFolderCoverPicker] = useState<{
@@ -2798,11 +2802,6 @@ function AppInner() {
       ? embeddingService.textStatus === "verified" && embeddingService.dimensions != null
       : embeddingSearchReady
   );
-  const localSimilarModelId = resolveLocalSimilarModelId({
-    runtimeInstalled: embeddingInstall?.runtimeInstalled ?? false,
-    models: embeddingInstall?.models ?? [],
-    preferredModelId: semanticSearchPrefs.modelId,
-  });
   embeddingSelectionRef.current = embeddingSearchReady ? embeddingSelectionId : null;
   useEffect(() => {
     embeddingRestartRef.current = true;
@@ -3459,7 +3458,6 @@ function AppInner() {
             : buildLinkedFolderBreadcrumbTrail(linkedFolders, assetScope)
           : [],
       linkedFolderLabel: null,
-      folderCoverSrcById,
     },
     t,
   );
@@ -4599,9 +4597,7 @@ function AppInner() {
         const covers = summary.folderCovers ?? [];
         folderNavigationCoversRef.current = covers;
         setFolderNavigationCovers(covers);
-        setFolderCoverSrcById(
-          folderNavigationCoverSrcMap(summary.libraryId, covers),
-        );
+        setFolderCustomCoverIds(new Set(covers.map((cover) => cover.folderId)));
       };
       const loadNavigationSummary = () => {
         if (!isCurrentLibraryView(viewSession)) return Promise.resolve(undefined);
@@ -5242,9 +5238,6 @@ function AppInner() {
               if (patched.changed) {
                 folderNavigationCoversRef.current = patched.covers;
                 setFolderNavigationCovers(patched.covers);
-                setFolderCoverSrcById(
-                  folderNavigationCoverSrcMap(effectLibraryId, patched.covers),
-                );
               }
             }
           }
@@ -8393,6 +8386,7 @@ function AppInner() {
     pasteClipboardImage,
     importDroppedFiles,
     beginInternalAssetDrag,
+    isInternalAssetDrag,
     handleExternalDragEnter,
     handleExternalDragLeave,
     handleExternalDragOver,
@@ -8615,6 +8609,7 @@ function AppInner() {
           if (result.error.code === "CANCELLED") return;
           throw new LibraryOperationError(result.error);
         }
+        patchFolderCustomCoverIds(result.value.folderIds, result.value.hasCustomCover);
         setFolderBrowseRefreshToken((token) => token + 1);
       } catch (caught) {
         setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
@@ -8645,6 +8640,7 @@ function AppInner() {
           assetId,
         });
         if (!result.ok) throw new LibraryOperationError(result.error);
+        patchFolderCustomCoverIds(result.value.folderIds, result.value.hasCustomCover);
         setFolderCoverPicker(null);
         setFolderBrowseRefreshToken((token) => token + 1);
       } catch (caught) {
@@ -8663,6 +8659,7 @@ function AppInner() {
           assetId,
         });
         if (!result.ok) throw new LibraryOperationError(result.error);
+        patchFolderCustomCoverIds(result.value.folderIds, result.value.hasCustomCover);
         setFolderBrowseRefreshToken((token) => token + 1);
       } catch (caught) {
         setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
@@ -8679,11 +8676,23 @@ function AppInner() {
           folderIds: [...folderIds],
         });
         if (!result.ok) throw new LibraryOperationError(result.error);
+        patchFolderCustomCoverIds(result.value.folderIds, result.value.hasCustomCover);
         setFolderBrowseRefreshToken((token) => token + 1);
       } catch (caught) {
         setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
       }
     })();
+  }
+
+  function patchFolderCustomCoverIds(folderIds: readonly string[], hasCustomCover: boolean) {
+    setFolderCustomCoverIds((current) => {
+      const next = new Set(current);
+      for (const folderId of folderIds) {
+        if (hasCustomCover) next.add(folderId);
+        else next.delete(folderId);
+      }
+      return next;
+    });
   }
 
   // Serpent-vf8x: folder create/rename/trash chords (mac ⌘ / Windows Ctrl).
@@ -9016,6 +9025,18 @@ function AppInner() {
     if (!api || !library) return;
     const modelId = embeddingSelectionRef.current;
     if (!modelId) return;
+    let source = assetsRef.current.find((asset) => asset.assetId === assetId);
+    if (!source) {
+      const listed = await api.listAssets({ libraryId: library.libraryId, recursive: true, assetIds: [assetId] });
+      if (!listed.ok) return;
+      source = listed.value[0];
+    }
+    const sourceModalities = isSemanticSearchModelId(modelId)
+      ? LOCAL_GEMMA_INPUT_MODALITIES
+      : embeddingService
+        ? embeddingInputModalitiesForAdapter(embeddingService.adapter, embeddingService.modalities)
+        : [];
+    if (!source || !canFindSimilarForAsset(source, sourceModalities)) return;
     const preferences = loadSemanticSearchPreferences();
     const token = ++findSimilarTokenRef.current;
     const polling = () =>
@@ -9051,6 +9072,10 @@ function AppInner() {
     }
     if (page.status === "unavailable") {
       setNotice(t("settings.semanticSearch.similarUnavailable"));
+      return;
+    }
+    if (page.status === "failed") {
+      setNotice(t("settings.semanticSearch.similarFailed"));
       return;
     }
     const request = navigation ?? beginWorkspaceNavigationRequest("push");
@@ -10204,7 +10229,7 @@ function AppInner() {
     setFolderCoverPicker(null);
     folderNavigationCoversRef.current = [];
     setFolderNavigationCovers([]);
-    setFolderCoverSrcById(new Map());
+    setFolderCustomCoverIds(new Set());
     setInlineCollectionRename(null);
     setRenameTarget(null);
     setShowCollectionInput(false);
@@ -13846,7 +13871,6 @@ function AppInner() {
         collectionTree={collectionTree}
         smartCollections={smartCollections}
         linkedFolders={linkedFolders}
-        folderCoverSrcById={folderCoverSrcById}
         showCollectionInput={showCollectionInput}
         collectionInputValue={collectionInputValue}
         newCollectionParentId={newCollectionParentId}
@@ -13897,6 +13921,7 @@ function AppInner() {
           )
         }
         onResolveManagedAssetDrop={resolveManagedAssetDrop}
+        isInternalAssetDrag={isInternalAssetDrag}
         onAssetsDroppedOnFolder={(folderId, assetIds, mode) =>
           handleAssetsDroppedOnFolder(folderId, assetIds, mode)
         }
@@ -16353,6 +16378,7 @@ function AppInner() {
         onChooseFolderCover={chooseFolderCover}
         onChooseFolderCoverFromLibrary={openFolderCoverLibraryPicker}
         onClearFolderCover={clearFolderCover}
+        customFolderCoverIds={folderCustomCoverIds}
         onUseAssetAsFolderCover={useAssetAsFolderCover}
         onBatchAssignTag={(tagId, assetIds) => {
           void batchAssignTagToSelection(tagId, assetIds);
@@ -16434,8 +16460,8 @@ function AppInner() {
         }}
         semanticSearchEnabled={embeddingBound}
         embeddingSelectionId={embeddingSelectionId}
+        embeddingAdapter={embeddingService?.adapter ?? null}
         embeddingModalities={embeddingService?.modalities ?? null}
-        localSimilarModelReady={Boolean(localSimilarModelId)}
         onFindSimilar={(assetId) => {
           void runFindSimilar(assetId);
         }}

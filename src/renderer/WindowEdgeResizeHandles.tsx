@@ -42,9 +42,8 @@ export function WindowEdgeResizeHandles({ shell }: Props) {
 
   useEffect(() => {
     if (!shell?.needsClientWindowEdgeResize()) return;
-    let cancelled = false;
     void shell.windowControl("get-state").then((result) => {
-      if (!cancelled && result.ok) setMaximized(result.maximized);
+      if (result.ok) setMaximized(result.maximized);
     });
     return shell.onWindowMaximizedChanged((next) => {
       setMaximized(next);

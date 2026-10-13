@@ -73,25 +73,10 @@ export function folderAutomaticCoverSrc(
   return sourceSrc(libraryId, source.assetId, source.revisionId);
 }
 
-/** Sidebar and breadcrumb cover URLs, keyed by folder id. */
-export function folderNavigationCoverSrcMap(
-  libraryId: string,
-  covers: readonly FolderNavigationCover[],
-): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const cover of covers) {
-    const src = folderCoverImageSrc(libraryId, {
-      folderId: cover.folderId,
-      coverArtifactIds: [],
-      hasCustomCover: true,
-      ...(cover.fileToken ? { customCoverToken: cover.fileToken } : {}),
-      ...(cover.assetId ? { customCoverAssetId: cover.assetId } : {}),
-      ...(cover.artifactId ? { customCoverArtifactId: cover.artifactId } : {}),
-      ...(cover.assetId && cover.revisionId && !cover.artifactId
-        ? { customCoverSourcePreview: { assetId: cover.assetId, revisionId: cover.revisionId } }
-        : {}),
-    });
-    if (src) map.set(cover.folderId, src);
-  }
-  return map;
+/** Folder targets that actually have a custom cover and can be restored. */
+export function folderCoverClearTargets(
+  folderIds: readonly string[],
+  customCoverFolderIds: ReadonlySet<string>,
+): string[] {
+  return folderIds.filter((folderId) => customCoverFolderIds.has(folderId));
 }

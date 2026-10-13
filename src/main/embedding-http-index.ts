@@ -13,7 +13,11 @@ import {
 import {
   type EmbeddingIndexSnapshot,
 } from "../shared/embedding/profile";
-import type { EmbeddingModality } from "../shared/embedding/modalities";
+import {
+  embeddingInputModalitiesForAdapter,
+  type EmbeddingModality,
+  type EmbeddingSourceModality,
+} from "../shared/embedding/modalities";
 import type { WorkerCommand } from "../shared/protocol/requests";
 import type { RendererResult, WorkerResult } from "../shared/protocol/responses";
 import { createPublicError } from "../shared/protocol/errors";
@@ -24,13 +28,14 @@ type JobState = EmbeddingIndexSnapshot & {
   serviceId: string;
   sessionGeneration: string;
   profileKey: string;
+  sourceModalitiesKey: string;
 };
 
 type HttpEmbeddingTarget = {
   assetId: string;
   revisionId: string;
   kind: "text" | "image";
-  modality: EmbeddingModality;
+  modality: EmbeddingSourceModality;
   alreadyIndexed: boolean;
   jobStatus?: "pending" | "running" | "ready" | "failed";
 };
@@ -263,54 +268,63 @@ export class EmbeddingHttpIndex {
       }
       let preparingTarget: HttpEmbeddingTarget | null = null;
       const claimToken = randomUUID();
+      let claimedJob = false;
+      let errorCategory: "provider" | "preparation" | "storage" = "storage";
       try {
         const targetPage = await this.#listTargets(request.libraryId, state, service, 0, null, request.assetId);
         const target = targetPage.targets.find((entry) => entry.assetId === request.assetId);
         if (target && !target.alreadyIndexed) {
-          preparingTarget = target;
           const claimed = await this.#setDurableJob(state.generation, target.assetId, target.revisionId, claimToken, "claim");
-          if (!claimed) throw new Error("Semantic source changed.");
-          const prepared = await this.options.requestWorker({
-            type: "semantic.index.prepare", libraryId: request.libraryId,
-            sessionGeneration: state.sessionGeneration, assetId: target.assetId,
-            sourceRevision: target.revisionId, kind: target.kind,
-            maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
-          });
-          if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
-          const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
-            ? [prepared.text ?? ""]
-            : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
-          const checkedService = this.#currentService(state);
-          if (!checkedService) throw new Error("Embedding service configuration changed.");
-          const controller = this.#newRequestController();
-          let vector: number[] | undefined;
-          try {
-            [vector] = await postEmbeddingHttp({
-              baseUrl: checkedService.baseUrl, modelName: checkedService.modelName, adapter: checkedService.adapter,
-              dimensions: checkedService.dimensions, inputs, apiKey: this.options.readKey(checkedService.id),
-              signal: controller.signal,
+          if (claimed) {
+            preparingTarget = target;
+            claimedJob = true;
+            errorCategory = "preparation";
+            const prepared = await this.options.requestWorker({
+              type: "semantic.index.prepare", libraryId: request.libraryId,
+              sessionGeneration: state.sessionGeneration, assetId: target.assetId,
+              sourceRevision: target.revisionId, kind: target.kind,
+              maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
             });
-          } finally {
-            this.#activeRequestControllers.delete(controller);
-          }
-          if (!vector || this.#state?.generation !== state.generation || !this.#currentService(state)) {
-            throw new Error("Semantic source changed.");
-          }
-          const written = await this.options.requestWorker({
-            type: "semantic.index.write", libraryId: request.libraryId,
-            sessionGeneration: state.sessionGeneration, profileKey: state.profileKey,
-            vectors: [{ assetId: target.assetId, sourceRevision: target.revisionId, vector, claimToken }],
-          });
-          if (written.ok && written.type === "semantic.index.written" && written.accepted.includes(target.assetId)) {
-            this.#write(state.generation, { done: this.#state.done + 1 });
+            if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
+            const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
+              ? [prepared.text ?? ""]
+              : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
+            const checkedService = this.#currentService(state);
+            if (!checkedService) throw new Error("Embedding service configuration changed.");
+            const controller = this.#newRequestController();
+            let vector: number[] | undefined;
+            errorCategory = "provider";
+            try {
+              [vector] = await postEmbeddingHttp({
+                baseUrl: checkedService.baseUrl, modelName: checkedService.modelName, adapter: checkedService.adapter,
+                dimensions: checkedService.dimensions, inputs, apiKey: this.options.readKey(checkedService.id),
+                signal: controller.signal,
+              });
+            } finally {
+              this.#activeRequestControllers.delete(controller);
+            }
+            if (!vector || this.#state?.generation !== state.generation || !this.#currentService(state)) {
+              throw new Error("Semantic source changed.");
+            }
+            errorCategory = "storage";
+            const written = await this.options.requestWorker({
+              type: "semantic.index.write", libraryId: request.libraryId,
+              sessionGeneration: state.sessionGeneration, profileKey: state.profileKey,
+              vectors: [{ assetId: target.assetId, sourceRevision: target.revisionId, vector, claimToken }],
+            });
+            if (written.ok && written.type === "semantic.index.written" && written.accepted.includes(target.assetId)) {
+              this.#write(state.generation, { done: this.#state.done + 1 });
+            } else {
+              throw new Error("Semantic vector could not be stored.");
+            }
           }
         }
       } catch {
-        if (preparingTarget && this.#state?.generation === state.generation) {
+        if (claimedJob && preparingTarget && this.#state?.generation === state.generation) {
           await this.#setDurableJob(state.generation, preparingTarget.assetId, preparingTarget.revisionId,
-            claimToken, "fail", "provider").catch(() => false);
+            claimToken, "fail", errorCategory).catch(() => false);
+          this.#write(state.generation, { failedCount: this.#state.failedCount + 1 });
         }
-        this.#write(state.generation, { failedCount: this.#state.failedCount + 1 });
       }
       if (this.#state?.generation === state.generation) {
         ranked = await this.options.requestWorker({
@@ -341,11 +355,20 @@ export class EmbeddingHttpIndex {
   #begin(libraryId: string, serviceId: string): number {
     const current = this.#state;
     const service = this.options.loadService(serviceId);
+    const sourceModalitiesKey = service
+      ? [...encodeModalitiesForAdapter(service.adapter, service.modalities)].sort().join(",")
+      : "";
     const profileKey = service?.dimensions
-      ? embeddingHttpProfileKey({ adapter: service.adapter, baseUrl: service.baseUrl, modelName: service.modelName, dimensions: service.dimensions })
+      ? embeddingHttpProfileKey({
+        adapter: service.adapter,
+        baseUrl: service.baseUrl,
+        modelName: service.modelName,
+        dimensions: service.dimensions,
+      })
       : "";
     if (current && current.libraryId === libraryId && current.serviceId === serviceId
-      && current.profileKey === profileKey) return current.generation;
+      && current.profileKey === profileKey
+      && current.sourceModalitiesKey === sourceModalitiesKey) return current.generation;
     this.#abortRequests();
     this.#generation += 1;
     this.#skipped.clear();
@@ -359,6 +382,7 @@ export class EmbeddingHttpIndex {
       serviceId,
       sessionGeneration: randomUUID(),
       profileKey,
+      sourceModalitiesKey,
     };
     return this.#generation;
   }
@@ -399,6 +423,7 @@ export class EmbeddingHttpIndex {
         dimensions: service.dimensions,
         modelRevision: "http-embedding-v1",
         modality: "mixed",
+        modalities: [...encodeModalitiesForAdapter(service.adapter, service.modalities)],
         maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
       });
       if (!begun.ok || begun.type !== "semantic.index.started") throw new Error("Semantic index is unavailable.");
@@ -430,6 +455,8 @@ export class EmbeddingHttpIndex {
           if (target.alreadyIndexed) continue;
           if (this.#state?.generation !== generation) return;
           const claimToken = randomUUID();
+          let errorCategory: "provider" | "preparation" | "storage" = "storage";
+          let claimedJob = false;
           try {
             const claimed = await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "claim");
             if (!claimed) {
@@ -438,6 +465,8 @@ export class EmbeddingHttpIndex {
               }
               continue;
             }
+            claimedJob = true;
+            errorCategory = "preparation";
             const checkedService = this.#currentService(state);
             if (!checkedService) throw new Error("Embedding service configuration changed.");
             const prepared = await this.options.requestWorker({
@@ -453,6 +482,7 @@ export class EmbeddingHttpIndex {
               ? [prepared.text ?? ""]
               : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
             const controller = this.#newRequestController();
+            errorCategory = "provider";
             const [vector] = await postEmbeddingHttp({
               baseUrl: checkedService.baseUrl, modelName: checkedService.modelName, adapter: checkedService.adapter,
               dimensions: checkedService.dimensions, inputs, apiKey: this.options.readKey(checkedService.id),
@@ -460,6 +490,7 @@ export class EmbeddingHttpIndex {
             });
             this.#activeRequestControllers.delete(controller);
             if (!vector || this.#state?.generation !== generation || !this.#currentService(state)) return;
+            errorCategory = "storage";
             const written = await this.options.requestWorker({
               type: "semantic.index.write", libraryId,
               sessionGeneration: state.sessionGeneration,
@@ -470,12 +501,16 @@ export class EmbeddingHttpIndex {
               done += 1;
               this.#write(generation, { done });
             } else {
+              await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", "storage")
+                .catch(() => false);
               this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
               this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
             }
           } catch {
             if (this.#state?.generation !== generation) return;
-            await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", "provider").catch(() => false);
+            if (claimedJob) {
+              await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", errorCategory).catch(() => false);
+            }
             this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
             this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
           }
@@ -549,7 +584,7 @@ export class EmbeddingHttpIndex {
     sourceRevision: string,
     claimToken: string,
     action: "claim" | "fail",
-    errorCategory?: "provider" | "preparation",
+    errorCategory?: "provider" | "preparation" | "storage",
   ): Promise<boolean> {
     const state = this.#state;
     if (!state || state.generation !== generation) return false;
@@ -593,6 +628,7 @@ export class EmbeddingHttpIndex {
     });
     const active = this.#state;
     return profileKey === state.profileKey && active?.generation === state.generation
+      && [...encodeModalitiesForAdapter(service.adapter, service.modalities)].sort().join(",") === state.sourceModalitiesKey
       && active.libraryId === state.libraryId && active.serviceId === state.serviceId
       ? service
       : null;
@@ -647,17 +683,10 @@ function httpServiceReady(
   );
 }
 
-/** Multimodal adapters can encode images and the existing video thumbnails. */
+/** Actual HTTP input channels; video files use the image adapter through a ready preview. */
 export function encodeModalitiesForAdapter(
   adapter: EmbeddingHttpAdapter,
   modalities: readonly EmbeddingModality[],
-): Set<EmbeddingModality> {
-  const allowed = new Set<EmbeddingModality>();
-  for (const modality of modalities) {
-    if (modality === "text") allowed.add("text");
-    if (adapter !== "openai-embeddings-v1" && (modality === "image" || modality === "video")) {
-      allowed.add(modality);
-    }
-  }
-  return allowed;
+): Set<EmbeddingSourceModality> {
+  return new Set(embeddingInputModalitiesForAdapter(adapter, modalities));
 }

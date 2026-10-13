@@ -39,9 +39,9 @@ export function embeddingIndexCopyKey(
   }
 }
 
-/** Jobs panel shows semantic work only while it is still running. */
+/** Keep completed semantic work visible when the index contains failed assets. */
 export function embeddingIndexJobsVisible(snapshot: EmbeddingIndexSnapshot): boolean {
-  return snapshot.phase === "starting" || snapshot.phase === "indexing";
+  return snapshot.phase === "starting" || snapshot.phase === "indexing" || snapshot.failedCount > 0;
 }
 
 export function semanticSearchNotice(input: {

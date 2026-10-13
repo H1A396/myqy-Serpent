@@ -16,6 +16,7 @@ import {
 import type { WorkerCommand } from "../shared/protocol/requests";
 import type { RendererResult, WorkerResult } from "../shared/protocol/responses";
 import { createPublicError } from "../shared/protocol/errors";
+import { LOCAL_GEMMA_INPUT_MODALITIES } from "../shared/embedding/modalities";
 import {
   localEmbeddingFilesReady,
   readLocalEmbeddingTestConfig,
@@ -38,6 +39,9 @@ type EmbeddingTarget = {
   alreadyIndexed: boolean;
   jobStatus?: "pending" | "running" | "ready" | "failed";
 };
+
+class SemanticPreparationError extends Error {}
+class SemanticProviderError extends Error {}
 const CATCH_UP_DELAY_MS = 500;
 
 export function embeddingSkipKey(assetId: string, revisionId: string): string {
@@ -475,6 +479,7 @@ export class EmbeddingTestIndex {
         dimensions: EMBEDDING_GEMMA2_DIMENSIONS,
         modelRevision: `${model.id}:${model.tier}`,
         modality: "mixed",
+        modalities: [...LOCAL_GEMMA_INPUT_MODALITIES],
         maxInputBytes: 64 * 1024 * 1024,
       });
       if (!begun.ok || begun.type !== "semantic.index.started") throw new Error("Semantic index is unavailable.");
@@ -612,13 +617,17 @@ export class EmbeddingTestIndex {
         if (!written.ok || written.type !== "semantic.index.written"
           || !written.accepted.includes(target.assetId)) {
           this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
+          await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", "storage").catch(() => false);
           this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
         } else {
           this.#write(generation, { done: (this.#state?.done ?? 0) + 1 });
         }
-      } catch {
+      } catch (caught) {
         if (this.#state?.generation !== generation) return false;
-        await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", "provider").catch(() => false);
+        const errorCategory = caught instanceof SemanticPreparationError
+          ? "preparation"
+          : caught instanceof SemanticProviderError ? "provider" : "storage";
+        await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", errorCategory).catch(() => false);
         this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
         this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
       }
@@ -659,37 +668,50 @@ export class EmbeddingTestIndex {
   ): Promise<number[] | null> {
     const state = this.#state;
     if (!state || state.generation !== generation) return null;
-    const prepared = await this.options.requestWorker({
-      type: "semantic.index.prepare",
-      libraryId: state.libraryId,
-      sessionGeneration: state.sessionGeneration,
-      assetId: target.assetId,
-      sourceRevision: target.revisionId,
-      kind: target.kind,
-      maxInputBytes: 64 * 1024 * 1024,
-    });
+    let prepared: WorkerResult;
+    try {
+      prepared = await this.options.requestWorker({
+        type: "semantic.index.prepare",
+        libraryId: state.libraryId,
+        sessionGeneration: state.sessionGeneration,
+        assetId: target.assetId,
+        sourceRevision: target.revisionId,
+        kind: target.kind,
+        maxInputBytes: 64 * 1024 * 1024,
+      });
+    } catch {
+      throw new SemanticPreparationError("Semantic asset preparation failed.");
+    }
     if (!prepared.ok || prepared.type !== "semantic.index.prepared" || prepared.kind !== target.kind) {
-      throw new Error("Semantic asset could not be prepared.");
+      throw new SemanticPreparationError("Semantic asset could not be prepared.");
     }
     if (target.kind === "audio") {
       if (!prepared.audioHandle || prepared.audioWindowCount === undefined) {
-        throw new Error("Audio payload is unavailable.");
+        throw new SemanticPreparationError("Audio payload is unavailable.");
       }
       try {
         const vectors: number[][] = [];
         for (let index = 0; index < prepared.audioWindowCount; index += 1) {
           if (this.#state?.generation !== generation) return null;
-          const window = await this.options.requestWorker({
-            type: "semantic.index.audio-window",
-            libraryId: state.libraryId,
-            sessionGeneration: state.sessionGeneration,
-            audioHandle: prepared.audioHandle,
-            windowIndex: index,
-          });
-          if (!window.ok || window.type !== "semantic.index.audio-window") throw new Error("Audio window is unavailable.");
-          vectors.push(await this.#enqueue(() => session.embedAudioPayload(window.bytesBase64)));
+          let window: WorkerResult;
+          try {
+            window = await this.options.requestWorker({
+              type: "semantic.index.audio-window",
+              libraryId: state.libraryId,
+              sessionGeneration: state.sessionGeneration,
+              audioHandle: prepared.audioHandle,
+              windowIndex: index,
+            });
+          } catch {
+            throw new SemanticPreparationError("Audio window is unavailable.");
+          }
+          if (!window.ok || window.type !== "semantic.index.audio-window") {
+            throw new SemanticPreparationError("Audio window is unavailable.");
+          }
+          vectors.push(await this.#embedWithProvider(() => session.embedAudioPayload(window.bytesBase64)));
         }
         if (this.#state?.generation !== generation) return null;
+        if (vectors.length === 0) throw new SemanticPreparationError("Audio conversion produced no windows.");
         return meanPoolEmbeddings(vectors);
       } finally {
         await this.options.requestWorker({
@@ -702,12 +724,22 @@ export class EmbeddingTestIndex {
     }
     if (target.kind === "text") {
       if (this.#state?.generation !== generation) return null;
-      if (prepared.text === undefined) throw new Error("Semantic text payload is unavailable.");
+      if (prepared.text === undefined) throw new SemanticPreparationError("Semantic text payload is unavailable.");
       const text = prepared.text;
-      return normalizeEmbedding(await this.#enqueue(() => session.embedText(text)));
+      return this.#embedWithProvider(() => session.embedText(text));
     }
-    if (!prepared.mimeType || !prepared.bytesBase64) throw new Error("Semantic image payload is unavailable.");
-    return normalizeEmbedding(await this.#enqueue(() => session.embedImagePayload(prepared.mimeType!, prepared.bytesBase64!)));
+    if (!prepared.mimeType || !prepared.bytesBase64) {
+      throw new SemanticPreparationError("Semantic image payload is unavailable.");
+    }
+    return this.#embedWithProvider(() => session.embedImagePayload(prepared.mimeType!, prepared.bytesBase64!));
+  }
+
+  async #embedWithProvider(work: () => Promise<number[]>): Promise<number[]> {
+    try {
+      return normalizeEmbedding(await this.#enqueue(work));
+    } catch {
+      throw new SemanticProviderError("Embedding model request failed.");
+    }
   }
 
   async #listTargets(
@@ -721,7 +753,7 @@ export class EmbeddingTestIndex {
       type: "semantic.index.targets",
       libraryId,
       sessionGeneration: state.sessionGeneration,
-      modalities: ["text", "image", "audio", "video"],
+      modalities: [...LOCAL_GEMMA_INPUT_MODALITIES],
       offset,
       limit: 500,
       revisionSnapshot,
@@ -748,7 +780,7 @@ export class EmbeddingTestIndex {
     sourceRevision: string,
     claimToken: string,
     action: "claim" | "fail",
-    errorCategory?: "provider" | "preparation",
+    errorCategory?: "provider" | "preparation" | "storage",
   ): Promise<boolean> {
     const state = this.#state;
     if (!state || state.generation !== generation) return false;

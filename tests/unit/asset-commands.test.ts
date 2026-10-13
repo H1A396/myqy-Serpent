@@ -64,8 +64,7 @@ function makeCtx(
     aiCanAnalyze: true,
     pasteTargetFolderId: 'folder-1',
     semanticSearchEnabled: false,
-    similarImageSupported: false,
-    similarSourceDamaged: false,
+    similarSourceSupported: false,
     actions: makeActions(calls),
     ...overrides,
   };
@@ -205,10 +204,10 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
     ]);
   });
 
-  it('语义搜索开启后，找相似紧跟所在文件夹；不支持的类型禁用', () => {
+  it('语义搜索开启后只为当前模型可处理的资产显示找相似', () => {
     const enabled = makeCtx({
       semanticSearchEnabled: true,
-      similarImageSupported: true,
+      similarSourceSupported: true,
     });
     const ids = resolveIds(enabled.ctx);
     expect(ids.indexOf('asset.find-similar')).toBe(
@@ -218,39 +217,17 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
 
     const unsupported = makeCtx({
       semanticSearchEnabled: true,
-      similarImageSupported: false,
+      similarSourceSupported: false,
     });
-    const item = findItem(registry.resolveMenu(unsupported.ctx), 'asset.find-similar');
-    expect(item.disabled).toBe(true);
-    expect(item.disabledReason).toBe('当前模型不支持此类资产');
+    expect(resolveIds(unsupported.ctx)).not.toContain('asset.find-similar');
   });
 
-  it('自定义服务和未声明的模态使用各自的禁用说明', () => {
-    const service = makeCtx({
-      semanticSearchEnabled: true,
-      similarImageSupported: false,
-      similarBlockedReason: 'service',
-    });
-    expect(findItem(registry.resolveMenu(service.ctx), 'asset.find-similar').disabledReason)
-      .toBe('请先安装本机模型，再按图查找相似资产');
-    const modality = makeCtx({
-      semanticSearchEnabled: true,
-      similarImageSupported: false,
-      similarBlockedReason: 'modality',
-    });
-    expect(findItem(registry.resolveMenu(modality.ctx), 'asset.find-similar').disabledReason)
-      .toBe('当前模型未声明支持此类内容');
-  });
-
-  it('损坏的图片不能用来找相似', () => {
+  it('损坏或无法作为预览输入的资产不显示找相似', () => {
     const { ctx } = makeCtx({
       semanticSearchEnabled: true,
-      similarImageSupported: true,
-      similarSourceDamaged: true,
+      similarSourceSupported: false,
     });
-    const item = findItem(registry.resolveMenu(ctx), 'asset.find-similar');
-    expect(item.disabled).toBe(true);
-    expect(item.disabledReason).toBe('该文件已损坏，无法参与语义搜索');
+    expect(resolveIds(ctx)).not.toContain('asset.find-similar');
   });
 
   it('回收站里不显示找相似', () => {

@@ -242,6 +242,119 @@ test("creates a nested subfolder inline from the folder context menu", async () 
   }
 });
 
+test("restores the default cover only when a folder has a custom cover", async () => {
+  const temporaryRoot = mkdtempSync(
+    path.join(tmpdir(), "serpent-folder-cover-menu-"),
+  );
+  const libraryName = "Folder Cover Menu";
+  const libraryPath = path.join(temporaryRoot, libraryName);
+  const sourcePath = path.join(temporaryRoot, "cover.png");
+  writeFileSync(sourcePath, VALID_PNG);
+
+  const application = await launchApp(temporaryRoot, libraryPath, sourcePath);
+
+  try {
+    const window = await application.firstWindow();
+    await createLibrary(window, libraryName);
+    await createFolderViaSidebar(window, "封面文件夹");
+    let menu = await openFolderContextMenu(window, "封面文件夹");
+    await expect(
+      menu.getByRole("menuitem", { name: "恢复默认封面", exact: true }),
+    ).toHaveCount(0);
+    await window.keyboard.press("Escape");
+
+    await window
+      .getByRole("button", { name: "导入文件", exact: true })
+      .first()
+      .click();
+    await expect(
+      window.locator('[data-asset-id][data-asset-name="cover.png"]'),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const { libraryId, folderId, assetId } = await window.evaluate(async () => {
+      type Result<T> = { ok: boolean; value?: T; error?: { message?: string } };
+      const library = (globalThis as typeof globalThis & {
+        serpent: { library: {
+          listOpen(): Promise<Result<Array<{ libraryId: string }>>>;
+          listFolders(input: { libraryId: string }): Promise<Result<Array<{ folderId: string; name: string }>>>;
+          listAssets(input: { libraryId: string; recursive: boolean }): Promise<Result<Array<{ assetId: string }>>>;
+        } };
+      }).serpent.library;
+      const opened = await library.listOpen();
+      const libraryId = opened.value?.[0]?.libraryId;
+      if (!opened.ok || !libraryId) throw new Error("Expected an open library.");
+      const [folders, assets] = await Promise.all([
+        library.listFolders({ libraryId }),
+        library.listAssets({ libraryId, recursive: true }),
+      ]);
+      const folderId = folders.value?.find((folder) => folder.name === "封面文件夹")?.folderId;
+      const assetId = assets.value?.[0]?.assetId;
+      if (!folders.ok || !folderId || !assets.ok || !assetId) {
+        throw new Error("Expected a folder and an imported cover asset.");
+      }
+      return { libraryId, folderId, assetId };
+    });
+
+    await window.evaluate(async ({ libraryId, folderId, assetId }) => {
+      const api = (globalThis as typeof globalThis & {
+        serpent: { library: {
+          setFolderCoverFromAsset(input: {
+            libraryId: string;
+            folderIds: string[];
+            assetId: string;
+          }): Promise<{ ok: boolean; error?: { message?: string } }>;
+        } };
+      }).serpent.library;
+      const result = await api.setFolderCoverFromAsset({
+        libraryId,
+        folderIds: [folderId],
+        assetId,
+      });
+      if (!result.ok) throw new Error(result.error?.message ?? "Could not set the custom cover.");
+    }, { libraryId, folderId, assetId });
+
+    await window.reload();
+    await expect(sidebarFolderRow(window, "封面文件夹")).toBeVisible({ timeout: 10_000 });
+    const folderGlyph = sidebarFolderRow(window, "封面文件夹").locator(".nav-entity-glyph");
+    await expect(folderGlyph.locator("img")).toHaveCount(0);
+    await expect(folderGlyph.locator("svg.icon")).toHaveCount(1);
+    menu = await openFolderContextMenu(window, "封面文件夹");
+    const restoreItem = menu.getByRole("menuitem", {
+      name: "恢复默认封面",
+      exact: true,
+    });
+    await expect(restoreItem).toBeVisible();
+    await restoreItem.click();
+
+    await expect.poll(async () => window.evaluate(async (folderId) => {
+      const api = (globalThis as typeof globalThis & {
+        serpent: { library: {
+          listFolderBrowseEntries(input: {
+            libraryId: string;
+            parentFolderId: string | null;
+          }): Promise<{ ok: boolean; value?: Array<{ folderId: string; hasCustomCover?: boolean }> }>;
+          listOpen(): Promise<{ ok: boolean; value?: Array<{ libraryId: string }> }>;
+        } };
+      }).serpent.library;
+      const opened = await api.listOpen();
+      const libraryId = opened.value?.[0]?.libraryId;
+      if (!opened.ok || !libraryId) return null;
+      const entries = await api.listFolderBrowseEntries({ libraryId, parentFolderId: null });
+      return entries.ok
+        ? entries.value?.find((entry) => entry.folderId === folderId)?.hasCustomCover ?? false
+        : null;
+    }, folderId)).toBe(false);
+
+    menu = await openFolderContextMenu(window, "封面文件夹");
+    await expect(
+      menu.getByRole("menuitem", { name: "恢复默认封面", exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    await application.close();
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Test 2 — 重命名… edits the row in place and keeps content
 // ---------------------------------------------------------------------------

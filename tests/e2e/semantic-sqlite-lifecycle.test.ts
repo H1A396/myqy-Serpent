@@ -17,6 +17,25 @@ async function openSemanticSettings(window: Page): Promise<void> {
   await window.getByRole('tab', { name: '自定义', exact: true }).click();
 }
 
+async function findImportedAssetCard(window: Page, fileName: string) {
+  const assetId = await window.evaluate(async (name) => {
+    const api = (globalThis as typeof globalThis & { serpent: { library: {
+      listOpen(): Promise<{ ok: boolean; value?: Array<{ libraryId: string }> }>;
+      listAssets(input: { libraryId: string; recursive: boolean }): Promise<{
+        ok: boolean; value?: Array<{ assetId: string; relativeFilePath: string }>;
+      }>;
+    } } }).serpent.library;
+    const opened = await api.listOpen();
+    const libraryId = opened.value?.[0]?.libraryId;
+    if (!opened.ok || !libraryId) throw new Error('The semantic fixture library is not open.');
+    const listed = await api.listAssets({ libraryId, recursive: true });
+    if (!listed.ok) throw new Error('Could not list semantic fixture assets.');
+    return listed.value?.find((asset) => asset.relativeFilePath.endsWith(name))?.assetId ?? null;
+  }, fileName);
+  if (!assetId) throw new Error(`The semantic fixture asset ${fileName} is missing.`);
+  return window.locator(`[data-asset-id="${assetId}"]`);
+}
+
 async function closeApplicationBounded(application: {
   close(): Promise<void>;
   process(): ChildProcess;
@@ -59,9 +78,11 @@ test('persists Worker-owned vectors through full app restart and reuses them for
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'serpent-semantic-sqlite-e2e-'));
   const corpusPath = path.join(temporaryRoot, 'semantic-corpus.txt');
   const otherPath = path.join(temporaryRoot, 'other-corpus.txt');
+  const failedPath = path.join(temporaryRoot, 'semantic-failure.txt');
   const imagePath = path.join(temporaryRoot, 'unsupported-image.png');
   writeFileSync(corpusPath, 'semantic corpus seed alpha');
   writeFileSync(otherPath, 'semantic corpus seed beta');
+  writeFileSync(failedPath, 'semantic corpus seed provider failure');
   writeFileSync(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
 
   let corpusRequests = 0;
@@ -74,6 +95,11 @@ test('persists Worker-owned vectors through full app restart and reuses them for
     for (const input of inputs) {
       if (input.includes('semantic corpus seed')) corpusRequests += 1;
       else queryRequests += 1;
+    }
+    if (inputs.some((input) => input.includes('provider failure'))) {
+      response.writeHead(503, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: { message: 'Fixture provider failure.' } }));
+      return;
     }
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ data: inputs.map((input, index) => ({
@@ -101,7 +127,7 @@ test('persists Worker-owned vectors through full app restart and reuses them for
       SERPENT_E2E_USER_DATA_PATH: path.join(temporaryRoot, 'user-data'),
       SERPENT_E2E_CREATE_PARENT_PATH: temporaryRoot,
       SERPENT_E2E_OPEN_LIBRARY_PATH: path.join(temporaryRoot, 'Semantic fixture'),
-      SERPENT_E2E_IMPORT_FILES: [corpusPath, otherPath, imagePath].join(path.delimiter),
+      SERPENT_E2E_IMPORT_FILES: [corpusPath, otherPath, failedPath, imagePath].join(path.delimiter),
     },
   });
   let application: Awaited<ReturnType<typeof launch>> | undefined;
@@ -125,6 +151,7 @@ test('persists Worker-owned vectors through full app restart and reuses them for
     });
 
     await openSemanticSettings(window);
+    await expect(window.getByText(/可以用自然语言模糊查找内容.*内存占用会增加/u)).toBeVisible();
     await window.getByRole('button', { name: '添加服务', exact: true }).click();
     await window.locator('#embedding-service-name').fill('Local semantic fixture');
     await window.locator('#embedding-service-url').fill(endpoint);
@@ -142,7 +169,7 @@ test('persists Worker-owned vectors through full app restart and reuses them for
       const api = (globalThis as typeof globalThis & { serpent: { library: {
         listOpen(): Promise<{ ok: boolean; value?: Array<{ libraryId: string }> }>;
         embeddingIndexStatus(input: { libraryId: string; modelId: string; run: boolean; restart: boolean }): Promise<{
-          ok: boolean; value?: { phase: string; done: number; total: number };
+          ok: boolean; value?: { phase: string; done: number; total: number; failedCount: number };
         }>;
         embeddingListServices(): Promise<{ ok: boolean; value?: Array<{ id: string; name: string }> }>;
       } } }).serpent.library;
@@ -154,10 +181,39 @@ test('persists Worker-owned vectors through full app restart and reuses them for
       const status = await api.embeddingIndexStatus({ libraryId, modelId: service.id, run: true, restart: false });
       return status.value;
     });
-    await expect.poll(readIndexState, { timeout: 90_000 }).toMatchObject({ phase: 'ready', done: 2, total: 2 });
+    await expect.poll(readIndexState, { timeout: 90_000 }).toMatchObject({
+      phase: 'ready', done: 2, total: 3, failedCount: 1,
+    });
     const indexedCorpusCalls = corpusRequests;
-    expect(indexedCorpusCalls).toBe(2);
+    expect(indexedCorpusCalls).toBe(3);
 
+    await window.keyboard.press('Escape');
+    const failedAssetCard = await findImportedAssetCard(window, 'semantic-failure.txt');
+    await failedAssetCard.click();
+    await failedAssetCard.click({ button: 'right' });
+    const failedContextMenu = window.getByRole('menu');
+    await expect(failedContextMenu.getByRole('menuitem', { name: '找相似', exact: true })).toBeVisible();
+    await failedContextMenu.getByRole('menuitem', { name: '找相似', exact: true }).click();
+    await expect(window.getByText('此资产未能完成向量编码，暂时无法查找相似内容。')).toBeVisible();
+    await window.getByRole('button', { name: '更多工具', exact: true }).click();
+    await window.getByRole('menuitem', { name: '后台任务', exact: true }).click();
+    await expect(window.locator('.media-jobs-embedding-section'))
+      .toContainText('有 1 个文本未能完成编码');
+    await window.getByRole('button', { name: '关闭后台任务' }).click();
+
+    await window.keyboard.press('Escape');
+    const supportedTextCard = await findImportedAssetCard(window, 'semantic-corpus.txt');
+    await supportedTextCard.click();
+    await supportedTextCard.click({ button: 'right' });
+    const textContextMenu = window.getByRole('menu');
+    await expect(textContextMenu.getByRole('menuitem', { name: '找相似', exact: true })).toBeVisible();
+    await window.keyboard.press('Escape');
+    const unsupportedImageCard = await findImportedAssetCard(window, 'unsupported-image.png');
+    await unsupportedImageCard.click();
+    await unsupportedImageCard.click({ button: 'right' });
+    const imageContextMenu = window.getByRole('menu');
+    await expect(imageContextMenu).toBeVisible();
+    await expect(imageContextMenu.getByRole('menuitem', { name: '找相似', exact: true })).toHaveCount(0);
     await window.keyboard.press('Escape');
     const search = window.getByRole('combobox', { name: '搜索资源库' });
     await search.fill('quarterly budget meeting');
@@ -208,7 +264,9 @@ test('persists Worker-owned vectors through full app restart and reuses them for
     await window.getByRole('button', { name: '打开资源库', exact: true }).click();
     await expect(window.getByRole('button', { name: /当前资源库 Semantic fixture/ })).toBeVisible();
     await openSemanticSettings(window);
-    await expect.poll(readIndexState, { timeout: 90_000 }).toMatchObject({ phase: 'ready', done: 2, total: 2 });
+    await expect.poll(readIndexState, { timeout: 90_000 }).toMatchObject({
+      phase: 'ready', done: 2, total: 3, failedCount: 1,
+    });
     expect(corpusRequests).toBe(indexedCorpusCalls);
     await window.keyboard.press('Escape');
     const queriesBeforeRestartSearch = queryRequests;

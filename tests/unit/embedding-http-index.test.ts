@@ -44,6 +44,45 @@ describe('EmbeddingHttpIndex', () => {
     await index.close();
   });
 
+  it('persists source preparation failures as durable failed jobs', async () => {
+    const failedJobs: Extract<WorkerCommand, { type: 'semantic.index.job' }>[] = [];
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      if (command.type === 'semantic.index.begin') {
+        return { ok: true, type: 'semantic.index.started', profileId: '0'.repeat(64), nativeCosineAvailable: false };
+      }
+      if (command.type === 'semantic.index.import-legacy') {
+        return { ok: true, type: 'semantic.index.legacy-imported', attempted: false, acceptedRows: 0, rejectedRows: 0 };
+      }
+      if (command.type === 'semantic.index.targets') {
+        return { ok: true, type: 'semantic.index.targets', revisionSnapshot: 1, total: 1, nextOffset: null,
+          targets: [{ assetId: 'asset-a', sourceRevision: 'revision-a', kind: 'text', modality: 'text',
+            alreadyIndexed: false, jobStatus: 'pending' }] };
+      }
+      if (command.type === 'semantic.index.job') {
+        if (command.action === 'fail') failedJobs.push(command);
+        return { ok: true, type: 'semantic.index.job-updated', updated: true };
+      }
+      if (command.type === 'semantic.index.prepare') throw new Error('Source file is unavailable.');
+      return { ok: true, type: 'semantic.index.closed' };
+    });
+    const index = createIndex(requestWorker);
+    try {
+      index.handleStatus({ libraryId: 'library-one', modelId: service.id, run: true });
+      for (let attempt = 0; attempt < 100 && failedJobs.length === 0; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+      }
+
+      expect(failedJobs).toHaveLength(1);
+      expect(failedJobs[0]).toMatchObject({
+        action: 'fail', assetId: 'asset-a', sourceRevision: 'revision-a', errorCategory: 'preparation',
+      });
+      expect(index.handleStatus({ libraryId: 'library-one', modelId: service.id, run: false }))
+        .toMatchObject({ type: 'embedding.index.status', phase: 'ready', failedCount: 1 });
+    } finally {
+      await index.close();
+    }
+  });
+
   it('starts the newest library generation after an older begin request unwinds', async () => {
     let releaseOldBegin: ((result: WorkerResult) => void) | undefined;
     const begunLibraries: string[] = [];

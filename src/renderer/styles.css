@@ -2377,17 +2377,6 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
   color: inherit;
 }
 
-.nav-folder-cover,
-.scope-crumb-cover {
-  width: 15px;
-  height: 15px;
-  object-fit: cover;
-  border-radius: 2px;
-  flex: 0 0 auto;
-  vertical-align: -3px;
-  margin-right: 4px;
-}
-
 .nav-entity-glyph-emoji {
   line-height: 1;
   font-size: 13px;

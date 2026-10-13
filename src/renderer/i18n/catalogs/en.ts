@@ -596,7 +596,7 @@ export const en = {
       chooseCover: "Choose cover",
       chooseCoverFromLibrary: "From library",
       chooseCoverFromFile: "From file",
-      clearCover: "Use automatic cover",
+      clearCover: "Restore default cover",
     },
   collection: {
       newSubcollection: "New subcollection",
@@ -1739,6 +1739,7 @@ export const en = {
     semanticSearch: {
       enabled: "Turn on semantic search",
       enabledHint: "When this is off, no library uses semantic search. Off by default.",
+      resourceNotice: "Use natural language to find content by meaning and find similar assets. Semantic search increases library preparation time and memory use.",
       defaultModel: "Default model",
       defaultModelHint: "Libraries without their own choice use this default.",
       defaultModelEmpty: "Install a local model, or add a custom service first.",
@@ -1763,6 +1764,7 @@ export const en = {
       similarBanner: "Similar to this asset",
       similarBack: "Back",
       similarPreparing: "Preparing this asset. Similar results will appear when it is ready.",
+      similarFailed: "This asset could not be encoded, so similar results are unavailable for now.",
       similarUnsupported: "This asset does not support finding similar results yet.",
       similarUnavailable: "Semantic search is not ready yet.",
       similarEmpty: "No other assets to compare yet.",
@@ -1899,13 +1901,13 @@ export const en = {
     showAiBadges: "Show AI badges",
     showAiBadgesHint: "When off, AI-written description/tags/rating stay; only the Inspector AI badges are hidden.",
     confirmationsSection: "Confirmations",
-    importConflictRemember: "Remembered import conflict choices",
+    importConflictRemember: "Remembered defaults",
     importConflictRememberHint:
-      "If you chose “Remember my choice”, name and content-duplicate imports apply that decision without a dialog.",
+      "Choices you asked Serpent to remember in dialogs appear here.",
     importConflictRememberName: "Name conflicts",
     importConflictRememberDuplicate: "Content duplicates",
     importConflictRememberClear: "Clear this choice",
-    importConflictRememberEmpty: "No import conflict choices remembered"
+    importConflictRememberEmpty: "No remembered defaults"
   },
   preview: {
     ffmpegRequired: "This install is missing the media component needed for a video playback proxy. Reinstall or repair Serpent and try again.",

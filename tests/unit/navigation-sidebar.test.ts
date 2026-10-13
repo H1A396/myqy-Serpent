@@ -552,6 +552,8 @@ describe("NavigationSidebar virtual library root", () => {
     };
     const onAssetsDroppedOnCollection = vi.fn();
     const onResolveManagedAssetDrop = vi.fn(async () => ["asset-1"]);
+    const onImportDroppedFiles = vi.fn();
+    let internalAssetDrag = true;
     const props = createNavigationProps({
       collections: [parent, child],
       collectionTree: new Map([
@@ -561,6 +563,8 @@ describe("NavigationSidebar virtual library root", () => {
       onExternalDragOver: (event) => event.preventDefault(),
       onAssetsDroppedOnCollection,
       onResolveManagedAssetDrop,
+      onImportDroppedFiles,
+      isInternalAssetDrag: () => internalAssetDrag,
     });
     container = document.createElement("div");
     document.body.append(container);
@@ -619,6 +623,21 @@ describe("NavigationSidebar virtual library root", () => {
       child.collectionId,
       ["asset-1"],
       "move",
+    );
+
+    internalAssetDrag = false;
+    await act(async () => {
+      dropEvent = dispatchDropEvent(childRow!, nativeFileTransfer);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onResolveManagedAssetDrop).toHaveBeenCalledTimes(1);
+    expect(onAssetsDroppedOnCollection).toHaveBeenCalledTimes(1);
+    expect(onImportDroppedFiles).toHaveBeenCalledWith(
+      nativeFileTransfer.files,
+      undefined,
+      child.collectionId,
+      { files: nativeFileTransfer.files, html: "", uriList: "" },
     );
   });
 

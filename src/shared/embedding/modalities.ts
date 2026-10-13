@@ -6,8 +6,13 @@
 export const EMBEDDING_MODALITIES = ["image", "video", "audio", "text"] as const;
 export type EmbeddingModality = (typeof EMBEDDING_MODALITIES)[number];
 
-/** Local EmbeddingGemma presets encode stills, thumbnail video, audio, and text. */
+/** Input forms the local EmbeddingGemma runtime currently sends to llama-server. */
+export const LOCAL_GEMMA_INPUT_MODALITIES = ["image", "audio", "text"] as const;
+
+/** Model card capabilities; video assets currently use their image preview in Serpent. */
 export const LOCAL_GEMMA_MODALITIES: readonly EmbeddingModality[] = ["image", "video", "audio", "text"];
+
+export type EmbeddingSourceModality = (typeof LOCAL_GEMMA_INPUT_MODALITIES)[number];
 
 export function isEmbeddingModality(value: string): value is EmbeddingModality {
   return (EMBEDDING_MODALITIES as readonly string[]).includes(value);
@@ -23,6 +28,21 @@ export function explicitEmbeddingModalities(value: readonly string[]): Embedding
   return collectEmbeddingModalities(value);
 }
 
+/**
+ * Modalities supported by the selected HTTP adapter's request shape today.
+ * Saved declarations for audio/video do not make those inputs usable unless
+ * the adapter can actually send them. Video thumbnails are image inputs.
+ */
+export function embeddingInputModalitiesForAdapter(
+  adapter: "openai-embeddings-v1" | "llamacpp-multimodal-v1" | "dashscope-multimodal-v1",
+  declared: readonly EmbeddingModality[],
+): EmbeddingSourceModality[] {
+  const supported: EmbeddingSourceModality[] = [];
+  if (declared.includes("text")) supported.push("text");
+  if (adapter !== "openai-embeddings-v1" && declared.includes("image")) supported.push("image");
+  return supported;
+}
+
 function collectEmbeddingModalities(value: unknown): EmbeddingModality[] | null {
   if (!Array.isArray(value)) return null;
   const seen = new Set<EmbeddingModality>();
@@ -32,39 +52,8 @@ function collectEmbeddingModalities(value: unknown): EmbeddingModality[] | null 
   return seen.size > 0 ? EMBEDDING_MODALITIES.filter((modality) => seen.has(modality)) : null;
 }
 
-/** Video, audio, and text stay themselves. Other readable assets use a picture. */
-export function modalityForMediaType(mediaType: string): EmbeddingModality {
-  if (mediaType === "video" || mediaType === "audio" || mediaType === "text") return mediaType;
-  return "image";
-}
-
-export type SimilarMenuBlock = "service" | "modality";
-
-/**
- * Find-similar needs a declared modality the current adapter actually indexes.
- * Text-only HTTP services cannot encode pictures; multimodal HTTP (image/video
- * declared) ranks from the shared index once the source vector exists.
- */
-export function similarMenuBlock(input: {
-  mediaType: string;
-  implementation: "gemma" | "http";
-  declared: readonly EmbeddingModality[];
-  /** Reserved: local dual-index fallback is not active while an HTTP service is bound. */
-  localSimilarReady?: boolean;
-}): SimilarMenuBlock | null {
-  const modality = modalityForMediaType(input.mediaType);
-  if (!input.declared.includes(modality)) return "modality";
-  if (input.implementation === "http") {
-    // OpenAI-compatible indexes text only. DashScope may declare image/video.
-    const httpCanVisual = input.declared.includes("image") || input.declared.includes("video");
-    if (modality !== "text" && !httpCanVisual) return "service";
-    return null;
-  }
-  return null;
-}
-
 /** Custom HTTP services that only declare text use text-oriented index copy. */
 export function embeddingServiceTextOnly(modalities: readonly EmbeddingModality[] | null | undefined): boolean {
   if (!modalities || modalities.length === 0) return true;
-  return !modalities.some((modality) => modality === "image" || modality === "video");
+  return !modalities.includes("image");
 }

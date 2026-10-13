@@ -198,6 +198,7 @@ export function SemanticSearchSettings({
             onCheckedChange={(enabled) => updatePrefs({ enabled })}
           />
         </div>
+        <p className="app-settings-hint">{t("settings.semanticSearch.resourceNotice")}</p>
         <div className="app-settings-card-divider" />
         <div className="app-settings-action-row semantic-settings-toolbar">
           <div className="app-settings-row-copy">

@@ -2,56 +2,93 @@ import { describe, expect, it } from "vitest";
 
 import {
   resolveFindSimilar,
-  similarImageSupported,
+  canFindSimilarForAsset,
 } from "../../src/renderer/find-similar";
 import {
   rankSimilarAssetIds,
   takeNextEmbeddingTarget,
 } from "../../src/main/embedding-test-index";
-import { isDamagedEmbeddingAsset } from "../../src/shared/embedding/profile";
+import { embeddingInputModalitiesForAdapter, LOCAL_GEMMA_INPUT_MODALITIES } from "../../src/shared/embedding/modalities";
+import { embeddingAudioRevision, embeddingSourceForModalities, isDamagedEmbeddingAsset } from "../../src/shared/embedding/profile";
 import { rendererResultSchema } from "../../src/shared/protocol/responses";
 
 describe("find similar", () => {
-  it("uses the original still, a sound, a document, or a ready thumbnail", () => {
-    expect(similarImageSupported({
+  it("uses supported original inputs and falls back to a ready image preview", () => {
+    expect(embeddingSourceForModalities({
+      mediaType: "audio",
+      relativeFilePath: "take.wav",
+      currentRevisionId: "rev-1",
+    }, ["audio"])).toEqual({ kind: "audio", revision: embeddingAudioRevision("rev-1") });
+    expect(canFindSimilarForAsset({
       mediaType: "image",
       relativeFilePath: "refs/hero.PNG",
     })).toBe(true);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",
     })).toBe(false);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",
       thumbnailStatus: "ready",
       thumbnailArtifactId: "thumb-1",
     })).toBe(true);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "audio",
       relativeFilePath: "take.wav",
     })).toBe(true);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "audio",
       relativeFilePath: "take.wav",
       thumbnailStatus: "failed",
     })).toBe(true);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "text",
       relativeFilePath: "notes.md",
     })).toBe(true);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "audio",
       relativeFilePath: "broken.wav",
       currentRevisionId: "corrupt:asset-1",
     })).toBe(false);
-    expect(similarImageSupported({
+    expect(canFindSimilarForAsset({
       mediaType: "image",
       relativeFilePath: "broken.jpg",
       currentRevisionId: "rev-1",
       thumbnailStatus: "failed",
       thumbnailArtifactId: "thumb-4",
     })).toBe(false);
+    expect(canFindSimilarForAsset({
+      mediaType: "audio",
+      relativeFilePath: "take.wav",
+      currentRevisionId: "rev-1",
+      thumbnailStatus: "ready",
+      thumbnailArtifactId: "audio-preview",
+    }, ["image"])).toBe(true);
+    expect(canFindSimilarForAsset({
+      mediaType: "audio",
+      relativeFilePath: "take.wav",
+      currentRevisionId: "rev-1",
+    }, ["image"])).toBe(false);
+    expect(canFindSimilarForAsset({
+      mediaType: "text",
+      relativeFilePath: "notes.md",
+      currentRevisionId: "rev-1",
+      thumbnailStatus: "ready",
+      thumbnailArtifactId: "text-preview",
+    }, ["image"])).toBe(true);
+    expect(canFindSimilarForAsset({
+      mediaType: "video",
+      relativeFilePath: "clip.mp4",
+      currentRevisionId: "rev-1",
+      thumbnailStatus: "ready",
+      thumbnailArtifactId: "video-preview",
+    }, ["text"])).toBe(false);
+    expect([...LOCAL_GEMMA_INPUT_MODALITIES].sort()).toEqual(["audio", "image", "text"]);
+    expect([...embeddingInputModalitiesForAdapter("openai-embeddings-v1", ["text", "image", "audio", "video"])])
+      .toEqual(["text"]);
+    expect([...embeddingInputModalitiesForAdapter("llamacpp-multimodal-v1", ["text", "image", "audio", "video"])].sort())
+      .toEqual(["image", "text"]);
   });
 
   it("treats a failed preview or a missing revision as damaged", () => {
@@ -113,6 +150,20 @@ describe("find similar", () => {
     expect(calls).toBe(3);
   });
 
+  it("returns a terminal encoding failure instead of continuing to poll", async () => {
+    let calls = 0;
+    const page = await resolveFindSimilar({
+      query: async () => {
+        calls += 1;
+        return { status: "failed", assetIds: [] };
+      },
+      shouldContinue: () => true,
+      delay: async () => undefined,
+    });
+    expect(page).toEqual({ status: "failed", assetIds: [] });
+    expect(calls).toBe(1);
+  });
+
   it("stops polling when the caller cancels", async () => {
     let continuePolling = true;
     const page = await resolveFindSimilar({
@@ -137,6 +188,21 @@ describe("find similar", () => {
       status: "ready",
       sourceAssetId: "source",
       assetIds: ["near", "far"],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts an explicit failed similar-source status", () => {
+    const parsed = rendererResultSchema.safeParse({
+      ok: true,
+      type: "embedding.similar",
+      phase: "ready",
+      done: 2,
+      total: 4,
+      failedCount: 1,
+      status: "failed",
+      sourceAssetId: "source",
+      assetIds: [],
     });
     expect(parsed.success).toBe(true);
   });

@@ -7,14 +7,12 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
 import {
-  embeddingAudioRevision,
-  embeddingSourcePlan,
-  embeddingTextRevision,
-  embeddingThumbnailRevision,
+  embeddingSourceForModalities,
   clipEmbeddingDocument,
   formatEmbeddingDocument,
   normalizeEmbedding,
 } from '../../shared/embedding/profile';
+import type { EmbeddingSourceModality } from '../../shared/embedding/modalities';
 import type { WorkerCommand, WorkerRequest } from '../../shared/protocol/requests';
 import type { InternalLibrarySummary, WorkerResult } from '../../shared/protocol/responses';
 import type { AssetSummary } from '../../shared/asset-types';
@@ -209,6 +207,7 @@ type Session = {
   profile: SemanticVectorProfile;
   profileId: string;
   store: SemanticIndexStore;
+  modalities: readonly EmbeddingSourceModality[];
 };
 
 const sessions = new Map<string, Session>();
@@ -417,22 +416,14 @@ function sourceForAsset(asset: {
   currentRevisionId: string;
   availability?: AssetSummary['availability'];
   thumbnailArtifactId?: string | null;
+  thumbnailStatus?: string | null;
   deletedAt?: string | null;
   displayName: string;
-}): { kind: 'image' | 'audio' | 'text'; revision: string } | null {
-  const plan = embeddingSourcePlan(asset);
-  if (plan === 'none') return null;
-  if (plan === 'audio') return { kind: 'audio', revision: embeddingAudioRevision(asset.currentRevisionId) };
-  if (plan === 'text') {
-    // The title is part of the model input and changes on a file rename.
-    return { kind: 'text', revision: `${embeddingTextRevision(asset.currentRevisionId)}\ntitle:${asset.displayName}` };
-  }
-  return {
-    kind: 'image',
-    revision: plan === 'thumbnail' && asset.thumbnailArtifactId
-      ? embeddingThumbnailRevision(asset.currentRevisionId, asset.thumbnailArtifactId)
-      : asset.currentRevisionId,
-  };
+}, modalities: readonly EmbeddingSourceModality[] = ['audio', 'text', 'image']): {
+  kind: 'image' | 'audio' | 'text';
+  revision: string;
+} | null {
+  return embeddingSourceForModalities(asset, modalities);
 }
 
 function legacyCacheFile(cacheKind: 'local' | 'http', libraryId: string, cacheId: string): string | null {
@@ -481,7 +472,7 @@ async function verifyLegacyImport(
     const rows = batch;
     batch = [];
     const assets = service.getSemanticAssetSources(libraryId, rows.map((row) => row.assetId));
-    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset)] as const));
+    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset, session.modalities)] as const));
     for (const row of rows) {
       const source = current.get(row.assetId);
       if (!source || source.kind === 'text' || source.revision !== row.revisionId
@@ -565,7 +556,7 @@ async function importLegacyCache(
     const rows = batch;
     batch = [];
     const assets = service.getSemanticAssetSources(libraryId, rows.map((row) => row.assetId));
-    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset)] as const));
+    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset, session.modalities)] as const));
     const candidates = rows.flatMap((row) => {
       const source = current.get(row.assetId);
       // Older text revisions omitted the file title. There is no trustworthy
@@ -639,11 +630,13 @@ export async function executeSemanticIndexWorkerCommand(
     const library = currentLibrary(service, command.libraryId);
     const previous = sessions.get(command.libraryId);
     const profileKey = command.profileKey;
+    const modalities = command.modalities ?? ['image', 'audio', 'text'];
     if (previous?.generation === command.sessionGeneration
       && previous.profile.profileKey === profileKey
       && previous.profile.dimensions === command.dimensions
       && previous.profile.modelRevision === command.modelRevision
-      && previous.profile.modality === command.modality) {
+      && previous.profile.modality === command.modality
+      && previous.modalities.join(',') === modalities.join(',')) {
       return { ok: true, type: 'semantic.index.started', profileId: previous.profileId,
         nativeCosineAvailable: previous.store.nativeCosineAvailable };
     }
@@ -669,7 +662,7 @@ export async function executeSemanticIndexWorkerCommand(
           const sources = vectorSources.slice(start, start + TARGET_PAGE_SIZE);
           const assets = service.getSemanticAssetSources(command.libraryId, sources.map(({ assetId }) => assetId));
           for (const asset of assets) {
-            const source = sourceForAsset(asset);
+            const source = sourceForAsset(asset, modalities);
             if (source) liveRevisions.set(asset.assetId, source.revision);
           }
           await hooks.runWithoutAdmission(() => new Promise<void>((resolve) => setImmediate(resolve)));
@@ -684,7 +677,7 @@ export async function executeSemanticIndexWorkerCommand(
       store.close();
       throw error;
     }
-    sessions.set(command.libraryId, { generation: command.sessionGeneration, profile, profileId, store });
+    sessions.set(command.libraryId, { generation: command.sessionGeneration, profile, profileId, store, modalities });
     return {
       ok: true,
       type: 'semantic.index.started',
@@ -747,11 +740,12 @@ export async function executeSemanticIndexWorkerCommand(
     const assets = pageIds.length
       ? service.getSemanticAssetSources(command.libraryId, pageIds)
       : [];
+    const allowedModalities = command.modalities
+      .filter((modality): modality is EmbeddingSourceModality => session.modalities.includes(modality));
     const kindById = new Map(assets.flatMap((asset) => {
-      const source = sourceForAsset(asset);
-      const modality = asset.mediaType === 'video' ? 'video' : source?.kind;
-      return source && modality && command.modalities.includes(modality)
-        ? [[asset.assetId, { ...source, modality, alreadyIndexed: session.store.hasVector(session.profileId, asset.assetId, source.revision) }] as const]
+      const source = sourceForAsset(asset, allowedModalities);
+      return source
+        ? [[asset.assetId, { ...source, modality: source.kind, alreadyIndexed: session.store.hasVector(session.profileId, asset.assetId, source.revision) }] as const]
         : [];
     }));
     const targets = pageIds.flatMap((assetId) => {
@@ -783,7 +777,7 @@ export async function executeSemanticIndexWorkerCommand(
   if (command.type === 'semantic.index.job') {
     if (command.action === 'claim') {
       const [asset] = service.getSemanticAssetSources(command.libraryId, [command.assetId]);
-      const source = asset ? sourceForAsset(asset) : null;
+      const source = asset ? sourceForAsset(asset, session.modalities) : null;
       if (source?.revision !== command.sourceRevision) {
         return { ok: true, type: 'semantic.index.job-updated', updated: false };
       }
@@ -805,7 +799,7 @@ export async function executeSemanticIndexWorkerCommand(
     if (command.profileKey !== session.profile.profileKey) throw new Error('Semantic profile changed.');
     const ids = command.vectors.map(({ assetId }) => assetId);
     const assets = service.getSemanticAssetSources(command.libraryId, ids);
-    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset)] as const));
+    const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset, session.modalities)] as const));
     const staleRevisionIds = command.vectors
       .filter((item) => current.get(item.assetId)?.revision !== item.sourceRevision)
       .map(({ assetId }) => assetId);
@@ -835,7 +829,7 @@ export async function executeSemanticIndexWorkerCommand(
       assetIds: [command.assetId],
     });
     if (!asset) throw new Error('Semantic asset was removed.');
-    const source = sourceForAsset(asset);
+    const source = sourceForAsset(asset, [command.kind]);
     if (!source || source.kind !== command.kind || source.revision !== command.sourceRevision) {
       throw new Error('Semantic asset revision changed.');
     }
@@ -848,7 +842,7 @@ export async function executeSemanticIndexWorkerCommand(
       });
       currentSession(command.libraryId, command.sessionGeneration);
       const [currentAsset] = service.getSemanticAssetSources(command.libraryId, [command.assetId]);
-      const currentSource = currentAsset && sourceForAsset(currentAsset);
+      const currentSource = currentAsset && sourceForAsset(currentAsset, [command.kind]);
       if (!currentSource || currentSource.revision !== command.sourceRevision) {
         throw new Error('Semantic asset revision changed during text preparation.');
       }
@@ -872,7 +866,7 @@ export async function executeSemanticIndexWorkerCommand(
       });
       currentSession(command.libraryId, command.sessionGeneration);
       const [currentAsset] = service.getSemanticAssetSources(command.libraryId, [command.assetId]);
-      const currentSource = currentAsset && sourceForAsset(currentAsset);
+      const currentSource = currentAsset && sourceForAsset(currentAsset, [command.kind]);
       if (!currentSource || currentSource.revision !== command.sourceRevision) {
         throw new Error('Semantic asset revision changed during image preparation.');
       }
@@ -904,7 +898,7 @@ export async function executeSemanticIndexWorkerCommand(
     currentSession(command.libraryId, command.sessionGeneration);
     // Recheck source identity after conversion; an asset may be deleted or replaced while FFmpeg runs.
     const [currentAsset] = service.listAssets({ libraryId: command.libraryId, recursive: true, assetIds: [command.assetId] });
-    const currentSource = currentAsset && sourceForAsset(currentAsset);
+    const currentSource = currentAsset && sourceForAsset(currentAsset, [command.kind]);
     if (!currentSource || currentSource.revision !== command.sourceRevision) {
       throw new Error('Semantic asset revision changed during audio preparation.');
     }
@@ -949,24 +943,28 @@ export async function executeSemanticIndexWorkerCommand(
     let similarSourceVector: Float32Array | null = null;
     if (command.type === 'semantic.index.similar') {
       const [source] = service.getSemanticAssetSources(command.libraryId, [command.sourceAssetId]);
-      const sourcePlan = source && sourceForAsset(source);
+      const sourcePlan = source && sourceForAsset(source, session.modalities);
       similarSourceVector = sourcePlan
         ? session.store.vectorFor(session.profileId, command.sourceAssetId, sourcePlan.revision)
         : null;
       if (!similarSourceVector) {
         const cancelled = cancelledSearches.get(command.libraryId)?.has(queryId) ?? false;
         if (cancelled) clearCancelledQuery(command.libraryId, queryId);
+        const job = sourcePlan ? session.store.jobFor(session.profileId, command.sourceAssetId) : null;
+        const sourceStatus = !source || !sourcePlan
+          ? 'unsupported'
+          : job?.sourceRevision === sourcePlan.revision && job.status === 'failed' ? 'failed' : 'preparing';
         return {
           ok: true,
           type: 'semantic.index.ranked',
           cancelled,
           candidateCount: 0,
-          ...(cancelled ? {} : { sourceStatus: source && sourcePlan ? 'preparing' : 'unsupported' }),
-          ...(!cancelled && source && sourcePlan ? { sourceTarget: {
+          ...(cancelled ? {} : { sourceStatus }),
+          ...(!cancelled && source && sourcePlan && sourceStatus === 'preparing' ? { sourceTarget: {
             assetId: source.assetId,
             sourceRevision: sourcePlan.revision,
             kind: sourcePlan.kind,
-            modality: source.mediaType === 'video' ? 'video' : sourcePlan.kind,
+            modality: sourcePlan.kind,
           } } : {}),
           assetIds: [],
           scores: [],
@@ -1045,7 +1043,7 @@ export async function executeSemanticIndexWorkerCommand(
       const assets = service.getSemanticAssetSources(command.libraryId,
         candidateIds.slice(start, start + TARGET_PAGE_SIZE));
       for (const asset of assets) {
-        const source = sourceForAsset(asset);
+        const source = sourceForAsset(asset, session.modalities);
         if (source) revisions.set(asset.assetId, source.revision);
       }
       await hooks.runWithoutAdmission(() => new Promise<void>((resolve) => setImmediate(resolve)));
@@ -1088,7 +1086,7 @@ export async function executeSemanticIndexWorkerCommand(
         if (wasCancelled()) return cancelledResult(candidateIds.length);
         const assets = service.getSemanticAssetSources(command.libraryId,
           candidateIds.slice(start, start + TARGET_PAGE_SIZE));
-        const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset)?.revision] as const));
+        const current = new Map(assets.map((asset) => [asset.assetId, sourceForAsset(asset, session.modalities)?.revision] as const));
         if (candidateIds.slice(start, start + TARGET_PAGE_SIZE).some((assetId) => current.get(assetId) !== revisions.get(assetId))) {
           sourceSnapshotValid = false;
           break;

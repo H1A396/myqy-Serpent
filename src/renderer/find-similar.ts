@@ -1,6 +1,10 @@
-import { embeddingSourcePlan } from "../shared/embedding/profile";
+import { embeddingSourceForModalities } from "../shared/embedding/profile";
+import {
+  LOCAL_GEMMA_INPUT_MODALITIES,
+  type EmbeddingSourceModality,
+} from "../shared/embedding/modalities";
 
-export type FindSimilarStatus = "ready" | "preparing" | "unsupported" | "unavailable";
+export type FindSimilarStatus = "ready" | "preparing" | "failed" | "unsupported" | "unavailable";
 
 export type FindSimilarPage = {
   status: FindSimilarStatus;
@@ -15,8 +19,8 @@ export type FindSimilarSource = {
   coverUrl: string | null;
 };
 
-/** JPG, PNG and WebP, audio, text, or any other asset that already has a thumbnail. */
-export function similarImageSupported(asset: {
+/** Whether the selected encoder can use this asset directly or through its image preview. */
+export function canFindSimilarForAsset(asset: {
   mediaType: string;
   relativeFilePath: string;
   sequence?: unknown;
@@ -25,11 +29,12 @@ export function similarImageSupported(asset: {
   thumbnailArtifactId?: string | null;
   deletedAt?: string | null;
   availability?: string;
-}): boolean {
-  return embeddingSourcePlan({
+  displayName?: string;
+}, modalities: readonly EmbeddingSourceModality[] = LOCAL_GEMMA_INPUT_MODALITIES): boolean {
+  return embeddingSourceForModalities({
     ...asset,
     currentRevisionId: asset.currentRevisionId ?? "revision",
-  }) !== "none";
+  }, modalities) !== null;
 }
 
 /**

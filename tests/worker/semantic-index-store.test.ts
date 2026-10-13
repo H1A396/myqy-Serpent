@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -11,6 +12,14 @@ import {
 
 const temporaryRoots: string[] = [];
 const stores: SemanticIndexStore[] = [];
+const require = createRequire(import.meta.url);
+
+interface TestDatabase {
+  close(): void;
+  prepare(sql: string): { run(...parameters: unknown[]): { changes: number } };
+}
+
+const Database = require('better-sqlite3') as new (filename: string) => TestDatabase;
 
 afterEach(() => {
   for (const store of stores.splice(0)) store.close();
@@ -94,6 +103,30 @@ describe('SemanticIndexStore', () => {
       status: 'failed', attempts: 2, errorCategory: 'provider',
     });
     expect(reopened.markRunning(profileId, 'asset-a', 'revision-a', 'claim-three')).toBe(false);
+  });
+
+  it('makes a failed job claimable after its retry deadline expires', () => {
+    const store = createStore();
+    const root = temporaryRoots.at(-1)!;
+    const profileId = store.ensureProfile({
+      profileKey: 'retry-deadline', dimensions: 2, modelRevision: 'model-v1', modality: 'text',
+    });
+    store.markPending(profileId, 'asset-a', 'revision-a');
+    expect(store.markRunning(profileId, 'asset-a', 'revision-a', 'claim-one')).toBe(true);
+    store.markFailed(profileId, 'asset-a', 'revision-a', 'claim-one', 'preparation');
+    expect(store.jobFor(profileId, 'asset-a')).toMatchObject({ status: 'failed', errorCategory: 'preparation' });
+
+    const database = new Database(path.join(root, '.serpent', 'semantic', 'index.sqlite'));
+    try {
+      database.prepare('UPDATE embedding_jobs SET retry_after = ? WHERE profile_id = ? AND asset_id = ?')
+        .run('2000-01-01T00:00:00.000Z', profileId, 'asset-a');
+    } finally {
+      database.close();
+    }
+
+    expect(store.jobFor(profileId, 'asset-a')).toMatchObject({ status: 'pending', errorCategory: 'preparation' });
+    expect(store.markRunning(profileId, 'asset-a', 'revision-a', 'claim-two')).toBe(true);
+    expect(store.jobFor(profileId, 'asset-a')).toMatchObject({ status: 'running', attempts: 2 });
   });
 
   it('fences duplicate claims, stale revisions, and late failures from the current job', () => {

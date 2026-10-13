@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { folderCoverImageSrc, patchFolderNavigationCoverArtifact } from "../../src/renderer/folder-cover";
+import {
+  folderCoverClearTargets,
+  folderCoverImageSrc,
+  patchFolderNavigationCoverArtifact,
+} from "../../src/renderer/folder-cover";
+
+describe("folderCoverClearTargets", () => {
+  it("does not offer restore for folders without a custom cover", () => {
+    expect(folderCoverClearTargets(["folder-1"], new Set())).toEqual([]);
+  });
+
+  it("limits a mixed selection to folders with a custom cover", () => {
+    expect(
+      folderCoverClearTargets(
+        ["folder-1", "folder-2", "folder-3"],
+        new Set(["folder-2"]),
+      ),
+    ).toEqual(["folder-2"]);
+  });
+});
 
 describe("folderCoverImageSrc", () => {
   it("prefers a stored cover over the automatic thumbnail", () => {

@@ -471,16 +471,25 @@ export class SemanticIndexStore {
     status: 'pending' | 'running' | 'ready' | 'failed';
     attempts: number;
     errorCategory: string | null;
+    retryAfter: string | null;
   } | null {
     const row = this.#database.prepare(`
-      SELECT source_revision, status, attempts, error_category FROM embedding_jobs
+      SELECT source_revision, status, attempts, error_category, retry_after FROM embedding_jobs
       WHERE profile_id = ? AND asset_id = ?
     `).get(profileIdValue, assetId) as {
       source_revision: string; status: 'pending' | 'running' | 'ready' | 'failed';
-      attempts: number; error_category: string | null;
+      attempts: number; error_category: string | null; retry_after: string | null;
     } | undefined;
-    return row ? { sourceRevision: row.source_revision, status: row.status,
-      attempts: row.attempts, errorCategory: row.error_category } : null;
+    if (!row) return null;
+    const retryDue = row.status === 'failed'
+      && (!row.retry_after || row.retry_after <= new Date().toISOString());
+    return {
+      sourceRevision: row.source_revision,
+      status: retryDue ? 'pending' : row.status,
+      attempts: row.attempts,
+      errorCategory: row.error_category,
+      retryAfter: row.retry_after,
+    };
   }
 
   upsertBatch(profileIdValue: string, inputs: readonly SemanticVectorInput[]): {

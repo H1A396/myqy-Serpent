@@ -29110,6 +29110,7 @@ export class LibraryService {
     mediaType: AssetSummary['mediaType'];
     availability: AssetSummary['availability'];
     deletedAt: string | null;
+    thumbnailStatus: 'ready' | null;
     thumbnailArtifactId: string | null;
     sequence: boolean;
   }> {
@@ -29147,6 +29148,7 @@ export class LibraryService {
       mediaType: LibraryService.toSummaryMediaType(LibraryService.detectMediaType(row.relative_file_path)),
       availability: row.availability,
       deletedAt: row.deleted_at,
+      thumbnailStatus: row.thumbnail_artifact_id ? 'ready' : null,
       thumbnailArtifactId: row.thumbnail_artifact_id,
       sequence: row.is_sequence !== 0,
     }));

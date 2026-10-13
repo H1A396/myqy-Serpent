@@ -55,12 +55,8 @@ export interface AssetCommandContext extends CommandContext {
   readonly pasteTargetFolderId: string | null | undefined;
   /** Semantic search is on. The menu item stays hidden while this is false. */
   readonly semanticSearchEnabled: boolean;
-  /** Original still, or another asset that already has a thumbnail. */
-  readonly similarImageSupported: boolean;
-  /** Why find-similar stays disabled after the asset itself can be encoded. */
-  readonly similarBlockedReason?: "service" | "modality" | null;
-  /** Preview failed or the revision row is gone. Do not search with it. */
-  readonly similarSourceDamaged: boolean;
+  /** Current encoder can consume the asset directly or through its preview. */
+  readonly similarSourceSupported: boolean;
   readonly actions: AssetCommandActions;
 }
 
@@ -165,13 +161,7 @@ export const assetCommandDefinitions: readonly AssetCommandDefinition[] = [
     id: 'asset.find-similar',
     title: (ctx) => t(ctx, 'command.asset.findSimilar'),
     group: 'open',
-    visible: (ctx) => ctx.semanticSearchEnabled && !ctx.assetDeleted,
-    disabledReason: (ctx) => {
-      if (ctx.similarSourceDamaged) return t(ctx, 'command.reason.similarDamaged');
-      if (ctx.similarBlockedReason === "service") return t(ctx, 'command.reason.similarService');
-      if (ctx.similarBlockedReason === "modality") return t(ctx, 'command.reason.similarModality');
-      return ctx.similarImageSupported ? null : t(ctx, 'command.reason.similarUnsupported');
-    },
+    visible: (ctx) => ctx.semanticSearchEnabled && !ctx.assetDeleted && ctx.similarSourceSupported,
     run: (ctx) => withPrimaryAsset(ctx, (id) => ctx.actions.findSimilar(id)),
   },
   // ---- 组织 ----

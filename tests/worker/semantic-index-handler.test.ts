@@ -33,6 +33,83 @@ afterEach(async () => {
 });
 
 describe('semantic SQLite Worker handler', () => {
+  it('uses a ready MP4 poster as an image source when the encoder only accepts images', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'serpent-semantic-video-preview-'));
+    roots.push(root);
+    const service = new LibraryService();
+    services.push(service);
+    const library = service.createLibrary({ displayName: 'Video preview fixture', selectedParentPath: root });
+    const folder = service.createManagedFolder({ libraryId: library.libraryId, name: 'Assets' });
+    const assetId = randomUUID();
+    const revisionId = randomUUID();
+    const artifactId = randomUUID();
+    const relativePath = `${folder.relativePath}/clip.mp4`;
+    const now = new Date().toISOString();
+    const db = new Database(path.join(library.libraryPath, '.serpent', 'library.db'));
+    try {
+      db.prepare(`INSERT INTO assets (asset_id, location_kind, managed_folder_id, linked_folder_id,
+        relative_file_path, current_revision_id, availability, path_identity, created_at, updated_at)
+        VALUES (?, 'managed', ?, NULL, ?, NULL, 'available', ?, ?, ?)`).run(
+        assetId, folder.folderId, relativePath, relativePath, now, now,
+      );
+      db.prepare(`INSERT INTO revisions (revision_id, asset_id, parent_revision_id, byte_size,
+        modified_at, original_filename, origin, accepted_at)
+        VALUES (?, ?, NULL, 1, ?, 'clip.mp4', 'import', ?)`).run(revisionId, assetId, now, now);
+      db.prepare('UPDATE assets SET current_revision_id = ? WHERE asset_id = ?').run(revisionId, assetId);
+      db.prepare(`INSERT INTO revision_artifacts (artifact_id, revision_id, kind, mime_type, byte_size,
+        file_path, width, height, generator_version, status, generated_at, invalidated_at)
+        VALUES (?, ?, 'video_poster', 'image/jpeg', 1, 'clip-poster.jpg', 1, 1, 'fixture', 'ready', ?, NULL)`)
+        .run(artifactId, revisionId, now);
+    } finally {
+      db.close();
+    }
+
+    const sessionGeneration = randomUUID();
+    const profileKey = 'video-preview-image-only';
+    const call = async (command: WorkerCommand): Promise<WorkerResult> => {
+      const result = await executeSemanticIndexWorkerCommand(service,
+        { requestId: randomUUID(), command } as WorkerRequest,
+        { runWithoutAdmission: async (work) => work() });
+      if (!result) throw new Error(`Worker did not handle ${command.type}`);
+      return result;
+    };
+    await call({ type: 'semantic.index.begin', libraryId: library.libraryId, sessionGeneration,
+      profileKey, dimensions: 3, modelRevision: 'fixture-model-v1', modality: 'mixed',
+      modalities: ['image'], maxInputBytes: 1024 });
+
+    const targets = await call({ type: 'semantic.index.targets', libraryId: library.libraryId,
+      sessionGeneration, modalities: ['image'], offset: 0, limit: 20 });
+    expect(targets).toMatchObject({
+      ok: true,
+      type: 'semantic.index.targets',
+      targets: [{ assetId, kind: 'image', modality: 'image', alreadyIndexed: false }],
+    });
+
+    const similar = await call({ type: 'semantic.index.similar', libraryId: library.libraryId,
+      sessionGeneration, queryId: randomUUID(), profileKey, sourceAssetId: assetId });
+    expect(similar).toMatchObject({
+      ok: true,
+      type: 'semantic.index.ranked',
+      sourceStatus: 'preparing',
+      sourceTarget: { assetId, kind: 'image', modality: 'image' },
+    });
+
+    const sourceRevision = (targets as { targets: Array<{ sourceRevision: string }> }).targets[0]!.sourceRevision;
+    await expect(call({ type: 'semantic.index.prepare', libraryId: library.libraryId, sessionGeneration,
+      assetId, sourceRevision, kind: 'image', maxInputBytes: 1024 })).rejects.toThrow();
+    const claimToken = randomUUID();
+    expect(await call({ type: 'semantic.index.job', action: 'claim', libraryId: library.libraryId,
+      sessionGeneration, assetId, sourceRevision, claimToken }))
+      .toMatchObject({ ok: true, type: 'semantic.index.job-updated', updated: true });
+    expect(await call({ type: 'semantic.index.job', action: 'fail', libraryId: library.libraryId,
+      sessionGeneration, assetId, sourceRevision, claimToken, errorCategory: 'preparation' }))
+      .toMatchObject({ ok: true, type: 'semantic.index.job-updated', updated: true });
+
+    expect(await call({ type: 'semantic.index.similar', libraryId: library.libraryId,
+      sessionGeneration, queryId: randomUUID(), profileKey, sourceAssetId: assetId }))
+      .toMatchObject({ ok: true, type: 'semantic.index.ranked', sourceStatus: 'failed' });
+  });
+
   it('enumerates and reserves purge cleanup in bounded batches beyond 100,000 assets', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'serpent-semantic-purge-large-'));
     roots.push(root);

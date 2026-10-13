@@ -88,3 +88,23 @@
 语义检索直接 Worker 基准复跑：`SERPENT_RUN_SEMANTIC_PERF=1 node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/worker/semantic-index-performance.test.ts --reporter=verbose`，1/1 通过。10,000 条、768D 首次 101.86ms，热态 p95 109.80ms，5,000 条筛选 46.57ms；4096D 首次 146.05ms，热态 p95 163.16ms，筛选 80.37ms。计时仍排除 provider 推理、IPC、UI 和进程冷启动。
 
 语义全应用退出/重启 E2E：`SERPENT_E2E_HIDE_WINDOW=1 node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`，1/1 通过。全量 `verify:mainline` 在单测失败处提前停止，通用 `test:perf:search`、全量 E2E、packaged 与 Windows 本轮没有执行；独立最终审查和 Computer Use 仍未完成。
+
+## 向量准备失败与后台任务显示（2026-10-13）
+
+| 需求条目 | 实现位置 | 自动化证据 | 人工/平台证据 |
+| --- | --- | --- | --- |
+| 缩略图/内容准备、模型编码或向量写入失败后，找相似停止轮询并明确提示失败 | `src/worker/handlers/semantic-index.ts`、`src/worker/semantic-index-store.ts`、`src/main/embedding-http-index.ts`、`src/main/embedding-test-index.ts`、`src/renderer/App.tsx` | `node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/unit/embedding-http-index.test.ts tests/worker/semantic-index-store.test.ts tests/worker/semantic-index-handler.test.ts tests/unit/find-similar.test.ts tests/unit/semantic-work.test.ts`：5 files / 39 tests passed。覆盖 ready 预览文件缺失、HTTP indexer 准备阶段失败分类、过期重试时间可重新领取，以及相似查询终态 `failed`。 | 隔离 Electron 合成测试通过；真实 MP4/GIF provider 推理和人工验收尚未执行。 |
+| 将向量生成计入后台任务，并在完成但存在失败项时保留状态 | `src/renderer/semantic-index-copy.ts`、`src/renderer/MediaJobsDialog.tsx`、语义 SQLite `embedding_jobs` | `SERPENT_E2E_HIDE_WINDOW=1 node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`：1/1 passed。受控 provider 失败后后台任务仍显示失败数量；找相似给出失败提示；完整应用退出/重启后其他向量仍复用。`npm run test:library-availability`：9 files / 233 tests passed；`npm run typecheck` 通过；相关文件 ESLint 0 errors。 | 使用隔离 userData、合成资源库与本地受控服务。真实图库、MP4/GIF 及 Computer Use 未执行。 |
+
+历史“121 项未编码”的实际原因无法从现有记录反推出：旧实现把 Worker 准备错误与 provider 错误都记成 `provider`，未保存单项错误文本。没有 ready 预览的资产会被目标筛选排除，不会触发编码失败；ready artifact 的磁盘文件若缺失、损坏、不可读或超出输入限制，则会在准备阶段失败。新运行会区分准备、provider 和向量存储阶段，以便后续定位。当前 E2E 覆盖受控 provider 失败；真实 121 项尚未按新分类重新处理，故不能声称已查明每一项的根因。
+
+## 模型输入能力与找相似菜单补充（2026-10-13）
+
+| 需求条目 | 实现位置（file:line） | 自动化测试（test:line） | 人工/平台证据 |
+| --- | --- | --- | --- |
+| 按模型和 HTTP 适配器实际请求通道判断输入能力 | `src/shared/embedding/modalities.ts:9,36`、`src/main/embedding-llama-session.ts:180,213`、`src/shared/embedding/http-service.ts:155` | `tests/unit/find-similar.test.ts:13`：本地实际输入为 image/audio/text；OpenAI 适配器仅 text；llama.cpp 与 DashScope 实际 text/image。定向命令共 4 files / 77 passed | [EmbeddingGemma 2 模型卡](https://ai.google.dev/gemma/docs/embeddinggemma/model_card_2?hl=en)列出 text/image/video/audio。Serpent 当前视频通过 ready poster 作为 image 输入，不是原生视频请求。HTTP provider 的真实多模态质量尚未人工验收 |
+| MP4 通过 ready poster 走 image 编码，菜单与 Worker 使用相同来源规则 | `src/worker/library-service.ts:29105`、`src/shared/embedding/profile.ts:251`、`src/worker/handlers/semantic-index.ts:422,740,943` | `tests/worker/semantic-index-handler.test.ts:36`：Worker 合成 MP4 + ready video poster，image-only session 会返回 image target 和 image source target。当前只证明来源路由/待准备状态，未证明真实 provider 推理和最终结果 | 实际 MP4 full flow 尚未通过 Electron E2E；保持待人工验收 |
+| 只显示当前编码器可以直接处理或有图片预览可回退的菜单入口 | `src/renderer/AssetContextMenu.tsx:2059`、`src/renderer/commands/asset-commands.ts:164`、`src/renderer/App.tsx:9015` | `tests/unit/asset-commands.test.ts:207`；`tests/e2e/semantic-sqlite-lifecycle.test.ts:182,190`。同一 E2E 右键文本显示入口、右键不支持图片隐藏入口；E2E 最终 1/1 passed | Electron 使用隔离 userData 和合成资源库。原有找相似结果 UI 布局未修改，用户明确表示后续再讨论 |
+| 说明自然语言查找、找相似与资源开销 | `src/renderer/SemanticSearchSettings.tsx:201`、`src/renderer/i18n/catalogs/zh-CN.ts:1723`、`src/renderer/i18n/catalogs/en.ts:1742` | `tests/e2e/semantic-sqlite-lifecycle.test.ts:147`：新增提示在真实设置页可见；最终 E2E 1/1 passed | Computer Use 未执行，真实窗口截图验收仍待用户操作 |
+
+本轮最终命令：`npm run typecheck` 通过；定向测试 77/77 通过；`npm run test:library-availability` 为 9 files / 233 tests passed；ESLint 0 errors、2 条 `App.tsx` 既有 hooks 警告（确切命令见[开发日志](../development/2026-10-13-semantic-sqlite-index.md)）；语义生命周期 Electron E2E 为 1/1 passed。测试生成截图已清理。由于 MP4 只在 Worker 合成夹具验证到 ready poster 来源，不能将“MP4 实际模型编码已端到端验证”写为通过。

@@ -4,6 +4,8 @@
  * belong in the key: the same weights on another computer are the same profile.
  */
 
+import type { EmbeddingSourceModality } from "./modalities";
+
 export const EMBEDDING_GEMMA2_DIMENSIONS = 768;
 export const EMBEDDING_GEMMA2_QUERY_PREFIX = "task: search result | query: ";
 export const EMBEDDING_GEMMA2_MODEL_REVISION = "412430755667d84b1ac64fe1fe2693aa6219f1d9";
@@ -239,6 +241,53 @@ export function embeddingSourcePlan(asset: {
   if (asset.mediaType === "audio") return "audio";
   if (asset.mediaType === "text") return "text";
   return embeddingVisualPlan(asset);
+}
+
+/**
+ * Resolve the source the selected encoder can actually consume. Text and audio
+ * use their original content when supported; otherwise, a ready image preview
+ * can provide a visual fallback. Video currently enters through its preview.
+ */
+export function embeddingSourceForModalities(asset: {
+  mediaType: string;
+  relativeFilePath: string;
+  sequence?: unknown;
+  currentRevisionId: string;
+  thumbnailStatus?: string | null;
+  thumbnailArtifactId?: string | null;
+  deletedAt?: string | null;
+  availability?: string;
+  displayName?: string;
+}, modalities: readonly EmbeddingSourceModality[]): {
+  kind: EmbeddingSourceModality;
+  revision: string;
+} | null {
+  const source = embeddingSourcePlan(asset);
+  if (source === "audio" && modalities.includes("audio")) {
+    return { kind: "audio", revision: embeddingAudioRevision(asset.currentRevisionId) };
+  }
+  if (source === "text" && modalities.includes("text")) {
+    const title = asset.displayName === undefined ? "" : `\ntitle:${asset.displayName}`;
+    return { kind: "text", revision: `${embeddingTextRevision(asset.currentRevisionId)}${title}` };
+  }
+  if ((source === "file" || source === "thumbnail") && modalities.includes("image")) {
+    return {
+      kind: "image",
+      revision: source === "thumbnail" && asset.thumbnailArtifactId
+        ? embeddingThumbnailRevision(asset.currentRevisionId, asset.thumbnailArtifactId)
+        : asset.currentRevisionId,
+    };
+  }
+  if (modalities.includes("image")) {
+    const visualSource = embeddingVisualPlan(asset);
+    if (visualSource === "thumbnail" && asset.thumbnailArtifactId) {
+      return {
+        kind: "image",
+        revision: embeddingThumbnailRevision(asset.currentRevisionId, asset.thumbnailArtifactId),
+      };
+    }
+  }
+  return null;
 }
 
 export function channelEnabled(

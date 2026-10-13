@@ -582,7 +582,7 @@ export const zhCN = {
       chooseCover: "设置封面",
       chooseCoverFromLibrary: "从资源库选择",
       chooseCoverFromFile: "从文件选择",
-      clearCover: "恢复自动封面",
+      clearCover: "恢复默认封面",
     },
   collection: {
       newSubcollection: "新建子合集",
@@ -1720,6 +1720,7 @@ export const zhCN = {
     semanticSearch: {
       enabled: "开启语义搜索",
       enabledHint: "关闭后，所有资源库都不使用语义搜索。默认关闭。",
+      resourceNotice: "可以用自然语言模糊查找内容，也可以查找相似资产。启用后，资源库准备时间会变长，内存占用会增加。",
       defaultModel: "默认模型",
       defaultModelHint: "资源库未单独选择时，沿用这里的默认模型。",
       defaultModelEmpty: "先安装本地模型，或添加自定义服务。",
@@ -1744,6 +1745,7 @@ export const zhCN = {
       similarBanner: "与此资产相似",
       similarBack: "返回",
       similarPreparing: "正在准备此资产，完成后将显示相似结果。",
+      similarFailed: "此资产未能完成向量编码，暂时无法查找相似内容。",
       similarUnsupported: "此资产暂不支持查找相似结果。",
       similarUnavailable: "语义搜索尚未就绪。",
       similarEmpty: "暂无其他可比较的资产。",
@@ -1880,12 +1882,12 @@ export const zhCN = {
     showAiBadges: "显示 AI 角标",
     showAiBadgesHint: "关闭后仍保留 AI 写入的描述/标签/评分，仅隐藏 Inspector 中的 AI 角标。",
     confirmationsSection: "确认提示",
-    importConflictRemember: "记住的导入冲突选择",
-    importConflictRememberHint: "若曾勾选「记住我的选择」，导入同名或内容重复时会直接应用，不再弹窗。",
+    importConflictRemember: "记住的默认行为",
+    importConflictRememberHint: "在对话框中选择记住的处理方式后，会显示在这里。",
     importConflictRememberName: "同名冲突",
     importConflictRememberDuplicate: "内容重复",
     importConflictRememberClear: "清除这项",
-    importConflictRememberEmpty: "当前未记住导入冲突选择"
+    importConflictRememberEmpty: "当前没有记住的默认行为"
   },
   preview: {
     ffmpegRequired: "当前安装缺少可用的媒体组件，无法生成视频播放代理。请重新安装或修复 Serpent 后重试。",
