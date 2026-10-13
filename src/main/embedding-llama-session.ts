@@ -6,6 +6,7 @@ import path from "node:path";
 
 const execFileAsync = promisify(execFile);
 const MAX_IMAGE_BYTES = 64 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
 const MAX_AUDIO_WAV_BYTES = 8 * 1024 * 1024;
 const MIME_TYPES = new Map([
   [".jpg", "image/jpeg"],
@@ -19,10 +20,16 @@ export type LlamaEmbeddingFiles = {
   projectorPath: string;
 };
 
+export type LlamaEmbeddingMediaBinaries = {
+  ffmpegPath: string;
+  ffprobePath: string;
+};
+
 export type LlamaEmbeddingSession = {
   embedText: (text: string) => Promise<number[]>;
   embedImage: (imagePath: string) => Promise<number[]>;
   embedImagePayload: (mimeType: string, bytesBase64: string) => Promise<number[]>;
+  embedVideoPayload: (bytesBase64: string) => Promise<number[]>;
   embedAudio: (wavPath: string) => Promise<number[]>;
   embedAudioPayload: (bytesBase64: string) => Promise<number[]>;
   close: () => Promise<void>;
@@ -39,6 +46,22 @@ export function embeddingAudioRequestBody(wavBase64: string): {
       content: [{
         type: "input_audio",
         input_audio: { data: wavBase64, format: "wav" },
+      }],
+    }],
+  };
+}
+
+/** llama.cpp's typed video input carries the raw container bytes as base64. */
+export function embeddingVideoRequestBody(videoBase64: string): {
+  model: string;
+  input: Array<{ content: Array<{ type: "input_video"; input_video: { data: string } }> }>;
+} {
+  return {
+    model: "embeddinggemma-2",
+    input: [{
+      content: [{
+        type: "input_video",
+        input_video: { data: videoBase64 },
       }],
     }],
   };
@@ -131,6 +154,7 @@ async function postEmbedding(input: {
 export async function startLlamaEmbeddingSession(input: {
   executable: string;
   files: LlamaEmbeddingFiles;
+  mediaBinaries?: LlamaEmbeddingMediaBinaries;
   gpuLayers: number;
   startupTimeoutMs?: number;
   requestTimeoutMs?: number;
@@ -139,6 +163,14 @@ export async function startLlamaEmbeddingSession(input: {
   const baseUrl = `http://127.0.0.1:${port}`;
   const startupTimeoutMs = input.startupTimeoutMs ?? 180_000;
   const requestTimeoutMs = input.requestTimeoutMs ?? 180_000;
+  const videoRuntimeDirectory = input.mediaBinaries
+    && path.dirname(path.resolve(input.mediaBinaries.ffmpegPath))
+      === path.dirname(path.resolve(input.mediaBinaries.ffprobePath))
+    ? path.dirname(path.resolve(input.mediaBinaries.ffmpegPath))
+    : null;
+  const videoRuntimeArgs = videoRuntimeDirectory
+    ? ["--video-fps", "1", "--video-ffmpeg-dir", videoRuntimeDirectory]
+    : [];
   const child = spawn(input.executable, [
     "--model", input.files.corePath,
     "--mmproj", input.files.projectorPath,
@@ -149,6 +181,7 @@ export async function startLlamaEmbeddingSession(input: {
     "--ubatch-size", "4096",
     "--n-gpu-layers", String(input.gpuLayers),
     input.gpuLayers > 0 ? "--mmproj-offload" : "--no-mmproj-offload",
+    ...videoRuntimeArgs,
     "--host", "127.0.0.1",
     "--port", String(port),
   ], {
@@ -190,6 +223,17 @@ export async function startLlamaEmbeddingSession(input: {
       return embedImagePayload(mimeType, (await readFile(imagePath)).toString("base64"));
     },
     embedImagePayload: (mimeType, bytesBase64) => embedImagePayload(mimeType, bytesBase64),
+    embedVideoPayload: (bytesBase64) => {
+      if (!videoRuntimeDirectory) throw new Error("Video runtime is unavailable: FFmpeg and ffprobe were not resolved by the application.");
+      if (!bytesBase64 || bytesBase64.length > Math.ceil(MAX_VIDEO_BYTES * 4 / 3) + 8) {
+        throw new Error("Video payload is too large or unsupported.");
+      }
+      return postEmbedding({
+        baseUrl,
+        timeoutMs: requestTimeoutMs,
+        body: embeddingVideoRequestBody(bytesBase64),
+      });
+    },
     embedAudio: async (wavPath) => {
       const fileInfo = await stat(wavPath);
       if (fileInfo.size <= 0 || fileInfo.size > MAX_AUDIO_WAV_BYTES) {

@@ -26,7 +26,19 @@ describe("find similar", () => {
     expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",
-    })).toBe(false);
+    })).toBe(true);
+    expect(embeddingSourceForModalities({
+      mediaType: "video",
+      relativeFilePath: "clip.mp4",
+      currentRevisionId: "rev-video",
+    }, ["video", "image"])).toEqual({ kind: "video", revision: "rev-video" });
+    expect(embeddingSourceForModalities({
+      mediaType: "video",
+      relativeFilePath: "clip.mp4",
+      currentRevisionId: "rev-video",
+      thumbnailStatus: "ready",
+      thumbnailArtifactId: "poster-1",
+    }, ["image"])).toEqual({ kind: "image", revision: "rev-video\nthumb:poster-1" });
     expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",
@@ -84,7 +96,7 @@ describe("find similar", () => {
       thumbnailStatus: "ready",
       thumbnailArtifactId: "video-preview",
     }, ["text"])).toBe(false);
-    expect([...LOCAL_GEMMA_INPUT_MODALITIES].sort()).toEqual(["audio", "image", "text"]);
+    expect([...LOCAL_GEMMA_INPUT_MODALITIES].sort()).toEqual(["audio", "image", "text", "video"]);
     expect([...embeddingInputModalitiesForAdapter("openai-embeddings-v1", ["text", "image", "audio", "video"])])
       .toEqual(["text"]);
     expect([...embeddingInputModalitiesForAdapter("llamacpp-multimodal-v1", ["text", "image", "audio", "video"])].sort())

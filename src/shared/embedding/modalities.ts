@@ -6,10 +6,10 @@
 export const EMBEDDING_MODALITIES = ["image", "video", "audio", "text"] as const;
 export type EmbeddingModality = (typeof EMBEDDING_MODALITIES)[number];
 
-/** Input forms the local EmbeddingGemma runtime currently sends to llama-server. */
-export const LOCAL_GEMMA_INPUT_MODALITIES = ["image", "audio", "text"] as const;
+/** Input forms the local EmbeddingGemma runtime sends to the fixed llama-server. */
+export const LOCAL_GEMMA_INPUT_MODALITIES = ["image", "video", "audio", "text"] as const;
 
-/** Model card capabilities; video assets currently use their image preview in Serpent. */
+/** Model card capabilities exposed by the fixed local runtime. */
 export const LOCAL_GEMMA_MODALITIES: readonly EmbeddingModality[] = ["image", "video", "audio", "text"];
 
 export type EmbeddingSourceModality = (typeof LOCAL_GEMMA_INPUT_MODALITIES)[number];
@@ -31,7 +31,7 @@ export function explicitEmbeddingModalities(value: readonly string[]): Embedding
 /**
  * Modalities supported by the selected HTTP adapter's request shape today.
  * Saved declarations for audio/video do not make those inputs usable unless
- * the adapter can actually send them. Video thumbnails are image inputs.
+ * the adapter can actually send them.
  */
 export function embeddingInputModalitiesForAdapter(
   adapter: "openai-embeddings-v1" | "llamacpp-multimodal-v1" | "dashscope-multimodal-v1",

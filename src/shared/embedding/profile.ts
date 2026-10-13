@@ -244,9 +244,9 @@ export function embeddingSourcePlan(asset: {
 }
 
 /**
- * Resolve the source the selected encoder can actually consume. Text and audio
- * use their original content when supported; otherwise, a ready image preview
- * can provide a visual fallback. Video currently enters through its preview.
+ * Resolve the source the selected encoder can actually consume. Raw video is
+ * preferred whenever supported; otherwise, image-capable encoders may use a
+ * ready preview. Other source modalities use their supported original input.
  */
 export function embeddingSourceForModalities(asset: {
   mediaType: string;
@@ -262,6 +262,11 @@ export function embeddingSourceForModalities(asset: {
   kind: EmbeddingSourceModality;
   revision: string;
 } | null {
+  if (asset.deletedAt || (asset.availability !== undefined && asset.availability !== "available")
+    || asset.currentRevisionId.startsWith("corrupt:")) return null;
+  if (asset.mediaType === "video" && modalities.includes("video")) {
+    return { kind: "video", revision: asset.currentRevisionId };
+  }
   const source = embeddingSourcePlan(asset);
   if (source === "audio" && modalities.includes("audio")) {
     return { kind: "audio", revision: embeddingAudioRevision(asset.currentRevisionId) };

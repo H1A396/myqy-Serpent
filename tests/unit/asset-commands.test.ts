@@ -222,6 +222,15 @@ describe('可见性（与历史内联 JSX 条件一致）', () => {
     expect(resolveIds(unsupported.ctx)).not.toContain('asset.find-similar');
   });
 
+  it('本地 video-capable 模型即使没有 poster 也显示视频的找相似入口', () => {
+    const { ctx } = makeCtx({
+      semanticSearchEnabled: true,
+      similarSourceSupported: true,
+    });
+    expect(resolveIds(ctx)).toContain('asset.find-similar');
+    expect(findItem(registry.resolveMenu(ctx), 'asset.find-similar').disabled).toBe(false);
+  });
+
   it('损坏或无法作为预览输入的资产不显示找相似', () => {
     const { ctx } = makeCtx({
       semanticSearchEnabled: true,

@@ -537,6 +537,7 @@ function embeddingIndex(): EmbeddingTestIndex {
       userData: app.getPath("userData"),
       home: app.getPath("home"),
     })), modelId),
+    resolveMediaBinaries: resolveHostMediaBinaries,
   });
   return embeddingTestIndex;
 }

@@ -44,6 +44,7 @@ describe('semantic SQLite Worker handler', () => {
     const revisionId = randomUUID();
     const artifactId = randomUUID();
     const relativePath = `${folder.relativePath}/clip.mp4`;
+    const videoBytes = Buffer.from('synthetic mp4 payload');
     const previewBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
     const previewRelativePath = 'clip-poster.jpg';
     const previewPath = path.join(library.libraryPath, '.serpent', 'artifacts', previewRelativePath);
@@ -68,6 +69,9 @@ describe('semantic SQLite Worker handler', () => {
     } finally {
       db.close();
     }
+    const sourcePath = service.resolveAssetPath(library.libraryId, assetId);
+    mkdirSync(path.dirname(sourcePath), { recursive: true });
+    writeFileSync(sourcePath, videoBytes);
 
     const sessionGeneration = randomUUID();
     const profileKey = 'video-preview-image-only';
@@ -119,6 +123,42 @@ describe('semantic SQLite Worker handler', () => {
     rmSync(previewPath);
     await expect(call({ type: 'semantic.index.prepare', libraryId: library.libraryId, sessionGeneration,
       assetId, sourceRevision, kind: 'image', maxInputBytes: 1024 })).rejects.toThrow();
+
+    await call({ type: 'semantic.index.close', libraryId: library.libraryId, sessionGeneration });
+    const cleanupDb = new Database(path.join(library.libraryPath, '.serpent', 'library.db'));
+    cleanupDb.prepare('DELETE FROM revision_artifacts WHERE artifact_id = ?').run(artifactId);
+    cleanupDb.close();
+    const videoSessionGeneration = randomUUID();
+    const videoProfileKey = 'video-native-image-fallback';
+    await call({ type: 'semantic.index.begin', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, profileKey: videoProfileKey, dimensions: 3,
+      modelRevision: 'fixture-model-v1', modality: 'mixed', modalities: ['video', 'image', 'audio', 'text'],
+      maxInputBytes: 1024 });
+    const videoTargets = await call({ type: 'semantic.index.targets', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, modalities: ['video', 'image', 'audio', 'text'],
+      offset: 0, limit: 20 });
+    expect(videoTargets).toMatchObject({ ok: true, type: 'semantic.index.targets',
+      targets: [{ assetId, sourceRevision: revisionId, kind: 'video', modality: 'video' }] });
+    const preparedVideo = await call({ type: 'semantic.index.prepare', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, assetId, sourceRevision: revisionId,
+      kind: 'video', maxInputBytes: 1024 });
+    expect(preparedVideo).toMatchObject({ ok: true, type: 'semantic.index.prepared', assetId,
+      sourceRevision: revisionId, kind: 'video', mimeType: 'video/mp4',
+      bytesBase64: videoBytes.toString('base64') });
+    await expect(call({ type: 'semantic.index.prepare', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, assetId, sourceRevision: revisionId,
+      kind: 'video', maxInputBytes: 2 })).rejects.toThrow(/video.*size|size.*video/i);
+    const videoClaimToken = randomUUID();
+    expect(await call({ type: 'semantic.index.job', action: 'claim', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, assetId, sourceRevision: revisionId,
+      claimToken: videoClaimToken })).toMatchObject({ ok: true, type: 'semantic.index.job-updated', updated: true });
+    expect(await call({ type: 'semantic.index.write', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, profileKey: videoProfileKey,
+      vectors: [{ assetId, sourceRevision: revisionId, claimToken: videoClaimToken, vector: [1, 0, 0] }] }))
+      .toMatchObject({ ok: true, type: 'semantic.index.written', accepted: [assetId], rejected: [] });
+    expect(await call({ type: 'semantic.index.similar', libraryId: library.libraryId,
+      sessionGeneration: videoSessionGeneration, queryId: randomUUID(), profileKey: videoProfileKey,
+      sourceAssetId: assetId })).toMatchObject({ ok: true, type: 'semantic.index.ranked', sourceStatus: 'ready' });
   });
 
   it('enumerates and reserves purge cleanup in bounded batches beyond 100,000 assets', () => {

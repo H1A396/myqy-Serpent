@@ -540,8 +540,9 @@ export class EmbeddingHttpIndex {
 
   /**
    * List assets the service can encode. OpenAI-compatible stays text-only.
-   * DashScope multimodal indexes text plus image/video when those modalities
-   * are declared; local video uses a ready thumbnail (API needs a public URL).
+   * Current remote adapters send text and, where supported, image payloads.
+   * A ready preview is only an image fallback for adapters without video input;
+   * the local EmbeddingGemma path is separate and sends the original video.
    */
   async #listTargets(
     libraryId: string,
@@ -683,7 +684,7 @@ function httpServiceReady(
   );
 }
 
-/** Actual HTTP input channels; video files use the image adapter through a ready preview. */
+/** Actual HTTP input channels; image-capable adapters may use a ready preview for video files. */
 export function encodeModalitiesForAdapter(
   adapter: EmbeddingHttpAdapter,
   modalities: readonly EmbeddingModality[],

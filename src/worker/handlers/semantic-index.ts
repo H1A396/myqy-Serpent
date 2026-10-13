@@ -25,6 +25,7 @@ const TARGET_PAGE_SIZE = 500;
 const MAX_CANDIDATES = 100_000;
 const MAX_TEXT_READ_BYTES = 256 * 1024;
 const MAX_IMAGE_INPUT_BYTES = 64 * 1024 * 1024;
+const MAX_VIDEO_INPUT_BYTES = 64 * 1024 * 1024;
 const AUDIO_WINDOW_SECONDS = 120;
 const AUDIO_MAX_WINDOWS = 16;
 const AUDIO_TEMP_PREFIX = 'serpent-semantic-audio-';
@@ -419,8 +420,8 @@ function sourceForAsset(asset: {
   thumbnailStatus?: string | null;
   deletedAt?: string | null;
   displayName: string;
-}, modalities: readonly EmbeddingSourceModality[] = ['audio', 'text', 'image']): {
-  kind: 'image' | 'audio' | 'text';
+}, modalities: readonly EmbeddingSourceModality[] = ['audio', 'text', 'image', 'video']): {
+  kind: 'image' | 'video' | 'audio' | 'text';
   revision: string;
 } | null {
   return embeddingSourceForModalities(asset, modalities);
@@ -851,6 +852,32 @@ export async function executeSemanticIndexWorkerCommand(
       const text = formatEmbeddingDocument(currentAsset.displayName, content);
       return { ok: true, type: 'semantic.index.prepared', assetId: currentAsset.assetId,
         sourceRevision: currentSource.revision, kind: 'text', text };
+    }
+    if (command.kind === 'video') {
+      const sourcePath = service.resolveAssetPath(command.libraryId, command.assetId);
+      const maxBytes = Math.min(command.maxInputBytes, MAX_VIDEO_INPUT_BYTES);
+      const bytes = await hooks.runWithoutAdmission(async () => {
+        const sourceStat = await stat(sourcePath);
+        if (sourceStat.size <= 0 || sourceStat.size > maxBytes) {
+          throw new Error('Semantic video exceeds the supported input size.');
+        }
+        return readFileBounded(sourcePath, maxBytes);
+      });
+      currentSession(command.libraryId, command.sessionGeneration);
+      const [currentAsset] = service.getSemanticAssetSources(command.libraryId, [command.assetId]);
+      const currentSource = currentAsset && sourceForAsset(currentAsset, [command.kind]);
+      if (!currentSource || currentSource.revision !== command.sourceRevision) {
+        throw new Error('Semantic video revision changed during preparation.');
+      }
+      return {
+        ok: true,
+        type: 'semantic.index.prepared',
+        assetId: currentAsset.assetId,
+        sourceRevision: currentSource.revision,
+        kind: 'video',
+        mimeType: path.extname(sourcePath).toLowerCase() === '.mp4' ? 'video/mp4' : 'application/octet-stream',
+        bytesBase64: bytes.toString('base64'),
+      };
     }
     if (command.kind === 'image') {
       let sourcePath: string | null;

@@ -2,8 +2,10 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { rendererResultSchema } from "../../src/shared/protocol/responses";
+import type { WorkerCommand } from "../../src/shared/protocol/requests";
+import type { WorkerResult } from "../../src/shared/protocol/responses";
 
 import {
   localEmbeddingFilesReady,
@@ -11,11 +13,19 @@ import {
 } from "../../src/main/embedding-local-config";
 import {
   embeddingSkipKey,
+  EmbeddingTestIndex,
   embeddingTargetsToEncode,
   rankEmbeddings,
   resolveContainedPath,
   scoreEmbeddings,
 } from "../../src/main/embedding-test-index";
+import { EMBEDDING_GEMMA2_TIER_FILES } from "../../src/shared/embedding/profile";
+
+const temporaryRoots: string[] = [];
+
+afterEach(() => {
+  for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 describe("embedding test index", () => {
   it("encodes only pictures that are missing or replaced", () => {
@@ -159,5 +169,78 @@ describe("embedding test index", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it("sends prepared video targets to the native video provider path", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-semantic-video-index-"));
+    temporaryRoots.push(root);
+    const modelDirectory = path.join(root, "models");
+    mkdirSync(modelDirectory, { recursive: true });
+    const files = EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL;
+    writeFileSync(path.join(modelDirectory, files.coreFile), "synthetic core weights");
+    writeFileSync(path.join(modelDirectory, files.projectorFile), "synthetic projector weights");
+    const runtimePath = path.join(root, "llama-server");
+    writeFileSync(runtimePath, "synthetic runtime");
+
+    const videoEmbedding = vi.fn(async () => [1, 0, 0]);
+    const session = {
+      embedText: vi.fn(async () => [1, 0, 0]),
+      embedImage: vi.fn(async () => [1, 0, 0]),
+      embedImagePayload: vi.fn(async () => [1, 0, 0]),
+      embedVideoPayload: videoEmbedding,
+      embedAudio: vi.fn(async () => [1, 0, 0]),
+      embedAudioPayload: vi.fn(async () => [1, 0, 0]),
+      close: vi.fn(async () => undefined),
+    };
+    const commands: WorkerCommand[] = [];
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      commands.push(command);
+      if (command.type === "semantic.index.begin") return {
+        ok: true, type: "semantic.index.started", profileId: "a".repeat(64), nativeCosineAvailable: false,
+      };
+      if (command.type === "semantic.index.import-legacy") return {
+        ok: true, type: "semantic.index.legacy-imported", attempted: true, acceptedRows: 0, rejectedRows: 0,
+      };
+      if (command.type === "semantic.index.targets") return {
+        ok: true, type: "semantic.index.targets", revisionSnapshot: 1, total: 1, nextOffset: null,
+        targets: [{ assetId: "video-asset", sourceRevision: "video-revision", kind: "video",
+          modality: "video", alreadyIndexed: false }],
+      };
+      if (command.type === "semantic.index.job" && command.action === "claim") return {
+        ok: true, type: "semantic.index.job-updated", updated: true,
+      };
+      if (command.type === "semantic.index.prepare") return {
+        ok: true, type: "semantic.index.prepared", assetId: "video-asset", sourceRevision: "video-revision",
+        kind: "video", mimeType: "video/mp4", bytesBase64: Buffer.from("synthetic mp4 payload").toString("base64"),
+      };
+      if (command.type === "semantic.index.write") return {
+        ok: true, type: "semantic.index.written", accepted: ["video-asset"], rejected: [],
+      };
+      if (command.type === "semantic.index.close") return { ok: true, type: "semantic.index.closed" };
+      throw new Error(`Unexpected Worker command: ${command.type}`);
+    });
+    const index = new EmbeddingTestIndex({
+      configDirectories: [],
+      installedLayout: () => ({ modelDirectory, runtimePath }),
+      requestWorker,
+      startSession: vi.fn(async () => session),
+      resolveMediaBinaries: () => undefined,
+    });
+
+    index.handleStatus({ libraryId: "library-video", modelId: "embeddinggemma-2-compact", run: true, restart: false });
+    await vi.waitFor(() => {
+      expect(index.handleStatus({ libraryId: "library-video", modelId: "embeddinggemma-2-compact", run: false, restart: false }))
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready", total: 1 });
+    });
+
+    expect(commands.find((command) => command.type === "semantic.index.targets")).toMatchObject({
+      type: "semantic.index.targets", modalities: ["image", "video", "audio", "text"],
+    });
+    expect(commands.find((command) => command.type === "semantic.index.prepare")).toMatchObject({
+      type: "semantic.index.prepare", kind: "video", sourceRevision: "video-revision",
+    });
+    expect(videoEmbedding).toHaveBeenCalledWith(Buffer.from("synthetic mp4 payload").toString("base64"));
+    expect(session.embedImagePayload).not.toHaveBeenCalled();
+    await index.close();
   });
 });

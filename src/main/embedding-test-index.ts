@@ -22,7 +22,7 @@ import {
   readLocalEmbeddingTestConfig,
   type LocalEmbeddingTestConfig,
 } from "./embedding-local-config";
-import { startLlamaEmbeddingSession, type LlamaEmbeddingSession } from "./embedding-llama-session";
+import { startLlamaEmbeddingSession, type LlamaEmbeddingMediaBinaries, type LlamaEmbeddingSession } from "./embedding-llama-session";
 
 type JobState = EmbeddingIndexSnapshot & {
   generation: number;
@@ -35,7 +35,7 @@ type JobState = EmbeddingIndexSnapshot & {
 type EmbeddingTarget = {
   assetId: string;
   revisionId: string;
-  kind: "image" | "audio" | "text";
+  kind: "image" | "video" | "audio" | "text";
   alreadyIndexed: boolean;
   jobStatus?: "pending" | "running" | "ready" | "failed";
 };
@@ -158,6 +158,8 @@ export class EmbeddingTestIndex {
     configDirectories: readonly string[];
     requestWorker: (command: WorkerCommand) => Promise<WorkerResult>;
     installedLayout?: (modelId: SemanticSearchModelId) => LocalEmbeddingTestConfig | null;
+    resolveMediaBinaries?: () => LlamaEmbeddingMediaBinaries | undefined;
+    startSession?: typeof startLlamaEmbeddingSession;
   }) {}
 
   async close(): Promise<void> {
@@ -646,16 +648,21 @@ export class EmbeddingTestIndex {
       corePath: path.join(config.modelDirectory, files.coreFile),
       projectorPath: path.join(config.modelDirectory, files.projectorFile),
     };
+    const mediaBinaries = this.options.resolveMediaBinaries?.();
+    const startSession = this.options.startSession ?? startLlamaEmbeddingSession;
+    const baseSessionOptions = {
+      executable: config.runtimePath,
+      files: sessionFiles,
+      ...(mediaBinaries ? { mediaBinaries } : {}),
+    };
     try {
-      return await startLlamaEmbeddingSession({
-        executable: config.runtimePath,
-        files: sessionFiles,
+      return await startSession({
+        ...baseSessionOptions,
         gpuLayers: 99,
       });
     } catch {
-      return startLlamaEmbeddingSession({
-        executable: config.runtimePath,
-        files: sessionFiles,
+      return startSession({
+        ...baseSessionOptions,
         gpuLayers: 0,
       });
     }
@@ -727,6 +734,10 @@ export class EmbeddingTestIndex {
       if (prepared.text === undefined) throw new SemanticPreparationError("Semantic text payload is unavailable.");
       const text = prepared.text;
       return this.#embedWithProvider(() => session.embedText(text));
+    }
+    if (target.kind === "video") {
+      if (!prepared.bytesBase64) throw new SemanticPreparationError("Semantic video payload is unavailable.");
+      return this.#embedWithProvider(() => session.embedVideoPayload(prepared.bytesBase64!));
     }
     if (!prepared.mimeType || !prepared.bytesBase64) {
       throw new SemanticPreparationError("Semantic image payload is unavailable.");

@@ -2182,8 +2182,8 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     targets: z.array(z.strictObject({
       assetId: nonBlankString,
       sourceRevision: nonBlankString,
-      kind: z.enum(['image', 'audio', 'text']),
-      modality: z.enum(['text', 'image', 'audio']),
+      kind: z.enum(['image', 'video', 'audio', 'text']),
+      modality: z.enum(['text', 'image', 'video', 'audio']),
       alreadyIndexed: z.boolean(),
       jobStatus: z.enum(['pending', 'running', 'ready', 'failed']).optional(),
     })).max(500),
@@ -2193,7 +2193,7 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     type: z.literal('semantic.index.prepared'),
     assetId: nonBlankString,
     sourceRevision: nonBlankString,
-    kind: z.enum(['image', 'audio', 'text']),
+    kind: z.enum(['image', 'video', 'audio', 'text']),
     mimeType: nonBlankString.optional(),
     text: z.string().max(16_384).optional(),
     bytesBase64: z.string().max(90_000_000).optional(),
@@ -2242,8 +2242,8 @@ const workerSuccessResultSchema = z.discriminatedUnion('type', [
     sourceTarget: z.strictObject({
       assetId: nonBlankString,
       sourceRevision: nonBlankString,
-      kind: z.enum(['image', 'audio', 'text']),
-      modality: z.enum(['text', 'image', 'audio']),
+      kind: z.enum(['image', 'video', 'audio', 'text']),
+      modality: z.enum(['text', 'image', 'video', 'audio']),
     }).optional(),
     assetIds: z.array(nonBlankString).max(100_000),
     scores: z.array(z.strictObject({

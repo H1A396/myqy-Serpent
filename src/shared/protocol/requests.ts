@@ -2929,7 +2929,7 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     dimensions: z.number().int().min(1).max(8192),
     modelRevision: nonBlankString.max(1024),
     modality: z.enum(['image', 'audio', 'text', 'mixed']),
-    modalities: z.array(z.enum(['image', 'audio', 'text'])).min(1).max(3).optional(),
+    modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4).optional(),
     maxInputBytes: z.number().int().min(1).max(64 * 1024 * 1024),
   }),
   z.strictObject({
@@ -2942,7 +2942,7 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('semantic.index.targets'),
     libraryId: identifierSchema,
     sessionGeneration: z.string().uuid(),
-    modalities: z.array(z.enum(['text', 'image', 'audio'])).min(1).max(3),
+    modalities: z.array(z.enum(['text', 'image', 'video', 'audio'])).min(1).max(4),
     offset: z.number().int().min(0).max(100_000),
     limit: z.number().int().min(1).max(500),
     revisionSnapshot: z.number().int().nonnegative().nullable().optional(),
@@ -2954,7 +2954,7 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     sessionGeneration: z.string().uuid(),
     assetId: identifierSchema,
     sourceRevision: nonBlankString.max(4096),
-    kind: z.enum(['image', 'audio', 'text']),
+    kind: z.enum(['image', 'video', 'audio', 'text']),
     maxInputBytes: z.number().int().min(1).max(64 * 1024 * 1024),
   }),
   z.strictObject({
