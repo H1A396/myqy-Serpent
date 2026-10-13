@@ -70,9 +70,9 @@ export function FolderCoverPickerDialog({
   useEffect(() => {
     if (!open || !libraryId) return;
     let cancelled = false;
-    setLoading(true);
     const delay = query.trim() ? 200 : 0;
     const timer = window.setTimeout(() => {
+      setLoading(true);
       setLoadFailed(false);
       void loadPage(query, 0)
         .then((page) => {

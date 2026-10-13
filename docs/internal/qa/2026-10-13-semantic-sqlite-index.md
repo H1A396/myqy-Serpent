@@ -78,3 +78,13 @@
 完整 E2E 命令 `SERPENT_E2E_HIDE_WINDOW=1 npm run test:e2e` 共 107 项，83 passed、20 failed、4 skipped，用时约 11 分钟。失败分布在导入、分页、重命名、浏览偏好、合集层级、菜单、确认弹窗、文件夹菜单、视频预览、导航背景、组织元数据、回收站批量操作、shell navigation 与 workspace tabs；新增语义 SQLite 生命周期测试本身通过。没有建立这些失败相对当前 dev 基线的归因。`npm run test` 的 17 个失败涉及 model pipeline、network metadata cache、raw metadata admission、real media bundle、video/exr、格式预设、导入错误、open-recent、媒体包平台校验、主题 token 和 workspace tabs；同样不作归因。
 
 最终阻断项：`npm run test`、完整 E2E 与 20k 基线均未整体通过；查询 embedding + Worker + IPC/渲染的完整 500ms 链路尚未测量；独立最终审查、Computer Use、packaged/macOS 与 Windows 证据未完成。因此不关闭 Serpent-424d7b，不登记待人类验收，不声明规格完整或性能达标。
+
+## 合并远端更新后的推送前复验（2026-10-13）
+
+合并 `origin/dev` 后，`SERPENT_E2E_HIDE_WINDOW=1 npm run verify:mainline` 的 lint、typecheck、extension verify 和资源库可用性阶段均通过；`npm run test` 随后报告 19 项失败、5,730 项通过、28 项跳过，门禁因此未运行后续通用性能套件和全量 E2E。该次失败包含一个新合并文件夹封面路径对可选 `revision_artifacts.status` 列的硬引用；改为按现存列构造封面查询后，`node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/worker/lenient-folder-panel.test.ts --reporter=verbose` 为 2/2 通过。全量单测未在此最后一处修正后重跑，剩余失败数不作当前精确结论。
+
+同一复验发现 v58 文件夹封面迁移在较新列已存在、迁移记录回退的历史兼容场景会重复添加 `cover_asset_id`。迁移现先读取表结构；资源库底线重跑 `npm run test:library-availability` 为 9 files / 233 tests passed。合并进来的文件夹封面选择器也修正了 effect 内同步设置 loading 的 lint 错误；最终 `npm run lint` 为 0 errors / 7 warnings，`npm run typecheck` 通过。
+
+语义检索直接 Worker 基准复跑：`SERPENT_RUN_SEMANTIC_PERF=1 node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/worker/semantic-index-performance.test.ts --reporter=verbose`，1/1 通过。10,000 条、768D 首次 101.86ms，热态 p95 109.80ms，5,000 条筛选 46.57ms；4096D 首次 146.05ms，热态 p95 163.16ms，筛选 80.37ms。计时仍排除 provider 推理、IPC、UI 和进程冷启动。
+
+语义全应用退出/重启 E2E：`SERPENT_E2E_HIDE_WINDOW=1 node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`，1/1 通过。全量 `verify:mainline` 在单测失败处提前停止，通用 `test:perf:search`、全量 E2E、packaged 与 Windows 本轮没有执行；独立最终审查和 Computer Use 仍未完成。

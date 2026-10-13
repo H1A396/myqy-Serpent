@@ -173,3 +173,35 @@ fails, while such a fallback does not establish the latency target.
 - Native packaging, Windows, Computer Use visual acceptance, and independent
   final reviewer sign-off remain unverified. The independent review agent did
   not complete its final pass.
+
+## Post-merge push validation (2026-10-13)
+
+After merging the latest `origin/dev`, fixed two folder-cover compatibility
+issues found by the mainline gate: v58 now checks for an existing
+`cover_asset_id` before adding it, and the cover-artifact projection omits
+optional `revision_artifacts` predicates when those columns are absent. The
+history-replay case is covered by the library availability suite; the
+degraded-artifact case is covered by `tests/worker/lenient-folder-panel.test.ts`
+(2/2 passed). The merged folder-cover picker also moved its loading update into
+the asynchronous timer callback to satisfy React's set-state-in-effect lint
+rule while keeping open/query event handlers responsible for immediate loading
+feedback.
+
+- `npm run test:library-availability`: 9 files / 233 tests passed.
+- `npm run lint`: 0 errors, 7 existing React hook warnings.
+- `npm run typecheck`: passed.
+- `SERPENT_RUN_SEMANTIC_PERF=1 node scripts/run-vitest-with-electron.mjs run --config vitest.config.ts tests/worker/semantic-index-performance.test.ts --reporter=verbose`:
+  1/1 passed. For 10,000 assets, 768D first query 101.86ms, warm p95
+  109.80ms, filtered 5,000 assets 46.57ms; 4096D first query 146.05ms, warm
+  p95 163.16ms, filtered 5,000 assets 80.37ms. This is direct Worker retrieval
+  with precomputed vectors; provider inference, IPC, UI, and process-cold time
+  are excluded.
+- `SERPENT_E2E_HIDE_WINDOW=1 node scripts/run-e2e.mjs tests/e2e/semantic-sqlite-lifecycle.test.ts`:
+  1/1 passed, including full Electron process exit/relaunch and search reuse.
+- `SERPENT_E2E_HIDE_WINDOW=1 npm run verify:mainline` reached the full unit
+  suite after lint, typecheck, extension verification, and 9/233 library tests
+  passed. The unit suite reported 19 failures, 5,730 passed, 28 skipped; one
+  folder-cover degraded-schema failure was fixed and its focused file passed
+  afterward. The full suite was not rerun after that final fix, so remaining
+  failure count is not reasserted. The mainline command stopped before generic
+  performance and full E2E gates.

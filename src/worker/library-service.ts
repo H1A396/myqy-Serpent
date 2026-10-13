@@ -3047,6 +3047,13 @@ function ensureEntityAppearanceSchema(connection: DatabaseConnection): void {
   }
 }
 
+function ensureFolderCustomCoverAssetSchema(connection: DatabaseConnection): void {
+  const columns = connection.pragma('table_info(folder_custom_covers)') as Array<{ name: string }>;
+  if (!columns.some((column) => column.name === 'cover_asset_id')) {
+    connection.exec(FOLDER_CUSTOM_COVER_ASSET_SCHEMA_SQL);
+  }
+}
+
 function ensureAssetNormalizedExtensionSchema(connection: DatabaseConnection): void {
   const columns = columnsFor(connection, 'assets');
   if (!columns.has('normalized_extension')) {
@@ -6655,6 +6662,8 @@ function migrateDatabaseUnserialized(connection: DatabaseConnection, allowFresh:
           ensureAssetNormalizedExtensionSchema(connection);
         } else if (migration.version === 55) {
           ensureEntityAppearanceSchema(connection);
+        } else if (migration.version === 58) {
+          ensureFolderCustomCoverAssetSchema(connection);
         } else {
           connection.exec(migration.sql);
         }
@@ -16091,6 +16100,17 @@ export class LibraryService {
   }> {
     if (!hasTable(openLibrary.connection, 'folder_custom_covers')) return [];
     const assetColumn = columnsFor(openLibrary.connection, 'folder_custom_covers').has('cover_asset_id');
+    const artifactColumns = columnsFor(openLibrary.connection, 'revision_artifacts');
+    const artifactIdSelect = hasTable(openLibrary.connection, 'revision_artifacts')
+      && ['artifact_id', 'revision_id', 'kind'].every((column) => artifactColumns.has(column))
+      ? `(SELECT ra.artifact_id
+           FROM revision_artifacts ra
+          WHERE ra.revision_id = a.current_revision_id
+            ${artifactColumns.has('invalidated_at') ? 'AND ra.invalidated_at IS NULL' : ''}
+            ${artifactColumns.has('status') ? "AND ra.status = 'ready'" : ''}
+            AND ra.kind = 'thumbnail'
+          LIMIT 1)`
+      : 'NULL';
     const select = assetColumn
       ? `SELECT c.folder_key AS folder_key,
                 c.relative_name AS relative_name,
@@ -16099,15 +16119,7 @@ export class LibraryService {
                 a.current_revision_id AS current_revision_id,
                 a.deleted_at AS deleted_at,
                 a.relative_file_path AS relative_file_path,
-                (
-                  SELECT ra.artifact_id
-                    FROM revision_artifacts ra
-                   WHERE ra.revision_id = a.current_revision_id
-                     AND ra.invalidated_at IS NULL
-                     AND ra.status = 'ready'
-                     AND ra.kind = 'thumbnail'
-                   LIMIT 1
-                ) AS artifact_id
+                ${artifactIdSelect} AS artifact_id
            FROM folder_custom_covers c
            LEFT JOIN assets a ON a.asset_id = c.cover_asset_id
           WHERE c.library_id = ?`
