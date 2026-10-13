@@ -141,7 +141,13 @@ import {
 } from "./folder-browse-canvas";
 import { useFolderInspector } from "./folder-inspector";
 import { collectFolderCoverCandidateAssetIds } from "./folder-cover-refresh";
-import { folderNavigationCoverSrcMap } from "./folder-cover";
+import { folderNavigationCoverSrcMap, patchFolderNavigationCoverArtifact } from "./folder-cover";
+import {
+  FOLDER_COVER_PICKER_PAGE_SIZE,
+  folderCoverPickerAssetMatches,
+  folderCoverPickerImageFilter,
+  folderCoverPickerSearchQuery,
+} from "./folder-cover-picker";
 import {
   decrementScopeCount,
   removeAssetIdsLocally,
@@ -493,7 +499,7 @@ import type {
   TagSummary,
   TrashedFolderSummary,
 } from "../shared/asset-types";
-import type { LibraryNavigationSummary } from "../shared/library-navigation";
+import type { FolderNavigationCover, LibraryNavigationSummary } from "../shared/library-navigation";
 import { LIBRARY_ROOT_FOLDER_ID, isLibraryRootFolderId } from "../shared/library-root-folder";
 import { DEFAULT_COLOR_SIMILARITY } from "../shared/color-filter-presets";
 import { loadColorFilterPreferences } from "./color-filter-preferences";
@@ -896,6 +902,10 @@ function AppInner() {
   const [folderCoverSrcById, setFolderCoverSrcById] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
+  const [folderNavigationCovers, setFolderNavigationCovers] = useState<readonly FolderNavigationCover[]>(
+    [],
+  );
+  const folderNavigationCoversRef = useRef<readonly FolderNavigationCover[]>([]);
   const [folderCoverPicker, setFolderCoverPicker] = useState<{
     folderIds: string[];
     assetId: string;
@@ -1867,6 +1877,31 @@ function AppInner() {
   const syncRunNotifiedRef = useRef(false);
   const syncRunStartedAtRef = useRef<number | null>(null);
   const [showIgnoredItems, setShowIgnoredItems] = useState(false);
+  const loadFolderCoverPickerPage = useCallback(async (query: string, offset: number) => {
+    if (!api || !library) return { items: [], total: 0 };
+    const result = await api.searchAssets({
+      libraryId: library.libraryId,
+      query: folderCoverPickerSearchQuery(query),
+      filters: [folderCoverPickerImageFilter()],
+      limit: FOLDER_COVER_PICKER_PAGE_SIZE,
+      offset,
+      showIgnored: showIgnoredItems,
+    });
+    if (!result.ok) throw new LibraryOperationError(result.error);
+    const items = result.value.items
+      .filter((asset) =>
+        asset.mediaType === "image"
+        && !asset.deletedAt
+        && folderCoverPickerAssetMatches(asset, query))
+      .map((asset) => ({
+        assetId: asset.assetId,
+        displayName: asset.displayName,
+        relativeFilePath: asset.relativeFilePath,
+        thumbnailArtifactId: asset.thumbnailArtifactId,
+        previewRevisionId: asset.previewRevisionId ?? asset.currentRevisionId,
+      }));
+    return { items, total: result.value.total };
+  }, [api, library, showIgnoredItems]);
   const [showMissingLinkedFiles, setShowMissingLinkedFiles] = useState(() =>
     readShowMissingLinkedFiles(globalThis.localStorage),
   );
@@ -3825,10 +3860,15 @@ function AppInner() {
   // entries response) visible to the thumbnail event subscriber so a ready
   // cover refreshes the folder-card row without a full reload.
   useEffect(() => {
+    folderNavigationCoversRef.current = folderNavigationCovers;
+  }, [folderNavigationCovers]);
+
+  useEffect(() => {
     folderCoverCandidateAssetIdsRef.current = collectFolderCoverCandidateAssetIds(
       folderBrowseEntries,
+      folderNavigationCovers,
     );
-  }, [folderBrowseEntries]);
+  }, [folderBrowseEntries, folderNavigationCovers]);
 
   const previewIndex = previewAsset
     ? visibleAssets.findIndex((asset) => asset.assetId === previewAsset.assetId)
@@ -4555,8 +4595,11 @@ function AppInner() {
         setCollections(summary.collections);
         setSmartCollections(summary.smartCollections);
         setTrashedFolders(summary.trashedFolders);
+        const covers = summary.folderCovers ?? [];
+        folderNavigationCoversRef.current = covers;
+        setFolderNavigationCovers(covers);
         setFolderCoverSrcById(
-          folderNavigationCoverSrcMap(summary.libraryId, summary.folderCovers ?? []),
+          folderNavigationCoverSrcMap(summary.libraryId, covers),
         );
       };
       const loadNavigationSummary = () => {
@@ -5189,6 +5232,20 @@ function AppInner() {
           });
           if (folderCoverCandidateAssetIdsRef.current.has(cardEvent.assetId)) {
             scheduleFolderBrowseRefresh();
+            if (effectLibraryId && cardEvent.artifactId) {
+              const patched = patchFolderNavigationCoverArtifact(
+                folderNavigationCoversRef.current,
+                cardEvent.assetId,
+                cardEvent.artifactId,
+              );
+              if (patched.changed) {
+                folderNavigationCoversRef.current = patched.covers;
+                setFolderNavigationCovers(patched.covers);
+                setFolderCoverSrcById(
+                  folderNavigationCoverSrcMap(effectLibraryId, patched.covers),
+                );
+              }
+            }
           }
         }
       }
@@ -8576,9 +8633,9 @@ function AppInner() {
     });
   }
 
-  function applyFolderCoverFromLibrary() {
-    if (!api || !library || !folderCoverPicker?.assetId) return;
-    const { folderIds, assetId } = folderCoverPicker;
+  function applyFolderCoverFromLibrary(assetId: string) {
+    if (!api || !library || !folderCoverPicker || !assetId) return;
+    const { folderIds } = folderCoverPicker;
     void (async () => {
       try {
         const result = await api.setFolderCoverFromAsset({
@@ -8588,6 +8645,23 @@ function AppInner() {
         });
         if (!result.ok) throw new LibraryOperationError(result.error);
         setFolderCoverPicker(null);
+        setFolderBrowseRefreshToken((token) => token + 1);
+      } catch (caught) {
+        setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
+      }
+    })();
+  }
+
+  function useAssetAsFolderCover(assetId: string, folderId: string) {
+    if (!api || !library) return;
+    void (async () => {
+      try {
+        const result = await api.setFolderCoverFromAsset({
+          libraryId: library.libraryId,
+          folderIds: [folderId],
+          assetId,
+        });
+        if (!result.ok) throw new LibraryOperationError(result.error);
         setFolderBrowseRefreshToken((token) => token + 1);
       } catch (caught) {
         setError(toMessage(caught, t("error.code.FOLDER_COVER_UNSUPPORTED"), locale));
@@ -10115,6 +10189,8 @@ function AppInner() {
     setOperationHistory(null);
     setCollectionEditor(null);
     setFolderCoverPicker(null);
+    folderNavigationCoversRef.current = [];
+    setFolderNavigationCovers([]);
     setFolderCoverSrcById(new Map());
     setInlineCollectionRename(null);
     setRenameTarget(null);
@@ -15485,14 +15561,11 @@ function AppInner() {
       />
       <FolderCoverPickerDialog
         open={folderCoverPicker !== null}
-        assetId={folderCoverPicker?.assetId ?? ""}
-        assetOptions={visibleAssets
-          .filter((asset) => asset.mediaType === "image" && !asset.deletedAt)
-          .map((asset) => ({
-            assetId: asset.assetId,
-            displayName: asset.displayName,
-          }))}
-        onAssetChange={(assetId) =>
+        libraryId={library?.libraryId ?? null}
+        selectedAssetId={folderCoverPicker?.assetId ?? ""}
+        pageSize={FOLDER_COVER_PICKER_PAGE_SIZE}
+        loadPage={loadFolderCoverPickerPage}
+        onSelect={(assetId) =>
           setFolderCoverPicker((current) =>
             current ? { ...current, assetId } : current,
           )
@@ -16254,6 +16327,7 @@ function AppInner() {
         onChooseFolderCover={chooseFolderCover}
         onChooseFolderCoverFromLibrary={openFolderCoverLibraryPicker}
         onClearFolderCover={clearFolderCover}
+        onUseAssetAsFolderCover={useAssetAsFolderCover}
         onBatchAssignTag={(tagId, assetIds) => {
           void batchAssignTagToSelection(tagId, assetIds);
         }}

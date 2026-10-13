@@ -547,7 +547,8 @@ export const en = {
       addTags: "Add tags…",
       removeTags: "Remove tags…",
       addTag: "Add tag",
-      removeTag: "Remove tag"
+      removeTag: "Remove tag",
+      useAsFolderCover: "Set as folder cover"
       ,ignore: "Ignore"
       ,unignore: "Unignore"
     },
@@ -1058,11 +1059,15 @@ export const en = {
     },
     folderCover: {
       title: "Set folder cover",
-      asset: "Cover asset",
-      none: "None",
-      empty: "This page has no image assets to use as a cover.",
+      search: "Search by name or path",
+      searchPlaceholder: "Name or path",
+      empty: "This library has no images to use as a cover.",
+      noMatch: "No images match this search.",
+      loading: "Loading images…",
+      loadMore: "Load more",
+      loadFailed: "Couldn't load images.",
       save: "Use this cover",
-      help: "Pick an image on this page. The cover is stored with the library and remains after restart."
+      help: "Pick an image from the library. The cover is stored with the library and remains after restart."
     },
     collectionEditor: {
       title: "Edit collection details",

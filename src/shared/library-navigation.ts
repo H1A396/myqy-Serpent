@@ -28,6 +28,14 @@ export const folderNavigationCoverSchema = z.strictObject({
 
 export type FolderNavigationCover = z.infer<typeof folderNavigationCoverSchema>;
 
+/** Payload cap for sidebar covers. Extra rows are dropped instead of failing the summary. */
+export const FOLDER_NAVIGATION_COVER_CAP = 20_000;
+
+const folderNavigationCoversSchema = z.union([
+  z.array(folderNavigationCoverSchema).max(FOLDER_NAVIGATION_COVER_CAP),
+  z.array(folderNavigationCoverSchema).transform((covers) => covers.slice(0, FOLDER_NAVIGATION_COVER_CAP)),
+]).optional();
+
 export const libraryNavigationSummarySchema = z.strictObject({
   libraryId: z.string().min(1),
   changeSequence: z.number().int().nonnegative(),
@@ -40,7 +48,7 @@ export const libraryNavigationSummarySchema = z.strictObject({
   collections: z.array(collectionSummarySchema),
   smartCollections: z.array(smartCollectionSummarySchema),
   trashedFolders: z.array(trashedFolderSummarySchema),
-  folderCovers: z.array(folderNavigationCoverSchema).max(20_000).optional(),
+  folderCovers: folderNavigationCoversSchema,
 });
 
 export type LibraryNavigationSummary = z.infer<typeof libraryNavigationSummarySchema>;

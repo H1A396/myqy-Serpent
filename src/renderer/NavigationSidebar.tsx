@@ -172,6 +172,8 @@ function NavRow({
   // provided (e.g. offline linked folder), append it after the name.
   const hoverTitle =
     title && title !== label ? `${label} — ${title}` : label;
+  const [failedCoverSrc, setFailedCoverSrc] = useState<string | null>(null);
+  const visibleCoverSrc = coverSrc && failedCoverSrc !== coverSrc ? coverSrc : undefined;
 
   return (
     <div className="nav-tree-row" style={{ paddingLeft: depth * 14 }}>
@@ -194,9 +196,14 @@ function NavRow({
         title={hoverTitle}
         type="button"
       >
-        {coverSrc ? (
+        {visibleCoverSrc ? (
           <span className="nav-entity-glyph">
-            <img alt="" className="nav-folder-cover" src={coverSrc} />
+            <img
+              alt=""
+              className="nav-folder-cover"
+              onError={() => setFailedCoverSrc(visibleCoverSrc)}
+              src={visibleCoverSrc}
+            />
             {linkedBadge ? (
               <span className="nav-entity-glyph-badge" aria-hidden="true">
                 <Icon name={linkedBadge} size={8} />

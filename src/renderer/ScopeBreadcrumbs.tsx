@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { ManagedFolderBreadcrumbEntry } from "./folder-breadcrumb-trail";
 import { useT, type TranslateFn } from "./i18n";
 import type { TrashBreadcrumbHop } from "./trash-browse";
@@ -106,6 +108,19 @@ export function buildScopeBreadcrumbSegments(
   return [{ kind: "static", id: "workspace", label: t("scope.workspace") }];
 }
 
+function ScopeCrumbCover({ src }: { src: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return null;
+  return (
+    <img
+      alt=""
+      className="scope-crumb-cover"
+      onError={() => setFailedSrc(src)}
+      src={src}
+    />
+  );
+}
+
 /**
  * Borderless scope trail. Does not include a leading library prefix.
  * Workspace back/forward controls live in `ScopeHistoryButtons`, rendered
@@ -131,9 +146,7 @@ export function ScopeBreadcrumbs({
                   onClick={() => onNavigateFolder(segment.folderId)}
                   type="button"
                 >
-                  {segment.coverSrc ? (
-                    <img alt="" className="scope-crumb-cover" src={segment.coverSrc} />
-                  ) : null}
+                  {segment.coverSrc ? <ScopeCrumbCover src={segment.coverSrc} /> : null}
                   {segment.label}
                 </button>
               ) : segment.kind === "trash-path" && !isLast ? (
@@ -151,7 +164,7 @@ export function ScopeBreadcrumbs({
                   className={`scope-crumb-label${isLast ? " is-current" : ""}`}
                 >
                   {segment.kind === "folder" && segment.coverSrc ? (
-                    <img alt="" className="scope-crumb-cover" src={segment.coverSrc} />
+                    <ScopeCrumbCover src={segment.coverSrc} />
                   ) : null}
                   {segment.label}
                 </span>

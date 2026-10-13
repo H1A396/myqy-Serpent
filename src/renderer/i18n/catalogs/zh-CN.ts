@@ -533,7 +533,8 @@ export const zhCN = {
       addTags: "添加标签…",
       removeTags: "移除标签…",
       addTag: "添加标签",
-      removeTag: "移除标签"
+      removeTag: "移除标签",
+      useAsFolderCover: "设为所在文件夹封面"
       ,ignore: "忽略"
       ,unignore: "取消忽略"
     },
@@ -1042,11 +1043,15 @@ export const zhCN = {
     },
     folderCover: {
       title: "设置文件夹封面",
-      asset: "封面资产",
-      none: "不设置",
-      empty: "当前页面没有可用的图片资产。",
+      search: "搜索名称或路径",
+      searchPlaceholder: "名称或路径",
+      empty: "资源库中没有可用的图片。",
+      noMatch: "没有匹配的图片。",
+      loading: "正在加载图片…",
+      loadMore: "加载更多",
+      loadFailed: "图片列表加载失败。",
       save: "使用此封面",
-      help: "从当前页面的图片中选择。封面记录保存在资源库中，重启后仍然有效。"
+      help: "从资源库中的图片选择封面。封面记录保存在资源库中，重启后仍然有效。"
     },
     collectionEditor: {
       title: "编辑合集详情",

@@ -11572,6 +11572,72 @@ select.ai-config-input.ai-config-languages {
   object-position: center;
 }
 
+.folder-cover-picker-dialog {
+  width: min(640px, calc(100vw - 48px));
+}
+
+.folder-cover-picker-search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.folder-cover-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  margin: 0 0 8px;
+  padding: 2px;
+}
+
+.folder-cover-picker-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-cover-picker-cell.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.folder-cover-picker-thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--raised-2);
+}
+
+.folder-cover-picker-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.folder-cover-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.folder-cover-picker-status {
+  margin: 12px 0;
+  color: var(--secondary);
+  font-size: 13px;
+}
+
 /* Serpent-9021d1: 2x2 four-grid collage for pure folders (subfolders only). */
 .folder-card-collage {
   width: 100%;

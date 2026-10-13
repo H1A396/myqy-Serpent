@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { assetParentFolderCoverTarget } from "../../src/shared/folder-cover-target";
 import { LibraryService } from "../../src/worker/library-service";
 
 const require = createRequire(import.meta.url);
@@ -205,5 +206,72 @@ describe("folder custom covers", () => {
       libraryId: library.libraryId,
     }).folderCovers).toEqual([]);
     afterDelete.closeAll();
+  });
+
+  it("replaces a file cover only after the new file is stored, and an asset cover does the same", () => {
+    const { library, root, service } = fixture();
+    const folder = service.createManagedFolder({
+      libraryId: library.libraryId,
+      name: "Replace",
+    });
+    const first = path.join(root, "first.png");
+    const second = path.join(root, "second.jpg");
+    const secondBytes = Buffer.concat([PNG, Buffer.from("next")]);
+    writeFileSync(first, PNG);
+    writeFileSync(second, secondBytes);
+    service.setFolderCustomCovers({
+      libraryId: library.libraryId,
+      folderIds: [folder.folderId],
+      sourcePath: first,
+    });
+    const previous = service.resolveFolderCustomCover({
+      libraryId: library.libraryId,
+      folderId: folder.folderId,
+    });
+    expect(previous).not.toBeNull();
+
+    service.setFolderCustomCovers({
+      libraryId: library.libraryId,
+      folderIds: [folder.folderId],
+      sourcePath: second,
+    });
+    const replaced = service.resolveFolderCustomCover({
+      libraryId: library.libraryId,
+      folderId: folder.folderId,
+    });
+    expect(replaced).not.toBeNull();
+    expect(replaced!.absolutePath).not.toBe(previous!.absolutePath);
+    expect(existsSync(previous!.absolutePath)).toBe(false);
+    expect(existsSync(replaced!.absolutePath)).toBe(true);
+
+    const imported = service.prepareOrExecuteImport({
+      libraryId: library.libraryId,
+      targetFolderId: folder.folderId,
+      sourceKind: "files",
+      sourcePaths: [first],
+    });
+    if ("importId" in imported) throw new Error("unexpected conflict plan");
+    const asset = imported.assets[0]!;
+    expect(assetParentFolderCoverTarget(asset)).toBe(folder.folderId);
+    const fileBeforeAsset = service.resolveFolderCustomCover({
+      libraryId: library.libraryId,
+      folderId: folder.folderId,
+    });
+    expect(fileBeforeAsset).not.toBeNull();
+    service.setFolderCustomCoverFromAsset({
+      libraryId: library.libraryId,
+      folderIds: [assetParentFolderCoverTarget(asset)!],
+      assetId: asset.assetId,
+    });
+    expect(existsSync(fileBeforeAsset!.absolutePath)).toBe(false);
+    const listed = service.listFolderBrowseEntries({
+      libraryId: library.libraryId,
+      parentFolderId: null,
+    }).find((item) => item.folderId === folder.folderId);
+    expect(listed?.customCoverAssetId).toBe(asset.assetId);
+    expect(service.resolveFolderCustomCover({
+      libraryId: library.libraryId,
+      folderId: folder.folderId,
+    })).toBeNull();
   });
 });
