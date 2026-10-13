@@ -1344,6 +1344,7 @@ export const en = {
     pluginCommunityBack: "Back",
     pluginCommunitySearch: "Search plugins",
     pluginCommunityEmpty: "No plugins match this search.",
+    pluginCommunityLoading: "Loading plugins…",
     pluginCommunityStale: "Could not refresh the directory. Showing the last downloaded list.",
     pluginCommunityOfficial: "Official",
     pluginCommunityCertified: "Certified",

@@ -1325,6 +1325,7 @@ export const zhCN = {
     pluginCommunityBack: "返回",
     pluginCommunitySearch: "搜索插件",
     pluginCommunityEmpty: "没有符合条件的插件。",
+    pluginCommunityLoading: "正在加载插件…",
     pluginCommunityStale: "目录未能刷新，正在显示上次下载的列表。",
     pluginCommunityOfficial: "官方",
     pluginCommunityCertified: "已认证",

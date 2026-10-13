@@ -596,6 +596,7 @@ import {
 } from "./browse-sort-preferences";
 import {
   FOLDER_CARD_ROW_INLINE_PADDING_PX,
+  elementContentBoxWidthPx,
   masonryAlignedFolderWidthPx,
 } from "./folder-card-width";
 import { BrowseLayoutPreview } from "./BrowseLayoutPreview";
@@ -1357,6 +1358,7 @@ function AppInner() {
     queries: string[];
   } | null>(null);
   const [searchHistoryOpen, setSearchHistoryOpen] = useState(false);
+  const searchHistoryDismissedUntilInputRef = useRef(false);
   const [searchHistoryActiveIndex, setSearchHistoryActiveIndex] = useState(-1);
   const searchHistoryLibraryId = library?.libraryId ?? null;
   const searchHistory =
@@ -2359,6 +2361,7 @@ function AppInner() {
   const assetViewMode = canvasPrefs.viewMode;
   const assetCardSize = canvasPrefs.cardSize;
   const [canvasWidthPx, setCanvasWidthPx] = useState(0);
+  const [folderCanvasContentWidthPx, setFolderCanvasContentWidthPx] = useState(0);
   const cardSizeStops = useMemo(
     () => enumerateDiscreteCardSizes(canvasWidthPx),
     [canvasWidthPx],
@@ -2371,11 +2374,11 @@ function AppInner() {
       masonryAlignedFolderWidthPx(
         Math.max(
           0,
-          canvasWidthPx - FOLDER_CARD_ROW_INLINE_PADDING_PX * 2,
+          folderCanvasContentWidthPx - FOLDER_CARD_ROW_INLINE_PADDING_PX * 2,
         ),
         assetCardSize,
       ),
-    [assetCardSize, canvasWidthPx],
+    [assetCardSize, folderCanvasContentWidthPx],
   );
   const workspaceCanvasRef = useRef<HTMLDivElement>(null);
   const previewScrollHoldTimerRef = useRef<number | null>(null);
@@ -3987,14 +3990,17 @@ function AppInner() {
       // Read the canvas's current width instead of trusting observer entry
       // ordering when both elements resize in the same notification.
       const width = canvas.clientWidth;
+      const contentWidth = elementContentBoxWidthPx(canvas);
       // The viewer overlay preserves the canvas width. View-restore.ts owns
       // scroll restoration for the viewer close path, so a preview transition
       // must never be interpreted as a reflow.
       if (width <= 0) {
         lastWidth = null;
+        setFolderCanvasContentWidthPx(0);
         return;
       }
       setCanvasWidthPx(Math.round(width));
+      setFolderCanvasContentWidthPx(Math.round(contentWidth));
       if (lastWidth === null) {
         lastWidth = width;
         return;
@@ -9135,6 +9141,11 @@ function AppInner() {
     opts?: { silent?: boolean },
   ) {
     event?.preventDefault();
+    if (event) {
+      searchHistoryDismissedUntilInputRef.current = true;
+      setSearchHistoryOpen(false);
+      setSearchHistoryActiveIndex(-1);
+    }
     if (!api || !library) return;
     const semanticQuery = searchValue.trim();
     const semantic = loadSemanticSearchPreferences();
@@ -13702,11 +13713,13 @@ function AppInner() {
                   setSearchHistoryActiveIndex(-1);
                 }}
                 onChange={(event) => {
+                  searchHistoryDismissedUntilInputRef.current = false;
                   setSearchValue(event.target.value);
                   setSearchHistoryActiveIndex(-1);
                   setSearchHistoryOpen(true);
                 }}
                 onFocus={() => {
+                  if (searchHistoryDismissedUntilInputRef.current) return;
                   setSearchHistoryActiveIndex(-1);
                   setSearchHistoryOpen(true);
                 }}

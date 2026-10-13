@@ -1685,12 +1685,18 @@ body.platform-darwin .app-shell.left-collapsed .toolbar-workspace-cluster {
 }
 
 .search-semantic-toggle:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--divider) 78%, transparent);
-  background: color-mix(in srgb, var(--raised-2) 74%, transparent);
+  border-color: var(--divider-soft);
+  background: var(--hover);
   color: var(--secondary);
 }
 
 .search-semantic-toggle.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-soft-fg);
+}
+
+.search-semantic-toggle.is-active:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
@@ -12832,6 +12838,10 @@ select.ai-config-input.ai-config-languages {
   height: auto;
   aspect-ratio: 1;
   max-height: none;
+  /* Keep the track full-width; inherited centering otherwise lets the
+     empty-folder fallback size the auto track to the icon's min-content width. */
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
   align-items: stretch;
   justify-items: stretch;
 }
@@ -12947,6 +12957,12 @@ select.ai-config-input.ai-config-languages {
   max-width: 100%;
   max-height: min(360px, 45vh);
   border-radius: calc(8px * var(--ui-radius-scale, 1));
+}
+
+.inspector-pane[data-inspector-card-feel="on"]
+  .inspector-folder-hero > .inspector-hero-preview-fallback {
+  display: grid;
+  max-height: none;
 }
 
 .inspector-pane[data-inspector-card-feel="on"] .inspector-hero-face {
