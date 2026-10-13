@@ -114,6 +114,7 @@ function NavRow({
   icon,
   appearance,
   linkedBadge,
+  coverSrc,
   label,
   count,
   active,
@@ -139,6 +140,7 @@ function NavRow({
   icon: IconName;
   appearance?: EntityAppearance | null;
   linkedBadge?: "link" | "link-off" | null;
+  coverSrc?: string;
   label: string;
   count?: number;
   active?: boolean;
@@ -170,6 +172,8 @@ function NavRow({
   // provided (e.g. offline linked folder), append it after the name.
   const hoverTitle =
     title && title !== label ? `${label} — ${title}` : label;
+  const [failedCoverSrc, setFailedCoverSrc] = useState<string | null>(null);
+  const visibleCoverSrc = coverSrc && failedCoverSrc !== coverSrc ? coverSrc : undefined;
 
   return (
     <div className="nav-tree-row" style={{ paddingLeft: depth * 14 }}>
@@ -192,13 +196,29 @@ function NavRow({
         title={hoverTitle}
         type="button"
       >
-        <AppearanceGlyph
-          appearance={appearance}
-          color={iconColor}
-          fallback={icon}
-          linkedBadge={linkedBadge}
-          size={15}
-        />
+        {visibleCoverSrc ? (
+          <span className="nav-entity-glyph">
+            <img
+              alt=""
+              className="nav-folder-cover"
+              onError={() => setFailedCoverSrc(visibleCoverSrc)}
+              src={visibleCoverSrc}
+            />
+            {linkedBadge ? (
+              <span className="nav-entity-glyph-badge" aria-hidden="true">
+                <Icon name={linkedBadge} size={8} />
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <AppearanceGlyph
+            appearance={appearance}
+            color={iconColor}
+            fallback={icon}
+            linkedBadge={linkedBadge}
+            size={15}
+          />
+        )}
         <span className="nav-row-label">{label}</span>
         {count !== undefined && (
           <span aria-hidden="true" className="nav-count">
@@ -868,6 +888,8 @@ export interface NavigationSidebarProps {
   collectionTree: Map<string | null, CollectionSummary[]>;
   smartCollections: SmartCollectionSummary[];
   linkedFolders: LinkedFolderSummary[];
+  /** Custom cover image URLs keyed by folder id. */
+  folderCoverSrcById?: ReadonlyMap<string, string>;
 
   // --- Inline input state ---
   showCollectionInput: boolean;
@@ -1048,6 +1070,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     collectionTree,
     smartCollections,
     linkedFolders,
+    folderCoverSrcById,
     showCollectionInput,
     collectionInputValue,
     newCollectionParentId,
@@ -1795,6 +1818,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
             }
             icon="folder"
             appearance={entry.appearance}
+            coverSrc={folderCoverSrcById?.get(entry.folderId)}
             key={entry.folderId}
             label={entry.name}
             navFolderId={entry.folderId}
@@ -1912,6 +1936,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
           }
           icon={hasCustomLinkedGlyph ? "folder" : linkedAffordance.icon}
           appearance={entry.appearance}
+          coverSrc={folderCoverSrcById?.get(entry.folderId)}
           linkedBadge={hasCustomLinkedGlyph ? (offline ? "link-off" : "link") : undefined}
           iconColor={hasCustomLinkedGlyph ? undefined : linkedAffordance.iconColor}
           key={entry.folderId}

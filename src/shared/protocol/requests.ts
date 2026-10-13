@@ -294,6 +294,12 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     libraryId: identifierSchema,
     folderIds: z.array(folderScopeIdSchema).min(1).max(100),
   }),
+  z.strictObject({
+    type: z.literal('folder.cover.set-asset.request'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+    assetId: identifierSchema,
+  }),
   // Folder shell actions (REQ-MENU-006) are identified by folder id only; no
   // filesystem path may cross this boundary (REQ-COMMAND-003). The Worker
   // resolves the absolute path and Main performs the shell/clipboard action.
@@ -1654,6 +1660,12 @@ export const workerCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('folder.cover.clear'),
     libraryId: identifierSchema,
     folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+  }),
+  z.strictObject({
+    type: z.literal('folder.cover.set-asset'),
+    libraryId: identifierSchema,
+    folderIds: z.array(folderScopeIdSchema).min(1).max(100),
+    assetId: identifierSchema,
   }),
   z.strictObject({
     type: z.literal('folder.cover.resolve'),

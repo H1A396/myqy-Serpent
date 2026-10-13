@@ -2439,6 +2439,8 @@ async function handleRequestWithoutWriteLease(request: WorkerRequest): Promise<W
       throw new Error('Bounded folder.cover.set write was not dispatched through its transaction fence.');
     case 'folder.cover.clear':
       throw new Error('Bounded folder.cover.clear write was not dispatched through its transaction fence.');
+    case 'folder.cover.set-asset':
+      throw new Error('Bounded folder.cover.set-asset write was not dispatched through its transaction fence.');
     case 'folder.cover.resolve': {
       const resolved = libraryService.resolveFolderCustomCover(request.command);
       if (!resolved) throw new LibraryServiceError('FOLDER_NOT_FOUND');
