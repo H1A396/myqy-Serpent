@@ -32,6 +32,10 @@ export function useAppearanceAdjusting(enabled: boolean) {
   const timer = useRef<number | null>(null);
   const pointerActive = useRef(false);
 
+  // Disabling the page must drop the preview immediately. Reset during render
+  // so the returned flag matches `enabled` without a setState-in-effect.
+  if (!enabled && adjusting) setAdjusting(false);
+
   const clear = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
@@ -52,7 +56,6 @@ export function useAppearanceAdjusting(enabled: boolean) {
     if (!enabled) {
       clear();
       pointerActive.current = false;
-      setAdjusting(false);
       return undefined;
     }
     const onUp = () => {

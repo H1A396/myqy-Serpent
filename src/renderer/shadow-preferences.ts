@@ -137,14 +137,6 @@ export function shadowLevelToPreset(level: ShadowLevel): {
   return SHADOW_LEVEL_PRESETS[level];
 }
 
-function migrateV1ToLevel(size: number, intensity: number): ShadowLevel {
-  const score = size * 0.6 + intensity * 0.4;
-  if (score < 8) return 0;
-  if (score < 30) return 1;
-  if (score < 55) return 2;
-  return 3;
-}
-
 function migrateV2ToLevel(amount: "more" | "less"): ShadowLevel {
   return amount === "less" ? 1 : 2;
 }

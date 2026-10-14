@@ -209,7 +209,10 @@ async function main() {
     throw new Error('Usage: media-binaries.mjs <acquire|manifest|verify|ensure> [--platform key] [--root path]');
   }
   const options = argumentsMap(rawOptions);
-  const platform = option(options, 'platform', currentPlatformKey());
+  // Resolve the host platform only when --platform is omitted. Evaluating
+  // currentPlatformKey() as a default argument throws on Linux before the
+  // explicit fixture platform is read.
+  const platform = option(options, 'platform', undefined) ?? currentPlatformKey();
   assertPlatform(platform);
   const root = path.resolve(option(options, 'root', 'resources'));
   const lockPath = path.resolve(

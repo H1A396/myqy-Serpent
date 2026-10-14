@@ -101,6 +101,8 @@ let e2eBrowseSessionDelay: {
   delayMs: number;
 } | null = null;
 if (e2eEnabled) {
+  // Isolated-world copy only. The renderer reads the main-world pin installed
+  // by preload/index.ts via contextBridge.executeInMainWorld.
   const e2eLocale = process.env.SERPENT_E2E_LOCALE === 'en' ? 'en' : 'zh-CN';
   (globalThis as { __SERPENT_E2E_LOCALE__?: string }).__SERPENT_E2E_LOCALE__ =
     e2eLocale;

@@ -196,11 +196,15 @@
 }
 
 .workspace-tab-add {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
   align-self: center;
   width: var(--shell-control-height);
   height: var(--shell-control-height);
-  /* List padding-inline reserves scoop width; pull plus back into that gutter. */
+  /* List padding-inline reserves scoop width; pull plus back into that gutter.
+     The list is position:relative, so it paints above this in-flow button
+     where they overlap — keep the plus above that hit target. */
   margin-inline-start: calc(-1 * var(--workspace-tab-scoop) + var(--ui-space-1));
   border-radius: var(--ui-radius-surface);
   color: var(--secondary);

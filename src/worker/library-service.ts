@@ -514,6 +514,17 @@ function pngBitDepth(filePath: string): number | null {
 }
 
 function singleDisplayArtifactJoin(alias: string, statusSql: string): string {
+  // Prefer a ready display artifact over a later failed/pending row so a
+  // terminal model-thumbnail failure stays visible without hiding a good card.
+  const statusRank = statusSql.includes('chosen.status')
+    ? `CASE chosen.status
+                WHEN 'ready' THEN 0
+                WHEN 'pending' THEN 1
+                WHEN 'generating' THEN 1
+                WHEN 'failed' THEN 2
+                ELSE 3
+              END,`
+    : '';
   return `LEFT JOIN revision_artifacts ${alias}
            ON ${alias}.artifact_id = (
              SELECT chosen.artifact_id
@@ -522,7 +533,8 @@ function singleDisplayArtifactJoin(alias: string, statusSql: string): string {
                 AND chosen.kind = ${DISPLAY_PREVIEW_KIND_SQL}
                 ${statusSql}
                 AND chosen.invalidated_at IS NULL
-              ORDER BY CASE chosen.mime_type
+              ORDER BY ${statusRank}
+              CASE chosen.mime_type
                 WHEN 'image/jpeg' THEN 0
                 WHEN 'image/webp' THEN 1
                 WHEN 'image/png' THEN 2
@@ -9696,6 +9708,37 @@ export class LibraryService {
     this.removeOperation(operationPath);
   }
 
+  /**
+   * True when materializing .serpentignore would delete or insert a row.
+   * Reads only: a no-op write transaction drops the network metadata snapshot
+   * and advances browse_change_sequence.
+   */
+  private gitignoreMaterializationHasWork(
+    openLibrary: OpenLibrary,
+    rules: ReturnType<typeof parseGitignore>,
+  ): boolean {
+    const managedExplicitCount = Number((openLibrary.connection.prepare(
+      "SELECT COUNT(*) AS count FROM explicit_ignored_paths WHERE location_kind = 'managed'",
+    ).get() as { count: number } | undefined)?.count ?? 0);
+    const gitignoreCount = Number((openLibrary.connection.prepare(
+      'SELECT COUNT(*) AS count FROM gitignore_ignored_paths',
+    ).get() as { count: number } | undefined)?.count ?? 0);
+    const linkedFolderCount = hasTable(openLibrary.connection, 'linked_folders')
+      ? Number((openLibrary.connection.prepare(
+          'SELECT COUNT(*) AS count FROM linked_folders WHERE library_id = ?',
+        ).get(openLibrary.summary.libraryId) as { count: number } | undefined)?.count ?? 0)
+      : 0;
+    if (managedExplicitCount > 0 || gitignoreCount > 0 || linkedFolderCount > 0) return true;
+    const folders = openLibrary.connection.prepare(
+      'SELECT relative_path FROM managed_folders',
+    ).all() as Array<{ relative_path: string }>;
+    const assets = openLibrary.connection.prepare(
+      "SELECT relative_file_path FROM assets WHERE location_kind = 'managed' AND deleted_at IS NULL",
+    ).all() as Array<{ relative_file_path: string }>;
+    return folders.some((folder) => gitignoreMatchesPath(rules, folder.relative_path, 'folder'))
+      || assets.some((asset) => gitignoreMatchesPath(rules, asset.relative_file_path, 'asset'));
+  }
+
   private syncGitignore(openLibrary: OpenLibrary, text = readGitignoreText(openLibrary.summary.libraryPath)): void {
     if (openLibrary.readOnly || (text === openLibrary.gitignoreText && openLibrary.gitignoreMaterialized)) return;
     // Libraries created before ignore actions became file-backed may still
@@ -9724,6 +9767,14 @@ export class LibraryService {
       !hasTable(openLibrary.connection, 'explicit_ignored_paths') ||
       !hasTable(openLibrary.connection, 'gitignore_ignored_paths')
     ) {
+      return;
+    }
+    // An empty materialization still opens a write transaction. That
+    // invalidates a network metadata snapshot and bumps browse_change_sequence
+    // even when no ignore row changes, so skip it when there is nothing to write.
+    if (!this.gitignoreMaterializationHasWork(openLibrary, rules)) {
+      openLibrary.gitignoreText = migratedText;
+      openLibrary.gitignoreMaterialized = true;
       return;
     }
     const transaction = openLibrary.connection.transaction(() => {
@@ -19023,7 +19074,9 @@ export class LibraryService {
          LEFT JOIN asset_metadata m ON m.asset_id = a.asset_id
          ${singleDisplayArtifactJoin(
             'ra',
-            artifactColumns.has('status') ? "AND chosen.status = 'ready'" : '',
+            artifactColumns.has('status')
+              ? "AND chosen.status IN ('ready', 'pending', 'generating', 'failed')"
+              : '',
           )}
          LEFT JOIN revision_artifacts video_meta
            ON video_meta.revision_id = a.current_revision_id

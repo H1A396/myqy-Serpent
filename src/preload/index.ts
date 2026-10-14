@@ -16,6 +16,21 @@ import type { RendererRequest } from '../shared/protocol/requests';
 
 const e2eEnabled = process.env.SERPENT_E2E === '1';
 
+if (e2eEnabled) {
+  // Preload globalThis is the isolated world. contextIsolation keeps that
+  // assignment invisible to the renderer, so a non-zh-CN host follows the OS
+  // language and Chinese E2E selectors time out. Copy the pin into the main
+  // world before the page resolves system locale.
+  const e2eLocale = process.env.SERPENT_E2E_LOCALE === 'en' ? 'en' : 'zh-CN';
+  contextBridge.executeInMainWorld({
+    func: (locale: string) => {
+      (globalThis as { __SERPENT_E2E_LOCALE__?: string }).__SERPENT_E2E_LOCALE__ =
+        locale;
+    },
+    args: [e2eLocale],
+  });
+}
+
 const e2eDiagnostics = Object.freeze({
   getRequestCount(type: RendererRequest['type']): number {
     return getE2eRequestCount(type);

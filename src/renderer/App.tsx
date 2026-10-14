@@ -596,6 +596,7 @@ import {
 } from "./browse-sort-preferences";
 import {
   FOLDER_CARD_ROW_INLINE_PADDING_PX,
+  browseCardLayoutWidthPx,
   elementContentBoxWidthPx,
   masonryAlignedFolderWidthPx,
 } from "./folder-card-width";
@@ -3913,7 +3914,7 @@ function AppInner() {
   const resizeAssetCards = useCallback(
     (requestedSize: number, clientX?: number, clientY?: number) => {
       const root = workspaceCanvasRef.current;
-      const width = root?.clientWidth ?? 0;
+      const width = root ? browseCardLayoutWidthPx(root) : 0;
       const stops = enumerateDiscreteCardSizes(width);
       const nextSize = nearestDiscreteCardSize(
         Math.min(
@@ -3947,7 +3948,25 @@ function AppInner() {
       const anchorState = anchorCard
         ? captureAnchor(anchorCard, anchorX, anchorY)
         : null;
-      if (!cardResizeAnchorRef.current) {
+      const previousAnchor = cardResizeAnchorRef.current;
+      const previousScroll = cardResizeScrollSnapshotRef.current;
+      const pointerMoved = Boolean(
+        previousAnchor &&
+          anchorState &&
+          Math.hypot(
+            previousAnchor.clientX - anchorState.clientX,
+            previousAnchor.clientY - anchorState.clientY,
+          ) > 24,
+      );
+      const scrollMoved = Boolean(
+        previousScroll &&
+          Math.abs(previousScroll.top - root.scrollTop) > 1,
+      );
+      // One continuous pinch keeps the first anchor. A later gesture whose
+      // pointer or scroll offset moved (slider, then wheel on another card)
+      // has to recapture; otherwise the stale snapshot scrolls back to the
+      // start of the previous gesture.
+      if (!previousAnchor || pointerMoved || scrollMoved) {
         cardResizeAnchorRef.current = anchorState;
         cardResizeScrollSnapshotRef.current = {
           left: root.scrollLeft,
@@ -3955,6 +3974,18 @@ function AppInner() {
         };
       }
 
+      // Virtual geometry compensation and the width-reflow anchor must not
+      // fight the pointer anchor. Cancel an in-flight width restore so its
+      // completion callback cannot clear this zoom anchor.
+      if (reflowRestoreFrameRef.current !== null) {
+        window.cancelAnimationFrame(reflowRestoreFrameRef.current);
+        reflowRestoreFrameRef.current = null;
+      }
+      reflowAnchorRef.current = null;
+      reflowScrollSnapshotRef.current = null;
+      if (cardResizeAnchorRef.current) {
+        root.classList.add("is-reflow-restoring");
+      }
       setCanvasPrefs((p) => ({ ...p, cardSize: nextSize }));
       // Serpent-32p: always re-anchor after settle; width/size reflow may reset
       // scrollTop mid-wait, and bailing left the visible set wrong.
@@ -3964,6 +3995,7 @@ function AppInner() {
         cardSizeRestoreFrameRef,
         30,
         () => {
+          root.classList.remove("is-reflow-restoring");
           cardResizeAnchorRef.current = null;
           cardResizeScrollSnapshotRef.current = null;
         },
@@ -3989,7 +4021,7 @@ function AppInner() {
       // The host is the flex item whose width changes when a divider moves.
       // Read the canvas's current width instead of trusting observer entry
       // ordering when both elements resize in the same notification.
-      const width = canvas.clientWidth;
+      const width = browseCardLayoutWidthPx(canvas);
       const contentWidth = elementContentBoxWidthPx(canvas);
       // The viewer overlay preserves the canvas width. View-restore.ts owns
       // scroll restoration for the viewer close path, so a preview transition
@@ -4009,7 +4041,11 @@ function AppInner() {
         width === lastWidth ||
         previewAssetRef.current ||
         previewRestoringRef.current ||
-        canvasHasPreviewScrollHold(canvas)
+        canvasHasPreviewScrollHold(canvas) ||
+        // Ctrl-wheel / slider zoom owns the pointer anchor. A scrollbar
+        // width change in that window must not retarget scroll to the
+        // topmost card and leave the pointed card below the fold.
+        cardResizeAnchorRef.current
       ) {
         lastWidth = width;
         return;
@@ -4122,19 +4158,14 @@ function AppInner() {
           : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
             ? event.deltaY * canvas.clientHeight
             : event.deltaY;
-      const stops = enumerateDiscreteCardSizes(canvas.clientWidth);
+      const stops = enumerateDiscreteCardSizes(browseCardLayoutWidthPx(canvas));
       const nextSize = nextDiscreteCardSizeFromWheelDelta(
         assetCardSize,
         delta,
         stops,
         wheelSample,
       );
-      const rect = canvas.getBoundingClientRect();
-      resizeAssetCards(
-        nextSize,
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2,
-      );
+      resizeAssetCards(nextSize, event.clientX, event.clientY);
     };
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
@@ -4161,7 +4192,9 @@ function AppInner() {
         resizeAssetCards(defaultKeyboardCardSize(), centerX, centerY);
         return;
       }
-      const stops = enumerateDiscreteCardSizes(canvas?.clientWidth ?? 0);
+      const stops = enumerateDiscreteCardSizes(
+        canvas ? browseCardLayoutWidthPx(canvas) : 0,
+      );
       resizeAssetCards(
         stepDiscreteCardSize(
           assetCardSize,
@@ -8837,11 +8870,21 @@ function AppInner() {
     if (!tagFilter.trim()) setActiveTagId(null);
     setActiveSmartCollectionId(null);
     const pendingTabSelection = pendingWorkspaceTabSelectionRef.current;
+    const selectionNow = selectedAssetIdsRef.current;
+    const pageAssetIds = new Set(result.value.items.map((item) => item.assetId));
+    // A browse response used to clear the selection unconditionally. Keep a
+    // selection whose ids are all on the returned page so a click is not
+    // wiped when the in-flight or follow-up search lands.
+    const selectionStillOnPage =
+      selectionNow.length > 0
+      && selectionNow.every((id) => pageAssetIds.has(id));
     if (pendingTabSelection?.isCurrent()) {
       setSelectedAssetIds([...pendingTabSelection.selectedAssetIds]);
       setSelectedAssetId(pendingTabSelection.selectedAssetId ?? undefined);
       selectionAnchorRef.current = pendingTabSelection.selectedAssetId;
       pendingWorkspaceTabSelectionRef.current = null;
+    } else if (selectionStillOnPage) {
+      if (pendingTabSelection) pendingWorkspaceTabSelectionRef.current = null;
     } else {
       if (pendingTabSelection) pendingWorkspaceTabSelectionRef.current = null;
       if (!pendingRevealRef.current) {
@@ -14693,6 +14736,7 @@ function AppInner() {
                       return (
                     <CardTag
                       aria-label={canvasPrefs.fields.name ? undefined : asset.displayName}
+                      data-hover-tip={canvasPrefs.fields.name ? undefined : asset.displayName}
                       aria-pressed={selectedIdSet.has(asset.assetId)}
                       className={`asset-card${selectedIdSet.has(asset.assetId) ? " is-selected" : ""}${asset.availability === "missing" ? " is-missing" : ""}${corruptAsset ? " is-corrupt" : ""}${asset.deletedAt ? " is-trashed" : ""}${renamingThisAsset ? " is-renaming" : ""}`}
                       data-asset-id={asset.assetId}
@@ -15148,7 +15192,8 @@ function AppInner() {
                                     aria-label={t("dialog.rename.fileTitle")}
                                     autoFocus
                                     className="text-field asset-inline-rename-input"
-                                    disabled={assetRenameDialog.submitting}
+                                    readOnly={assetRenameDialog.submitting}
+                                    aria-disabled={assetRenameDialog.submitting || undefined}
                                     onBlur={() => {
                                       void submitAssetRename();
                                     }}

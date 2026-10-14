@@ -7282,7 +7282,7 @@ body.serpent-modal-open .app-shell {
   width: fit-content;
   max-width: 100%;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 70%, var(--pane));
 }
 
@@ -7290,7 +7290,7 @@ body.serpent-modal-open .app-shell {
   min-width: 72px;
   padding: 7px 14px;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--secondary);
   font-size: calc(12px * var(--ui-font-scale));
@@ -7357,7 +7357,7 @@ body.serpent-modal-open .app-shell {
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 55%, var(--pane));
 }
 
@@ -7412,9 +7412,9 @@ body.serpent-modal-open .app-shell {
   height: 34px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: var(--accent);
-  color: var(--accent-fg, #fff);
+  color: var(--ui-content-on-accent);
   cursor: pointer;
 }
 
@@ -7434,13 +7434,13 @@ body.serpent-modal-open .app-shell {
 }
 
 .semantic-install-icon-button.is-danger {
-  border-color: color-mix(in srgb, var(--danger, #d14343) 35%, var(--divider));
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--divider));
   background: transparent;
-  color: var(--danger, #d14343);
+  color: var(--danger);
 }
 
 .semantic-install-icon-button.is-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger, #d14343) 12%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   filter: none;
 }
 
@@ -7476,7 +7476,7 @@ body.serpent-modal-open .app-shell {
   margin-top: 6px;
   padding: 10px 11px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised-2, var(--raised)) 70%, var(--pane));
 }
 
@@ -7573,7 +7573,7 @@ body.serpent-modal-open .app-shell {
   gap: 12px;
   padding: 14px 14px 13px;
   border: 1px solid color-mix(in srgb, var(--divider) 88%, transparent);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: color-mix(in srgb, var(--raised) 55%, var(--pane));
 }
 
@@ -8327,7 +8327,7 @@ select.ai-config-input.ai-config-languages {
   min-height: calc(var(--ui-size-chip) - var(--ui-space-1));
   padding: 0 var(--ui-space-1);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 5px;
+  border-radius: calc(5px * var(--ui-radius-scale, 1));
   background: var(--accent-soft);
   color: var(--accent-soft-fg);
   font-size: calc(var(--ui-font-size-micro) - 2px);
@@ -11629,7 +11629,7 @@ select.ai-config-input.ai-config-languages {
   min-width: 0;
   padding: 4px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: inherit;
   text-align: left;
@@ -11646,7 +11646,7 @@ select.ai-config-input.ai-config-languages {
   place-items: center;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -12322,7 +12322,7 @@ select.ai-config-input.ai-config-languages {
   margin: 8px 12px 0;
   padding: 8px 8px 8px 10px;
   border: 1px solid var(--divider);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--ui-radius-scale, 1));
   background: var(--raised);
   color: var(--text);
 }
@@ -12333,7 +12333,7 @@ select.ai-config-input.ai-config-languages {
   gap: 4px;
   margin-left: auto;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--ui-radius-scale, 1));
   background: transparent;
   color: var(--text);
   padding: 6px 8px;
@@ -12351,7 +12351,7 @@ select.ai-config-input.ai-config-languages {
   height: 36px;
   flex: 0 0 auto;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: calc(4px * var(--ui-radius-scale, 1));
   background: var(--raised-2);
 }
 
@@ -15727,7 +15727,7 @@ select.ai-config-input.ai-config-languages {
 .primary-button {
   border-color: color-mix(in srgb, var(--accent) 88%, white);
   background: var(--accent);
-  color: var(--ui-content-on-accent, #ffffff);
+  color: var(--ui-content-on-accent);
   box-shadow: none;
 }
 
@@ -17061,6 +17061,12 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
   font-size: calc(12px * var(--ui-font-scale));
   font-weight: 450;
 }
+/* Root drop highlight uses the same corner as the islands row (6px), not
+   the 8px surface token the base list rule carries. */
+.app-shell[data-shell-layout="islands"] .nav-folder-list.is-root-drop-target,
+.app-shell[data-shell-layout="islands"] .nav-collection-list.is-root-drop-target {
+  border-radius: calc(6px * var(--ui-radius-scale, 1));
+}
 .app-shell[data-shell-layout="islands"] .nav-tree-row {
   border-radius: calc(6px * var(--ui-radius-scale, 1));
 }
@@ -17654,7 +17660,7 @@ html.serpent-window-square .window-edge-resize-layer.is-disabled {
 
 /* ==== a70: punchy accent highlights (Codex) ==============================
    Surfaces stay quiet; emphasis glyphs use FULL --accent (not tertiary mixes).
-   Codex: --app-color-icon-accent #339cff on muted chrome — scarce but vivid. */
+   Codex: full accent on muted chrome — scarce but vivid. */
 .app-shell[data-shell-layout="islands"] .rating-star[data-active],
 .app-shell[data-shell-layout="islands"] .rating-star:hover {
   color: var(--accent);
@@ -18836,7 +18842,7 @@ body.platform-darwin .app-shell[data-shell-layout="islands"] .toolbar-nav-cluste
     backdrop-filter 1200ms ease;
 }
 
-.dialog-backdrop.app-settings-backdrop.is-adjusting:is(*, #a93-adjusting) {
+.dialog-backdrop.app-settings-backdrop.is-adjusting:is(*, #appearance-adjusting) {
   background-color: transparent;
   -webkit-backdrop-filter: blur(0px);
   backdrop-filter: blur(0px);

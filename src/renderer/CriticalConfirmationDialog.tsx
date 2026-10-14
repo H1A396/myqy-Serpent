@@ -1,5 +1,6 @@
 import { Icon } from "./Icons";
 import { iconActionAttrs } from "./icon-action-attrs";
+import { useT } from "./i18n";
 import type {
   CriticalConfirmationDecision,
   CriticalConfirmationPrompt,
@@ -17,6 +18,7 @@ export function CriticalConfirmationDialog({
   confirmVariant?: "danger" | "primary";
   dialogId?: string;
 }) {
+  const t = useT();
   if (!request) return null;
   const confirmIsDefault = request.initialFocus === "confirm";
   return (
@@ -55,7 +57,7 @@ export function CriticalConfirmationDialog({
             className="dialog-close"
             onClick={() => onDecide("cancel")}
             type="button"
-            {...iconActionAttrs(request.cancelLabel)}
+            {...iconActionAttrs(t("common.close"))}
           >
             <Icon name="close" size={16} />
           </button>
