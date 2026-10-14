@@ -85,15 +85,15 @@ async function createAndImport(
   await window.getByRole("button", { name: "创建资源库" }).click();
   await window.getByRole("textbox", { name: "名称" }).fill(libraryName);
   await window.getByRole("button", { name: "创建", exact: true }).click();
-  // Library creation commits through Main/Worker asynchronously. Waiting for
-  // the empty browse surface makes the following import click observe the
-  // same ready state as a user, instead of racing the initial library.opened
-  // refresh (which otherwise intermittently leaves the button absent).
-  await expect(window.getByRole("heading", { name: "导入资产以开始整理" })).toBeVisible();
-  await window
-    .getByRole("button", { name: "导入文件", exact: true })
-    .first()
-    .click();
+  // The empty heading paints while library open is still inside the transition
+  // lock. Import writes are rejected until that lock drops, and the empty-state
+  // button stays disabled for the same interval (libraryLoading). Wait for the
+  // enabled control instead of clicking the first matching button early.
+  const importButton = window
+    .locator(".empty-actions")
+    .getByRole("button", { name: "导入文件", exact: true });
+  await expect(importButton).toBeEnabled({ timeout: 30_000 });
+  await importButton.click();
   await expect(window.locator(".asset-card")).toHaveCount(expectedCardCount, {
     timeout: 30_000,
   });

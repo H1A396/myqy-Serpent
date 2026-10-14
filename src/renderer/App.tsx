@@ -15322,6 +15322,7 @@ function AppInner() {
                   <div className="empty-actions">
                     <button
                       className="primary-button"
+                      disabled={libraryLoading !== null}
                       onClick={() => void importAssets("files")}
                       type="button"
                     >
@@ -15329,6 +15330,7 @@ function AppInner() {
                     </button>
                     <button
                       className="secondary-button"
+                      disabled={libraryLoading !== null}
                       onClick={() => void importAssets("folder")}
                       type="button"
                     >
@@ -15336,6 +15338,7 @@ function AppInner() {
                     </button>
                     <button
                       className="secondary-button"
+                      disabled={libraryLoading !== null}
                       onClick={() => void pasteClipboardImage()}
                       type="button"
                     >

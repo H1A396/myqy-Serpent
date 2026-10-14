@@ -16,7 +16,7 @@ process.env.VcpkgEnabled = 'false';
 function nativeMediaPlatform(platform: string, arch: string): string {
   const expectedHost = `${process.platform}-${process.arch}`;
   const target = `${platform}-${arch}`;
-  if (target !== expectedHost || !['darwin-arm64', 'win32-x64'].includes(target)) {
+  if (target !== expectedHost || !['darwin-arm64', 'win32-x64', 'linux-x64'].includes(target)) {
     throw new Error(
       `Serpent release packages must be built and media-verified natively; host=${expectedHost}, target=${target}.`,
     );
@@ -25,12 +25,11 @@ function nativeMediaPlatform(platform: string, arch: string): string {
 }
 
 /**
- * Linux packages (AppImage) have no pinned media bundle yet: they rely on the
- * distro's ffmpeg / ffprobe / oiiotool from PATH, so the media release gates
- * are skipped. Linux must still be packaged natively (host === target).
+ * linux-arm64 has no pinned media bundle. x64 Linux uses the same ensure/verify
+ * gate as macOS and Windows. Every Linux package must still be built natively.
  */
-function isNativeLinuxPackage(platform: string, arch: string): boolean {
-  if (platform !== 'linux') return false;
+function skipsPinnedMediaBundle(platform: string, arch: string): boolean {
+  if (platform !== 'linux' || arch === 'x64') return false;
   if (platform !== process.platform || arch !== process.arch) {
     throw new Error(
       `Serpent Linux packages must be built natively; host=${process.platform}-${process.arch}, target=${platform}-${arch}.`,
@@ -66,7 +65,7 @@ const config: ForgeConfig = {
       // rebuild 之前强制 VcpkgEnabled=false（与 scripts/rebuild-native.mjs
       // 一致）。
       process.env.VcpkgEnabled = 'false';
-      if (isNativeLinuxPackage(platform, arch)) {
+      if (skipsPinnedMediaBundle(platform, arch)) {
         runNodeGate('scripts/build-extension.mjs', []);
         return;
       }
@@ -80,7 +79,7 @@ const config: ForgeConfig = {
       runNodeGate('scripts/build-extension.mjs', []);
     },
     postPackage: async (_forgeConfig, packageResult) => {
-      if (isNativeLinuxPackage(packageResult.platform, packageResult.arch)) return;
+      if (skipsPinnedMediaBundle(packageResult.platform, packageResult.arch)) return;
       nativeMediaPlatform(packageResult.platform, packageResult.arch);
       for (const outputPath of packageResult.outputPaths) {
         runNodeGate('scripts/verify-package.mjs', [], {
@@ -93,7 +92,7 @@ const config: ForgeConfig = {
     // input again so that shortcut cannot feed stale or modified bytes to a
     // maker without passing the package gate.
     preMake: async () => {
-      if (isNativeLinuxPackage(process.platform, process.arch)) return;
+      if (skipsPinnedMediaBundle(process.platform, process.arch)) return;
       const mediaPlatform = nativeMediaPlatform(process.platform, process.arch);
       runNodeGate('scripts/media-binaries.mjs', ['ensure', '--platform', mediaPlatform]);
       runNodeGate('scripts/verify-package.mjs', [], {

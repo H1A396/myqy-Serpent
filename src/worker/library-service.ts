@@ -4958,7 +4958,7 @@ export interface LibraryServiceOptions {
   afterSourceSnapshotCopy?: (sourcePath: string) => void;
   assetLstat?: (assetPath: string) => Stats;
   /** Test-only seams for classifying linked-root access failures on open. */
-  linkedRootLstat?: (absoluteRootPath: string) => Stats;
+  linkedRootLstat?: (absoluteRootPath: string) => Stats | BigIntStats;
   linkedRootAccess?: (absoluteRootPath: string) => void;
   /** Test-only async fingerprint seam for proving file I/O stays outside DB transactions. */
   contentFingerprintAsync?: (assetPath: string, signal?: AbortSignal) => Promise<string>;
@@ -5612,10 +5612,35 @@ function sourceHostDeviceHint(device: number | bigint | string): string {
 function sourceDeviceHint(
   device: number | bigint | string,
   inode: number | bigint | string = 'unknown',
+  birthNs: bigint | null = null,
 ): string {
+  // v3 binds directory birth time as well as device/inode. On ext4 and tmpfs,
+  // rm+mkdir at the same path can reuse the inode number; birth time still
+  // changes, while adding or removing children does not. v2 stays the legacy
+  // inode hint for libraries linked before birth time was recorded.
+  if (birthNs !== null && birthNs > 0n) {
+    return `v3:${createHash('sha256')
+      .update(
+        `${hostname()}\u0000${String(device)}\u0000${String(inode)}\u0000${birthNs.toString()}`,
+        'utf8',
+      )
+      .digest('hex')}`;
+  }
   return `v2:${createHash('sha256')
     .update(`${hostname()}\u0000${String(device)}\u0000${String(inode)}`, 'utf8')
     .digest('hex')}`;
+}
+
+function directoryBirthNs(stat: Stats | BigIntStats): bigint | null {
+  // Nanosecond birth time exists only on the bigint stat. Number stats omit it,
+  // and a zero birth time (procfs, some network mounts) is not an identity.
+  if (!('birthtimeNs' in stat)) return null;
+  const raw = stat.birthtimeNs;
+  if (typeof raw === 'bigint') return raw > 0n ? raw : null;
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+    return BigInt(Math.trunc(raw));
+  }
+  return null;
 }
 
 function sameSourceSnapshot(left: SourceSnapshot, right: SourceSnapshot): boolean {
@@ -12622,11 +12647,13 @@ export class LibraryService {
     | {
         available: true;
         deviceHint: string;
+        legacyInodeHint: string;
         legacyHostDeviceHint?: string;
         legacyDeviceHint?: string;
       }
     | { available: false; reason: PublicErrorReason } {
-    const lstat = this.options.linkedRootLstat ?? lstatSync;
+    const lstat = this.options.linkedRootLstat
+      ?? ((rootPath: string) => lstatSync(rootPath, { bigint: true }));
     const access = this.options.linkedRootAccess ?? ((rootPath: string) => {
       accessSync(rootPath, constants.R_OK | constants.X_OK);
     });
@@ -12652,9 +12679,11 @@ export class LibraryService {
         typeof entry.ino === 'number' || typeof entry.ino === 'bigint'
           ? entry.ino
           : 'unknown';
+      const birthNs = directoryBirthNs(entry);
       return {
         available: true,
-        deviceHint: sourceDeviceHint(device, inode),
+        deviceHint: sourceDeviceHint(device, inode, birthNs),
+        legacyInodeHint: sourceDeviceHint(device, inode),
         ...(device === 'unknown'
           ? {}
           : { legacyHostDeviceHint: sourceHostDeviceHint(device) }),
@@ -19238,7 +19267,11 @@ export class LibraryService {
       const totalBytes = scannedBytes;
       emitLinkedProgress('copy', 0, entries.length, 0, totalBytes, true);
       const now = new Date().toISOString();
-      const sourceDeviceHintValue = sourceDeviceHint(rootStat.dev, rootStat.ino);
+      const sourceDeviceHintValue = sourceDeviceHint(
+        rootStat.dev,
+        rootStat.ino,
+        directoryBirthNs(rootStat),
+      );
       const importedAssetIds: string[] = [];
 
       openLibrary.connection.transaction(() => {
@@ -19421,7 +19454,11 @@ export class LibraryService {
       .get(newPathIdentity, input.folderId);
     if (conflict) throw new LibraryServiceError('FOLDER_ALREADY_EXISTS');
 
-    const sourceDeviceHintValue = sourceDeviceHint(rootStat.dev, rootStat.ino);
+    const sourceDeviceHintValue = sourceDeviceHint(
+      rootStat.dev,
+      rootStat.ino,
+      directoryBirthNs(rootStat),
+    );
     const now = new Date().toISOString();
 
     openLibrary.connection.transaction(() => {
@@ -21043,7 +21080,7 @@ export class LibraryService {
     // Read current state.
     const existing = openLibrary.connection
       .prepare(
-        'SELECT entity_version, rating, favorite, description, palette, source_page_url, author FROM asset_metadata WHERE asset_id = ?',
+        'SELECT entity_version, rating, favorite, description, palette, source_page_url, author, updated_at FROM asset_metadata WHERE asset_id = ?',
       )
       .get(input.assetId) as {
         entity_version: number;
@@ -21053,6 +21090,7 @@ export class LibraryService {
         palette: string | null;
         source_page_url: string | null;
         author: string | null;
+        updated_at: string;
       } | undefined;
 
     if (existing) {
@@ -21072,6 +21110,37 @@ export class LibraryService {
         input.author !== undefined
           ? (input.author.trim() === '' ? null : input.author.trim())
           : existing.author;
+
+      const unchanged =
+        newDescription === existing.description &&
+        newRating === existing.rating &&
+        newFavorite === existing.favorite &&
+        newPalette === existing.palette &&
+        newSourcePageUrl === existing.source_page_url &&
+        newAuthor === existing.author;
+      if (unchanged) {
+        // A repeated blur/click of the same inspector fields must not consume
+        // another optimistic-lock version. A stale expectedVersion is still a
+        // conflict, even when the payload happens to match the current row.
+        if (existing.entity_version !== input.expectedVersion) {
+          throw new LibraryServiceError('VERSION_CONFLICT', {
+            currentEntityVersion: existing.entity_version,
+          });
+        }
+        return {
+          assetId: input.assetId,
+          description: existing.description,
+          rating: existing.rating,
+          favorite: existing.favorite !== 0,
+          palette: existing.palette,
+          ...this.resolvedPaletteFields(openLibrary, input.assetId),
+          sourcePageUrl: existing.source_page_url,
+          author: existing.author,
+          tags: this.fetchAssetTags(openLibrary.connection, input.assetId),
+          entityVersion: existing.entity_version,
+          updatedAt: existing.updated_at,
+        };
+      }
 
       const result = openLibrary.connection
         .prepare(
@@ -47766,11 +47835,16 @@ export class LibraryService {
       if (!storedDeviceHint) {
         throw new LibraryServiceError('LINKED_FOLDER_UNAVAILABLE');
       }
-      if (
-        storedDeviceHint !== availability.deviceHint &&
-        storedDeviceHint !== availability.legacyHostDeviceHint &&
-        storedDeviceHint !== availability.legacyDeviceHint
-      ) {
+      // v3 hints include directory birth time, so an inode reused by
+      // rm+mkdir on ext4/tmpfs no longer matches. Older v2 / numeric hints
+      // stay accepted for the same device and inode.
+      const hintMatches = storedDeviceHint.startsWith('v3:')
+        ? storedDeviceHint === availability.deviceHint
+        : storedDeviceHint === availability.deviceHint
+          || storedDeviceHint === availability.legacyInodeHint
+          || storedDeviceHint === availability.legacyHostDeviceHint
+          || storedDeviceHint === availability.legacyDeviceHint;
+      if (!hintMatches) {
         throw new LibraryServiceError('LINKED_FOLDER_UNAVAILABLE', {
           reason: 'LINKED_FOLDER_FOREIGN_DEVICE',
         });

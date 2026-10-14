@@ -177,6 +177,14 @@ async function acquire({ platform, root, lockPath }) {
 async function ensure({ platform, root, lockPath }) {
   try {
     const { manifestPath } = verifyBundle({ root, platform });
+    if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
+      console.warn(
+        'Skipping release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
+          'This is only valid for local build trials, not production release.',
+      );
+      console.log(`Verified media bundle: ${manifestPath}`);
+      return;
+    }
     verifyReleaseProvenance({ root, platform, lockPath });
     console.log(`Verified media bundle: ${manifestPath}`);
     return;

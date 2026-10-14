@@ -14,6 +14,9 @@ import { createHash } from 'node:crypto';
 import { createPackage } from '@electron/asar';
 
 import { afterEach, describe, expect, it } from 'vitest';
+// The media helper is an untyped ESM script; the test only needs the platform gate.
+// @ts-expect-error media-binaries-lib.mjs has no declaration file.
+import { SUPPORTED_PLATFORMS, currentPlatformKey } from '../../scripts/media-binaries-lib.mjs';
 import forgeConfig from '../../forge.config';
 import {
   assertWindowsSystemDependencies,
@@ -312,6 +315,13 @@ it('rejects non-x64 PE files and non-allowlisted delay-import DLLs', () => {
   expect(() => peImportsFromBuffer(wrongArchitecture)).toThrow(/not Windows x64/);
 });
 
+it('includes linux-x64 in the pinned media platform set', () => {
+  expect([...SUPPORTED_PLATFORMS].sort()).toEqual(['darwin-arm64', 'linux-x64', 'win32-x64']);
+  if (process.platform === 'linux' && process.arch === 'x64') {
+    expect(currentPlatformKey()).toBe('linux-x64');
+  }
+});
+
 it('installs media validation inside Forge package and make lifecycles', () => {
   expect(forgeConfig.hooks?.prePackage).toBeTypeOf('function');
   expect(forgeConfig.hooks?.postPackage).toBeTypeOf('function');
@@ -351,6 +361,19 @@ it('uses one LibRaw- and zlib-enabled media manifest for macOS and Windows build
   );
   expect(macScript).toContain('MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"');
   expect(windowsScript).toContain("$ManifestRoot = Join-Path $Root 'resources/media-binaries/vcpkg'");
+  const linuxScript = readFileSync(
+    path.join(projectRoot, 'scripts/media-build/linux-x64.sh'),
+    'utf8',
+  );
+  expect(linuxScript).toContain('MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"');
+  expect(linuxScript).toContain('--platform linux-x64');
+  expect(linuxScript).toContain('serpent-x64-linux-static');
+  const linuxTriplet = readFileSync(
+    path.join(projectRoot, 'resources/media-binaries/vcpkg/triplets/serpent-x64-linux-static.cmake'),
+    'utf8',
+  );
+  expect(linuxTriplet).toMatch(/^set\(VCPKG_CMAKE_SYSTEM_NAME Linux\)$/m);
+  expect(linuxTriplet).toMatch(/^set\(VCPKG_LIBRARY_LINKAGE static\)$/m);
   expect(macScript).toContain('export VCPKG_ROOT');
   expect(windowsScript).toContain('$env:VCPKG_ROOT = $VcpkgRoot');
   const windowsOiioScript = readFileSync(

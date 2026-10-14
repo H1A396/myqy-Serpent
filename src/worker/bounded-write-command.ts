@@ -94,6 +94,9 @@ export function executeBoundedWriteWorkerCommand(
     case 'asset.metadata.set': {
       const before = libraryService.getAssetMetadata(command);
       const metadata = libraryService.setAssetMetadata(command);
+      if (metadata.entityVersion === before.entityVersion) {
+        return { ok: true, type: 'asset.metadata.updated', metadata };
+      }
       const history = libraryService.recordAssetMetadataHistory({
         libraryId: command.libraryId,
         before,

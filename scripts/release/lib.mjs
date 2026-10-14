@@ -8,12 +8,12 @@ import { currentPlatformKey as mediaPlatformKey } from '../media-binaries-lib.mj
 
 /**
  * Platform key for release artifacts / checksums.
- * Media bundles only exist for darwin-arm64 and win32-x64; Linux AppImage
- * releases use system ffmpeg and still need a stable checksum label.
+ * Pinned media bundles exist for darwin-arm64, win32-x64, and linux-x64.
+ * linux-arm64 still needs a stable checksum label without a media bundle.
  */
 export function releasePlatformKey() {
-  if (process.platform === 'linux' && (process.arch === 'x64' || process.arch === 'arm64')) {
-    return process.arch === 'arm64' ? 'linux-arm64' : 'linux-x64';
+  if (process.platform === 'linux' && process.arch === 'arm64') {
+    return 'linux-arm64';
   }
   return mediaPlatformKey();
 }
