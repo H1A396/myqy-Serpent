@@ -13,7 +13,8 @@ async function openSemanticSettings(window: Page): Promise<void> {
   await window.getByRole('button', { name: /主菜单|设置/ }).click();
   const settings = window.getByRole('menuitem', { name: '设置', exact: true });
   if (await settings.isVisible()) await settings.click();
-  await window.getByRole('tab', { name: '语义搜索', exact: true }).click();
+  // The nav tab's accessible name includes the experimental badge.
+  await window.getByRole('tab', { name: /语义搜索/ }).click();
   await window.getByRole('tab', { name: '自定义', exact: true }).click();
 }
 

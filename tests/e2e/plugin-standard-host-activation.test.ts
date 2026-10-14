@@ -46,10 +46,12 @@ test('activates the fixed standard Host probe and writes library storage', async
     await expect(dialog.getByText(/Standard Host Probe\s*-\s*v1\.0\.0/)).toBeVisible({ timeout: 30_000 });
     // Trust is now granted as part of enabling a library-scoped plugin; the
     // old standalone「信任」button was removed from the settings card.
-    window.once('dialog', (browserDialog) => browserDialog.accept());
-    // The checkbox input is visually clipped inside the custom toggle. Click
-    // its label so Playwright follows the same hit target as a user.
+    // Enabling an untrusted library plugin asks for an in-app confirmation
+    // before the checkbox commits.
     await dialog.locator('label.plugin-settings-enable-toggle').click();
+    const enableConfirm = window.getByRole('dialog', { name: '确认' });
+    await expect(enableConfirm).toBeVisible();
+    await enableConfirm.getByRole('button', { name: '确认', exact: true }).click();
     await expect(dialog.getByRole('checkbox', { name: '启用插件' })).toBeChecked();
     await dialog.getByRole('button', { name: '关闭' }).click();
 

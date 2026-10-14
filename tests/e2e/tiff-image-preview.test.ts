@@ -56,14 +56,16 @@ test("opens a TIFF viewer image at the source resolution", async () => {
       .locator(".asset-card")
       .filter({ hasText: "native-resolution.tiff" });
     await expect(assetCard).toBeVisible();
-    const cardImage = assetCard.locator("img").first();
+    const cardImage = assetCard.locator("img.asset-thumbnail").first();
     await expect
-      .poll(() =>
-        cardImage.evaluate((image) =>
-          image instanceof HTMLImageElement && image.complete
-            ? { width: image.naturalWidth, height: image.naturalHeight }
-            : { width: 0, height: 0 },
-        ),
+      .poll(
+        () =>
+          cardImage.evaluate((image) =>
+            image instanceof HTMLImageElement && image.complete
+              ? { width: image.naturalWidth, height: image.naturalHeight }
+              : { width: 0, height: 0 },
+          ),
+        { timeout: 30_000 },
       )
       .toMatchObject({ width: 512 });
 

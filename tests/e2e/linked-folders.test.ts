@@ -171,7 +171,7 @@ test('imports a linked folder, reconciles external changes, and relinks after th
       .locator('button.nav-row[data-nav-folder-kind="linked"]')
       .filter({ hasText: 'source' })
       .first();
-    await expect(offlineSource).toHaveAttribute('title', /离线/);
+    await expect(offlineSource).toHaveAttribute('data-hover-tip', /离线/);
     await offlineSource.click();
     const afterRelink = await listAllAssets(window);
     const aAfterRelink = afterRelink.find((asset) => asset.displayName === 'a.png');
@@ -646,7 +646,7 @@ test('imports a linked folder as a child of a managed folder', async () => {
     await folderInput.fill('Alpha');
     await folderInput.press('Enter');
     const alphaRow = window.locator(
-      '.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="Alpha"]',
+      '.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="Alpha"]',
     );
     await expect(alphaRow).toBeVisible({ timeout: 10_000 });
     const alphaId = await alphaRow.getAttribute('data-nav-folder-id');
@@ -659,7 +659,7 @@ test('imports a linked folder as a child of a managed folder', async () => {
     await alphaMenu.getByRole('menuitem', { name: '导入链接文件夹' }).click();
 
     // The sidebar renders the link under Alpha (one level deeper than Alpha).
-    // Linked rows carry the absolute path in `title`, so match the row label.
+    // Linked rows carry the absolute path in `data-hover-tip`, so match the row label.
     const linkedRow = window
       .locator('.navigation-pane button.nav-row[data-nav-folder-kind="linked"]')
       .filter({ has: window.locator('.nav-row-label', { hasText: /^source$/ }) });

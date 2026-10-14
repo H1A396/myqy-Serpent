@@ -84,7 +84,7 @@ async function createFolderViaSidebar(window: Page, folderName: string) {
 function sidebarFolderRow(window: Page, folderName: string) {
   const escapedTitle = folderName.replace(/["\\]/gu, "\\$&");
   return window.locator(
-    `.navigation-pane button.nav-row[title="${escapedTitle}"]`,
+    `.navigation-pane button.nav-row[data-hover-tip="${escapedTitle}"]`,
   );
 }
 
@@ -198,10 +198,10 @@ test("creates a nested subfolder inline from the folder context menu", async () 
     // directly after it and indented by exactly one depth step.
     const parentRow = sidebarFolderRow(window, "父级");
     const parentPadding = await parentRow.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingLeft),
+      parseFloat(getComputedStyle(element.closest(".nav-tree-row")!).paddingLeft),
     );
     const editPadding = await editRow.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingLeft),
+      parseFloat(getComputedStyle(element.closest(".nav-tree-row")!).paddingLeft),
     );
     expect(editPadding).toBe(parentPadding + 14);
     const pendingOrder = await folderRowOrder(window);
@@ -223,7 +223,7 @@ test("creates a nested subfolder inline from the folder context menu", async () 
     const childRow = sidebarFolderRow(window, "子级");
     await expect(childRow).toBeVisible({ timeout: 10_000 });
     const childPadding = await childRow.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingLeft),
+      parseFloat(getComputedStyle(element.closest(".nav-tree-row")!).paddingLeft),
     );
     expect(childPadding).toBe(parentPadding + 14);
     const navOrder = await folderRowOrder(window);
@@ -545,11 +545,11 @@ test("shows inline invalid-name errors for illegal folder names and cancels with
 });
 
 // ---------------------------------------------------------------------------
-// Test 5 — Sidebar 「+」 lands at the selected folder; Escape cancels; blur
-// commits
+// Test 5 — Nested create from the folder menu; Escape cancels; blur commits.
+// Section 「+」 always creates at the library root (Serpent-186547).
 // ---------------------------------------------------------------------------
 
-test("creates under the selected folder from the sidebar plus entry, cancels with Escape, commits on blur", async () => {
+test("creates a nested folder from the context menu, cancels with Escape, and commits on blur", async () => {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), "serpent-folder-plus-"));
   const libraryName = "Folder Plus Inline";
   const libraryPath = path.join(temporaryRoot, libraryName);
@@ -561,7 +561,6 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
     await createLibrary(window, libraryName);
     await createFolderViaSidebar(window, "父级");
 
-    // Select 父级: the 「+」 entry targets the currently selected location.
     await sidebarFolderRow(window, "父级").click();
     await expect(window.locator(".scope-crumb-label.is-current")).toHaveText(
       "父级",
@@ -569,7 +568,8 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
     // Give the parent a disclosure control, then collapse it. Starting a
     // second create must reveal the inline row without losing the persisted
     // collapse preference when that create is cancelled.
-    await window.getByRole("button", { name: "添加文件夹" }).click();
+    const menu = await openFolderContextMenu(window, "父级");
+    await menu.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
     const editRow = window.locator(".nav-inline-edit");
     await expect(editRow).toBeVisible({ timeout: 5_000 });
     await editRow.locator("input").fill("已有子级");
@@ -582,18 +582,20 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
       sidebarFolderRow(window, "已有子级"),
     ).toHaveCount(0);
 
-    // 创建「已有子级」后自动进入子级；折叠后显式回到父级再添加，
-    // 保证「+」入口嵌套在父级下。
+    // 创建「已有子级」后自动进入子级；折叠后显式回到父级，再从菜单新建子文件夹。
     await sidebarFolderRow(window, "父级").click();
-    await window.getByRole("button", { name: "添加文件夹" }).click();
+    const nestedMenu = await openFolderContextMenu(window, "父级");
+    await nestedMenu.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
 
     // The pending row nests under the selected folder, not at the root.
+    // Depth lives on .nav-tree-row; the edit control's own padding is constant.
     await expect(editRow).toBeVisible({ timeout: 5_000 });
     const parentPadding = await sidebarFolderRow(window, "父级").evaluate(
-      (element) => parseFloat(getComputedStyle(element).paddingLeft),
+      (element) =>
+        parseFloat(getComputedStyle(element.closest(".nav-tree-row")!).paddingLeft),
     );
     const editPadding = await editRow.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingLeft),
+      parseFloat(getComputedStyle(element.closest(".nav-tree-row")!).paddingLeft),
     );
     expect(editPadding).toBe(parentPadding + 14);
 
@@ -609,8 +611,10 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
     );
 
     // Blank blur resolves as cancellation and must not change the original
-    // persisted collapsed preference.
-    await window.getByRole("button", { name: "添加文件夹" }).click();
+    // persisted collapsed preference. Nested creates come from the parent
+    // menu; the section 「+」 always lands at the library root.
+    const blankMenu = await openFolderContextMenu(window, "父级");
+    await blankMenu.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
     await expect(editRow).toBeVisible({ timeout: 5_000 });
     await input.fill("");
     await window.locator(".workspace").click();
@@ -622,7 +626,8 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
     // A rejected create keeps the editor visible. Cancelling it afterwards
     // must likewise restore the collapsed view instead of persisting the
     // temporary reveal used to show the inline row.
-    await window.getByRole("button", { name: "添加文件夹" }).click();
+    const conflictMenu = await openFolderContextMenu(window, "父级");
+    await conflictMenu.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
     await expect(editRow).toBeVisible({ timeout: 5_000 });
     await input.fill("已有子级");
     await window.locator(".workspace").click();
@@ -636,7 +641,8 @@ test("creates under the selected folder from the sidebar plus entry, cancels wit
     ).toHaveCount(0);
 
     // Blur with a valid name commits: clicking away creates the folder.
-    await window.getByRole("button", { name: "添加文件夹" }).click();
+    const commitMenu = await openFolderContextMenu(window, "父级");
+    await commitMenu.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
     await expect(editRow).toBeVisible({ timeout: 5_000 });
     await input.fill("子级");
     await window.locator(".workspace").click();

@@ -72,13 +72,15 @@ describe('user themes', () => {
 
   it('adds, renames, edits, deletes and persists', () => {
     const storage = memoryStorage();
-    let { state, theme } = addUserTheme(EMPTY_USER_THEMES, {
+    const added = addUserTheme(EMPTY_USER_THEMES, {
       id: 'user-a',
       name: '  Warm   paper ',
       base: 'paper',
       light: {},
       dark: {},
     });
+    const { theme } = added;
+    let { state } = added;
     expect(theme.name).toBe('Warm paper');
     expect(state.activeId).toBe('user-a');
     state = updateUserTheme(state, 'user-a', { name: 'Renamed', dark: { '--ui-surface-pane': '#101010' } });

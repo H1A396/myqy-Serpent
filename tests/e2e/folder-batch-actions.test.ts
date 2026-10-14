@@ -20,7 +20,7 @@ async function createFolderViaSidebar(window: Page, folderName: string) {
   await input.fill(folderName);
   await input.press("Enter");
   await expect(
-    window.locator(`.navigation-pane button.nav-row[title="${folderName}"]`),
+    window.locator(`.navigation-pane button.nav-row[data-hover-tip="${folderName}"]`),
   ).toBeVisible({ timeout: 10_000 });
 }
 
@@ -64,7 +64,7 @@ test("ctrl-click multi-selects sidebar folder rows and batches the action", asyn
     }
 
     const row = (name: string) =>
-      window.locator(`.navigation-pane button.nav-row[title="${name}"]`);
+      window.locator(`.navigation-pane button.nav-row[data-hover-tip="${name}"]`);
 
     // Ctrl 点两行：都进入多选，且不触发导航。
     await row("SideA").click({ modifiers: [selectionModifier] });
@@ -134,7 +134,7 @@ test("ctrl-click includes the folder currently being browsed", async () => {
     }
 
     const row = (name: string) =>
-      window.locator(`.navigation-pane button.nav-row[title="${name}"]`);
+      window.locator(`.navigation-pane button.nav-row[data-hover-tip="${name}"]`);
     const multiSelected = window.locator(
       ".navigation-pane button.nav-row.is-multi-selected",
     );
@@ -252,7 +252,7 @@ test("multi-selected folder cards trash and ignore every selected folder", async
     });
     for (const name of ["Gamma", "Delta"]) {
       await expect(
-        window.locator(`.navigation-pane button.nav-row[title="${name}"]`),
+        window.locator(`.navigation-pane button.nav-row[data-hover-tip="${name}"]`),
       ).toHaveCount(0, { timeout: 15_000 });
     }
     await expect(window.locator(".folder-card")).toHaveCount(0, {

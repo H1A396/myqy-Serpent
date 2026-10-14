@@ -31,10 +31,16 @@ describe("islands accent budget + Codex transfer tokens (a27/a28)", () => {
     expect(lastAssignment(a27, "--island-pressed-wash")).toMatch(/ui-content-primary|white/);
   });
 
-  it("uses ink-alpha hairlines around 9–14% (a28 flat materials)", () => {
-    expect(lastAssignment(a27, "--island-hairline-w")).toMatch(/^(0\.5|1)px$/);
-    expect(lastAssignment(a27, "--island-border")).toMatch(/1[24]%/);
-    expect(lastAssignment(a27, "--island-hairline")).toMatch(/[89]%/);
+  it("keeps a72 softened hairlines and a custom-theme border pin", () => {
+    const a72Start = a27.indexOf("/* ==== a72:");
+    const customStart = a27.indexOf("/* ── a93: custom-theme islands");
+    expect(a72Start).toBeGreaterThan(0);
+    expect(customStart).toBeGreaterThan(a72Start);
+    const design = a27.slice(a72Start, customStart);
+    expect(lastAssignment(design, "--island-hairline-w")).toMatch(/^(0\.5|1)px$/);
+    expect(lastAssignment(design, "--island-border")).toMatch(/6%/);
+    expect(lastAssignment(design, "--island-hairline")).toMatch(/4%/);
+    expect(a27.slice(customStart)).toMatch(/--island-border:\s*var\(--ui-island-border\)/);
   });
 
   it("defines a soft surface mix for chips and secondary plates", () => {

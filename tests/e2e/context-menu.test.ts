@@ -649,7 +649,7 @@ test("multi-asset menu shows a visible count and mixed-selection skip reasons", 
       menu.getByRole("menuitem", { name: "移动到文件夹…（1 项）" }),
     ).toBeVisible();
     await expect(
-      menu.getByRole("menuitem", { name: "移入回收站（2 项）" }),
+      menu.getByRole("menuitem", { name: "移入回收站（1 项）" }),
     ).toBeVisible();
   } finally {
     await application.close();

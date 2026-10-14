@@ -193,9 +193,11 @@ test("generates a decoded thumbnail and keeps asset viewer context coherent", as
     await expect
       .poll(() => thumbnail.getAttribute("src"))
       .toMatch(/^serpent:\/\/preview\//);
+    // Islands justified slots fill the frame (cover) so rounded corners do not
+    // show a 1–2px letterbox. The inspector preview below stays contain.
     expect(
       await thumbnail.evaluate((image) => getComputedStyle(image).objectFit),
-    ).toBe("contain");
+    ).toBe("cover");
 
     // Import reveal selects the imported batch and reapplies it once the
     // debounced browse refresh settles. Clear that intentional reveal before
@@ -807,8 +809,7 @@ test("video preview reports a specific generation failure and persists its diagn
     expect(mediaFailureLog).toContain("FFMPEG_REQUIRED");
     expect(existsSync(libraryPath)).toBe(true);
 
-    await preview.hover();
-    await preview.getByRole("button", { name: "关闭查看页面" }).click();
+    await window.keyboard.press("Escape");
     await expect(preview).toBeHidden();
     await window.getByRole("button", { name: "更多工具" }).click();
     await window.getByRole("menuitem", { name: "后台任务" }).click();

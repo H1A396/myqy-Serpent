@@ -550,7 +550,7 @@ async function runDestructiveJourney(window: Page, ops: OpSample[]): Promise<Rec
   if (createdFolderTitle) {
     try {
       const row = window.locator(
-        `.navigation-pane button.nav-row[data-nav-folder-kind][title="${createdFolderTitle.replaceAll('"', '\\"')}"]`,
+        `.navigation-pane button.nav-row[data-nav-folder-kind][data-hover-tip="${createdFolderTitle.replaceAll('"', '\\"')}"]`,
       ).first();
       const before = await window.locator(".navigation-pane button.nav-row[data-nav-folder-kind]").count();
       const startedAt = Date.now();

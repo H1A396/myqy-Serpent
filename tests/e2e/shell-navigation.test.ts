@@ -79,14 +79,16 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
     // the macOS settings entry), and then the breadcrumbs trail.
     const backButton = window.getByRole("button", { name: "后退" });
     const forwardButton = window.getByRole("button", { name: "前进" });
-    const settingsButton =
-      process.platform === "win32"
-        ? window.locator(".main-menu-trigger")
-        : window.getByRole("button", { name: /主菜单|设置/ });
+    const useInAppMainMenu = process.platform !== "darwin";
+    const settingsButton = useInAppMainMenu
+      ? window.locator(".main-menu-trigger")
+      : window.getByRole("button", { name: /主菜单|设置/ });
     await expect(backButton).toBeVisible();
     await expect(forwardButton).toBeVisible();
     await expect(settingsButton).toBeVisible();
-    if (process.platform === "win32") {
+    // macOS keeps About on the native application menu. Windows and Linux
+    // use the in-app main menu; the native menu there has no about.serpent item.
+    if (useInAppMainMenu) {
       await settingsButton.hover();
       await expect(window.getByRole("menu", { name: "主菜单" })).toHaveCount(0);
       await settingsButton.click();
@@ -145,10 +147,11 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
       await window.keyboard.press("Escape");
       await expect(window.getByRole("dialog")).toHaveCount(0);
 
-      // The macOS native About menu must expose the same diagnostics route as
-      // the Windows renderer menu; exercise the actual native command rather
-      // than only checking the template shape.
-      await clickNativeApplicationMenuItem(application, "about.diagnostics");
+      // Diagnostics lives on the in-app Window menu. The macOS native menu is
+      // covered by the other branch.
+      await settingsButton.click();
+      await window.getByRole("menuitem", { name: "窗口", exact: true }).hover();
+      await window.getByRole("menuitem", { name: "查看诊断日志", exact: true }).click();
       await expect(
         window.getByRole("dialog", { name: "诊断日志" }),
       ).toBeVisible();
@@ -259,7 +262,7 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
     // Typography is an app preference, not Chromium page zoom. Exercise all
     // four tiers through the real Appearance settings and verify that the
     // shared root scale and a visible control both change.
-    if (process.platform === "win32") {
+    if (useInAppMainMenu) {
       await settingsButton.click();
       await window.getByRole("menuitem", { name: "设置", exact: true }).click();
     } else {
@@ -290,16 +293,16 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
     };
     await setFontSizeIndex(0);
     await expect(fontSizeSlider).toHaveAttribute("aria-valuetext", "紧凑");
-    await expect.poll(readFontScale).toEqual({ scale: "0.94", size: "11.28px", zoom: "1" });
+    await expect.poll(readFontScale).toEqual({ scale: "0.94", size: "10.34px", zoom: "1" });
     await setFontSizeIndex(1);
     await expect(fontSizeSlider).toHaveAttribute("aria-valuetext", "默认");
-    await expect.poll(readFontScale).toEqual({ scale: "1", size: "12px", zoom: "1" });
+    await expect.poll(readFontScale).toEqual({ scale: "1", size: "11px", zoom: "1" });
     await setFontSizeIndex(2);
     await expect(fontSizeSlider).toHaveAttribute("aria-valuetext", "舒适");
-    await expect.poll(readFontScale).toEqual({ scale: "1.06", size: "12.72px", zoom: "1" });
+    await expect.poll(readFontScale).toEqual({ scale: "1.06", size: "11.66px", zoom: "1" });
     await setFontSizeIndex(3);
     await expect(fontSizeSlider).toHaveAttribute("aria-valuetext", "更大");
-    await expect.poll(readFontScale).toEqual({ scale: "1.12", size: "13.44px", zoom: "1" });
+    await expect.poll(readFontScale).toEqual({ scale: "1.12", size: "12.32px", zoom: "1" });
     await window.keyboard.press("Escape");
     await expect(fontSettingsDialog).toHaveCount(0);
 
@@ -325,7 +328,9 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
     expect(toggleBox!.x).toBeLessThan(backBox!.x);
     expect(backBox!.x).toBeLessThan(settingsBox!.x);
     expect(backBox!.x).toBeLessThan(crumbsBox!.x);
-    expect(backBox!.x - workspaceBox!.x).toBeCloseTo(14, 0);
+    // Islands: toolbar cluster padding and the workspace island margin are
+    // both --island-gap, so history controls sit on the workspace edge.
+    expect(backBox!.x - workspaceBox!.x).toBeCloseTo(0, 0);
 
     // Left sidebar status dots (top/bottom) were removed as redundant.
     await expect(window.locator(".navigation-pane .pane-header")).toHaveCount(
@@ -474,7 +479,12 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
 
     // Native Electron windows do not expose a restorable Playwright viewport
     // value, so keep the narrow-window check last before closing the app.
-    await settingsButton.click();
+    if (useInAppMainMenu) {
+      await settingsButton.click();
+      await window.getByRole("menuitem", { name: "设置", exact: true }).click();
+    } else {
+      await settingsButton.click();
+    }
     const narrowFontSettingsDialog = window.getByRole("dialog");
     await narrowFontSettingsDialog
       .getByRole("tab", { name: "外观", exact: true })

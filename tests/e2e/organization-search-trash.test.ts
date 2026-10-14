@@ -490,6 +490,9 @@ test('multi-select performs batch organization, trash, restore, and permanent de
     await expect
       .poll(() => window.locator('.asset-card').count(), { timeout: 15_000 })
       .toBe(0);
+    // Tag filters overlay folder and collection scope. Clear the chip before
+    // opening the collection, or the untagged members stay hidden.
+    await window.getByRole('button', { name: '全部清除' }).click();
 
     await window.getByRole('button', { name: /批量合集/ }).first().click();
     const batchCollectionScopeToggle = window.getByRole('button', {
@@ -681,8 +684,8 @@ test('collection recursion toggle immediately refreshes the visible collection s
     await window.getByRole('button', { name: '添加合集' }).click();
     await window.getByPlaceholder('新建合集').fill('父合集');
     await window.getByPlaceholder('新建合集').press('Enter');
-    await collectionRow(window, '父合集').click();
-    await window.getByRole('button', { name: '添加合集' }).click();
+    await collectionRow(window, '父合集').click({ button: 'right' });
+    await window.getByRole('menuitem', { name: '新建子合集', exact: true }).click();
     await expect(window.getByPlaceholder('新建合集')).toBeFocused();
     await window.getByPlaceholder('新建合集').fill('子合集');
     await window.getByPlaceholder('新建合集').press('Enter');

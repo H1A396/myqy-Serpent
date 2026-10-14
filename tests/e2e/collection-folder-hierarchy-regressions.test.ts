@@ -39,14 +39,14 @@ function launchApp(
 function collectionRow(window: Page, name: string) {
   const escapedName = name.replace(/["\\]/gu, "\\$&");
   return window.locator(
-    `.navigation-pane button.nav-row[data-nav-collection-id][title="${escapedName}"]`,
+    `.navigation-pane button.nav-row[data-nav-collection-id][data-hover-tip="${escapedName}"]`,
   );
 }
 
 function folderRow(window: Page, name: string) {
   const escapedName = name.replace(/["\\]/gu, "\\$&");
   return window.locator(
-    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="${escapedName}"]`,
+    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="${escapedName}"]`,
   );
 }
 
@@ -87,8 +87,14 @@ async function createCollection(
 }
 
 async function createFolder(window: Page, name: string, parentName?: string) {
-  if (parentName) await folderRow(window, parentName).click();
-  await window.getByRole("button", { name: "添加文件夹" }).click();
+  // The section 「+」 always creates at the library root. Nested folders come
+  // from the parent row's context menu.
+  if (parentName) {
+    await folderRow(window, parentName).click({ button: "right" });
+    await window.getByRole("menuitem", { name: "新建子文件夹", exact: true }).click();
+  } else {
+    await window.getByRole("button", { name: "添加文件夹" }).click();
+  }
   const input = window.locator(".nav-inline-edit input");
   await expect(input).toBeVisible();
   await input.fill(name);
@@ -191,7 +197,7 @@ test("selects the smart-collection name when rename opens", async () => {
     await refreshButton.click();
     await expect(refreshButton).toBeEnabled({ timeout: 15_000 });
     const smartCollectionRow = window.locator(
-      `.navigation-pane button.nav-row[title="${smartCollectionName}"]`,
+      `.navigation-pane button.nav-row[data-hover-tip="${smartCollectionName}"]`,
     );
     await expect(smartCollectionRow).toBeVisible();
     await smartCollectionRow.click({ button: "right" });

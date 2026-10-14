@@ -44,7 +44,7 @@ function launchApp(temporaryRoot: string, libraryPath: string) {
 function folderRow(window: Page, name: string) {
   const escapedName = name.replace(/["\\]/gu, "\\$&");
   return window.locator(
-    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="${escapedName}"]`,
+    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="${escapedName}"]`,
   );
 }
 
@@ -187,13 +187,13 @@ test("folder-section + creates at the library root while a subfolder is in scope
       await window.evaluate(() => {
         const depthOf = (name: string) => {
           const row = document.querySelector<HTMLElement>(
-            `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="${name}"]`,
+            `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="${name}"]`,
           );
           return row?.closest<HTMLElement>(".nav-tree-row")?.style.paddingLeft ?? null;
         };
         return `${depthOf("Alpha")}|${depthOf("Created")}|${depthOf("Beta")}`;
       }),
-    ).toBe("14px|14px|28px");
+    ).toBe("0px|0px|14px");
   } finally {
     await application.close();
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -215,7 +215,7 @@ test("right-clicking the blank area opens the library-root folder menu", async (
     await createSubfolder(window, "Alpha", "Beta");
 
     const betaGutterBox = await window
-      .locator('.navigation-pane .nav-tree-row:has(button[title="Beta"])')
+      .locator('.navigation-pane .nav-tree-row:has(button[data-hover-tip="Beta"])')
       .boundingBox();
     expect(betaGutterBox).not.toBeNull();
     await window.mouse.click(
@@ -352,7 +352,7 @@ test("folder-section blank area returns to the root and accepts folder drops", a
 
     const betaRowBox = await folderRow(window, "Beta").boundingBox();
     const betaGutterBox = await window
-      .locator('.navigation-pane .nav-tree-row:has(button[title="Beta"])')
+      .locator('.navigation-pane .nav-tree-row:has(button[data-hover-tip="Beta"])')
       .boundingBox();
     const collectionsHeadingBox = await window
       .locator(".navigation-pane .nav-section-heading > span", {
@@ -480,7 +480,7 @@ test("folder-section blank area returns to the root and accepts folder drops", a
         window.evaluate(() => {
           const depthOf = (name: string) => {
             const row = document.querySelector<HTMLElement>(
-              `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="${name}"]`,
+              `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="${name}"]`,
             );
             return row?.closest<HTMLElement>(".nav-tree-row")?.style.paddingLeft ?? null;
           };
@@ -489,7 +489,7 @@ test("folder-section blank area returns to the root and accepts folder drops", a
           return alpha && beta ? `${alpha}|${beta}` : null;
         }),
       )
-      .toBe("14px|14px");
+      .toBe("0px|0px");
     // Serpent-374266: dropping a folder back onto its own row changes nothing,
     // so it must not highlight and must not answer with a notice.
     const noticeText = () =>
