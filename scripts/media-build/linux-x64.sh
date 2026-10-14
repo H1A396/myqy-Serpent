@@ -6,6 +6,10 @@ if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
   exit 1
 fi
 
+# vcpkg probes the default `c++`, which may be clang without a matching libstdc++.
+export CC="${CC:-gcc}"
+export CXX="${CXX:-g++}"
+
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 LOCK="$ROOT/resources/media-binaries/source-lock.json"
 MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"
