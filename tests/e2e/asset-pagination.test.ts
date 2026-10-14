@@ -145,9 +145,18 @@ test("ordinary browsing continuously appends every asset without page controls",
     ).toHaveCount(1);
 
     const sizeControl = window.getByLabel("资产缩略图大小");
-    const maxSizeIndex = Number(await sizeControl.getAttribute("max"));
-    const middleSizeIndex = Math.min(3, maxSizeIndex);
-    await sizeControl.fill(String(middleSizeIndex));
+    async function currentMaxSizeIndex(): Promise<number> {
+      const raw = await sizeControl.getAttribute("max");
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    }
+    async function fillCardSize(requestedIndex: number): Promise<number> {
+      const maxSizeIndex = await currentMaxSizeIndex();
+      const clamped = Math.min(Math.max(0, requestedIndex), maxSizeIndex);
+      await sizeControl.fill(String(clamped));
+      return clamped;
+    }
+    await fillCardSize(3);
     const anchorCard = window.locator(".asset-card").nth(30);
     await anchorCard.scrollIntoViewIfNeeded();
     const anchorAssetId = await anchorCard.getAttribute("data-asset-id");
@@ -172,9 +181,9 @@ test("ordinary browsing continuously appends every asset without page controls",
     ).toBeInViewport();
 
     const firstCard = window.locator(".asset-card").first();
-    await sizeControl.fill("0");
+    await fillCardSize(0);
     const initialWidth = (await firstCard.boundingBox())!.width;
-    await sizeControl.fill(String(maxSizeIndex));
+    await fillCardSize(Number.POSITIVE_INFINITY);
     await expect
       .poll(async () => (await firstCard.boundingBox())!.width)
       .toBeGreaterThan(initialWidth);
@@ -238,8 +247,8 @@ test("ordinary browsing continuously appends every asset without page controls",
       await expect(window.locator(".asset-grid")).toHaveClass(
         new RegExp(view.className),
       );
-      for (const cardSize of [0, maxSizeIndex]) {
-        await sizeControl.fill(String(cardSize));
+      for (const requestedSize of [0, Number.POSITIVE_INFINITY]) {
+        const cardSize = await fillCardSize(requestedSize);
         await expect(sizeControl).toHaveValue(String(cardSize));
         for (const scrollFraction of [0.25, 0.5, 1]) {
           let visibleAsset: {
