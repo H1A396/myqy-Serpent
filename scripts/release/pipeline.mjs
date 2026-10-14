@@ -77,7 +77,9 @@ function assertMediaBundleReady() {
     const reason = entry?.reason ?? 'bundle-lock has no ready entry for this platform.';
     const buildScript = platform === 'darwin-arm64'
       ? 'scripts/media-build/darwin-arm64.sh'
-      : 'scripts/media-build/win32-x64.ps1';
+      : platform === 'linux-x64'
+        ? 'scripts/media-build/linux-x64.sh'
+        : 'scripts/media-build/win32-x64.ps1';
 
     console.error(
       [
@@ -110,7 +112,9 @@ function phaseMediaBuildLocally() {
   const platform = currentPlatformKey();
   const buildCommand = platform === 'darwin-arm64'
     ? { command: 'bash', args: ['scripts/media-build/darwin-arm64.sh'] }
-    : { command: 'pwsh', args: ['-File', 'scripts/media-build/win32-x64.ps1'] };
+    : platform === 'linux-x64'
+      ? { command: 'bash', args: ['scripts/media-build/linux-x64.sh'] }
+      : { command: 'pwsh', args: ['-File', 'scripts/media-build/win32-x64.ps1'] };
 
   process.stdout.write(
     `\n[release:media] Building ${platform} media bundle locally (this can take 1-3+ hours)...\n`,
@@ -137,11 +141,11 @@ function phaseVerify() {
 }
 
 function phaseMedia({ buildMediaLocally }) {
-  // Linux AppImage has no pinned media bundle; runtime uses system ffmpeg /
-  // ffprobe / oiiotool from PATH (see forge.config.ts isNativeLinuxPackage).
-  if (process.platform === 'linux') {
+  // linux-arm64 has no pinned bundle. linux-x64 acquires the same release as
+  // macOS/Windows (or builds it with --build-media-locally).
+  if (process.platform === 'linux' && process.arch !== 'x64') {
     console.warn(
-      '[release:media] Skipping media acquire/verify on Linux (AppImage uses system media tools).',
+      '[release:media] Skipping media acquire/verify on linux-arm64 (no pinned media bundle).',
     );
     return;
   }
@@ -158,7 +162,7 @@ function phaseMedia({ buildMediaLocally }) {
 
 function phasePackage() {
   runReleaseScript('package');
-  // Linux skips pinned-media gates inside verify-package (system tools only).
+  // linux-x64 verifies the pinned media bundle; linux-arm64 still skips it.
   runReleaseScript('verify:package');
 }
 

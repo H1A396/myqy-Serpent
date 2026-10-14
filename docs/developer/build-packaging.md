@@ -38,7 +38,7 @@ npm run release:local
 | 阶段 | 内容 |
 | --- | --- |
 | verify | `rebuild:native` + `verify:mainline`（与 CI 相同门禁） |
-| media | 从受控 URL 下载媒体包（`media:acquire`）+ 校验；**Linux 自动跳过**（AppImage 使用系统 ffmpeg） |
+| media | 从受控 URL 下载媒体包（`media:acquire`）+ 校验；**linux-x64 与 macOS/Windows 相同**（linux-arm64 仍跳过） |
 | package | `electron-forge package` + `verify:package` |
 | e2e | 对打包产物跑启动测试（`test:e2e:packaged`） |
 | make | 生成安装包（Linux：优先 `make:appimage:docker`，并重命名为 `Serpent-linux-x86-64-<ver>.AppImage`） |
@@ -81,7 +81,7 @@ npm run release:local -- --skip-verify --build-media-locally
 
 ### 平台
 
-`forge.config.ts` 强制**原生平台构建**——macOS/Windows 的 pinned media 白名单为 `darwin-arm64` / `win32-x64`；Linux 也必须在本机（或 `make:appimage:docker` 容器内）打包，不支持交叉打包。各平台各自跑同一发布流水线。
+`forge.config.ts` 强制**原生平台构建**——pinned media 白名单为 `darwin-arm64` / `win32-x64` / `linux-x64`；Linux 也必须在本机（或 `make:appimage:docker` 容器内）打包，不支持交叉打包。各平台各自跑同一发布流水线。
 
 ### Linux AppImage
 
@@ -91,7 +91,8 @@ npm run make:appimage:docker    # Ubuntu 22.04 / glibc 2.35 基线（推荐发�
 npm run release:make            # 优先 docker，并重命名为 Serpent-linux-x86-64-<ver>.AppImage
 ```
 
-- 不内置 pinned media bundle；运行依赖系统 `ffmpeg` / `ffprobe` / `oiiotool`。
+- linux-x64 内置与 macOS/Windows 相同的 pinned media bundle（`ffmpeg` / `ffprobe` / `oiiotool`）。`package` 的 `prePackage` 会执行 `media:ensure`。bundle 尚未晋升时，先在 Linux x86_64 上运行 `scripts/media-build/linux-x64.sh`，把 `artifacts/media-binaries/serpent-media-linux-x64.zip` 上传到 Serpent-Build Release，再把 URL 与 SHA-256 写入 `bundle-lock.json`。本地试跑可用 `SERPENT_MEDIA_SKIP_PROVENANCE=1`。
+- linux-arm64 仍无 pinned bundle。
 - 需要 FUSE（`libfuse2`）；无 FUSE 时 `--appimage-extract-and-run`。
 - Release 上传名与应用内更新器一致：`Serpent-linux-x86-64-<ver>.AppImage`（另附同名 `.sha256`）。
 
@@ -134,7 +135,8 @@ npm run make:inno
    - `ffmpeg/ffprobe`：BtbN LGPL builds（`registry.npmmirror.com/-/binary/ffmpeg-builds/`
      `ffmpeg-<ver>-win32-x64-lgpl.tar.xz`，或 mac 版），LGPL-only 合规（无 GPL 标记）
    - `oiiotool`：`scripts/media-build/build-oiiotool-win32.ps1`（Windows）/
-     `darwin-arm64.sh`（macOS）——vcpkg 构建（锁定版本工具链 + registry commit）
+     `darwin-arm64.sh`（macOS）/ `linux-x64.sh`（Linux x86_64，连同 FFmpeg）
+     ——vcpkg 构建（锁定版本工具链 + registry commit）
 2. **打包上传**：
    ```bash
    # 组装 zip（平台层级结构 ffmpeg/<platform>/…）+ sha256

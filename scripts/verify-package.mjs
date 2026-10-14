@@ -198,9 +198,9 @@ if (!mainSource.includes(`AUTOMATION_API_VERSION`) || !mainSource.includes(Strin
   );
 }
 
-// Linux AppImage packages do not ship a pinned media bundle; they use system
-// ffmpeg / ffprobe / oiiotool from PATH (forge.config.ts skips the same gates).
-if (packagePlatform !== 'linux') {
+// linux-arm64 still has no pinned media bundle. linux-x64 ships the same
+// ffmpeg / oiiotool release as macOS and Windows.
+if (!(packagePlatform === 'linux' && packageArch !== 'x64')) {
   const mediaResourcesPath = path.join(resourcesPath, 'resources');
   const mediaPlatform = currentPlatformKey();
   verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
@@ -213,7 +213,7 @@ if (packagePlatform !== 'linux') {
     verifyReleaseProvenance({ root: mediaResourcesPath, platform: mediaPlatform });
   }
 } else {
-  console.log('Skipping media bundle verification on Linux (system tools from PATH).');
+  console.log('Skipping media bundle verification on this Linux architecture (no pinned bundle).');
 }
 
 if (packagePlatform === 'darwin') {

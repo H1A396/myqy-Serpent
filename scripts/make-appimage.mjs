@@ -7,10 +7,12 @@
  *
  * Output: out/make/appimage/Serpent-<version>-<arch>.AppImage
  *
- * The AppImage bundles Electron and the native modules but, like `npm start`
- * on Linux, uses the system ffmpeg / ffprobe / oiiotool from PATH. Build it on
- * the oldest glibc you want to support (scripts/appimage-docker.sh builds in
- * Ubuntu 22.04, glibc 2.35).
+ * The AppImage bundles Electron, native modules, and the pinned linux-x64
+ * media binaries (`resources/ffmpeg` and `resources/oiio`) that `npm run package`
+ * acquires via `media:ensure`. Build it on the oldest glibc you want to support
+ * (scripts/appimage-docker.sh builds in Ubuntu 22.04, glibc 2.35). ffmpeg may
+ * still be overridden with `SERPENT_FFMPEG_PATH` / system PATH; oiiotool resolves
+ * the bundled binary first.
  */
 import { spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

@@ -44,14 +44,14 @@ chmod +x Serpent-linux-x86-64-<version>.AppImage
 Runtime dependencies:
 
 - **FUSE** (`libfuse2`). Without FUSE, add `--appimage-extract-and-run`.
-- **System `ffmpeg` / `ffprobe`** for video thumbnails and proxies. Optionally install `openimageio-tools` (`oiiotool`) for EXR/RAW/PSD and other pro image formats.
-- Debian/Ubuntu example: `sudo apt install libfuse2 ffmpeg` (optional `openimageio-tools`).
+- System `ffmpeg` / `ffprobe` can still override the bundled tools. linux-x64 packages ship the same `ffmpeg` / `ffprobe` / `oiiotool` binaries as macOS and Windows.
+- Debian/Ubuntu example: `sudo apt install libfuse2`. Dev runs without the media bundle can still install system `ffmpeg`.
 
 Current Linux behavior and limits:
 
 - Windows-style shell: frameless window, in-app main menu (≡), rounded corners when a compositor is present.
 - **No system tray**: closing the window quits the app (unlike Windows, which hides to the notification area).
-- No bundled media binaries; install the system tools above.
+- The linux-x64 AppImage ships the pinned media binaries (`oiiotool` includes LibRaw / OCIO). See the developer packaging doc for the pre-promotion local build.
 - Tested on Debian 13 (X11) and under a nested Wayland compositor; native Wayland sessions still need dedicated acceptance.
 - Set `SERPENT_SOFTWARE_GL=1` for software WebGL when no usable GPU / GL driver is available. Force square / rounded corners with `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1`.
 
