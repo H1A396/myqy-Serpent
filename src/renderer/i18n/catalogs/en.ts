@@ -1813,7 +1813,7 @@ export const en = {
       enabled: "Turn on semantic search",
       enabledHint: "When this is off, no library uses semantic search. Off by default.",
       resourceNotice: "Use natural language to find content by meaning and find similar assets. Semantic search increases library preparation time and memory use.",
-      videoCoverNote: "Semantic search uses a video's cover, not a frame-by-frame analysis.",
+      videoCoverNote: "To keep analysis time down, semantic search uses a video's cover, not a frame-by-frame analysis.",
       defaultModel: "Default model",
       defaultModelHint: "Libraries without their own choice use this default.",
       defaultModelEmpty: "Install a local model, or add a custom service first.",
