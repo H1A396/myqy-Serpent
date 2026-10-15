@@ -50,7 +50,11 @@ export function embeddingAudioRequestBody(wavBase64: string): {
   };
 }
 
-/** llama.cpp's typed video input carries the raw container bytes as base64. */
+/**
+ * llama.cpp's typed video input carries the raw container bytes as base64.
+ * This release's product index does not call it. Video semantics use the cover
+ * image. Multi-frame / `input_video` may return later.
+ */
 export function embeddingVideoRequestBody(videoBase64: string): {
   model: string;
   input: Array<{ content: Array<{ type: "input_video"; input_video: { data: string } }> }>;
@@ -158,6 +162,8 @@ export async function startLlamaEmbeddingSession(input: {
       === path.dirname(path.resolve(input.mediaBinaries.ffprobePath))
     ? path.dirname(path.resolve(input.mediaBinaries.ffmpegPath))
     : null;
+  // `--video-fps` stays on the runtime so a later release can sample frames again.
+  // The product index does not send `input_video` in this version.
   const videoRuntimeArgs = videoRuntimeDirectory
     ? ["--video-fps", "1", "--video-ffmpeg-dir", videoRuntimeDirectory]
     : [];

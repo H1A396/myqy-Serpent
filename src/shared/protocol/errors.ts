@@ -132,6 +132,8 @@ export const PUBLIC_ERROR_MESSAGES = {
     'Serpent could not finish installing this semantic model. If the model files are already downloaded, the local runtime download from GitHub likely failed. Check the network and try again.',
   EMBEDDING_SERVICE_INVALID:
     'This embedding service could not be saved. Check the name, address, and model name.',
+  SEMANTIC_IMAGE_TOO_LARGE:
+    'This picture is still too large for semantic search after resizing, so it cannot be encoded.',
 } as const;
 
 export type PublicErrorCode = keyof typeof PUBLIC_ERROR_MESSAGES;

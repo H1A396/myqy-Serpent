@@ -1,6 +1,6 @@
 import { embeddingSourceForModalities } from "../shared/embedding/profile";
 import {
-  LOCAL_GEMMA_INPUT_MODALITIES,
+  LOCAL_SEMANTIC_ENCODE_MODALITIES,
   type EmbeddingSourceModality,
 } from "../shared/embedding/modalities";
 
@@ -30,7 +30,7 @@ export function canFindSimilarForAsset(asset: {
   deletedAt?: string | null;
   availability?: string;
   displayName?: string;
-}, modalities: readonly EmbeddingSourceModality[] = LOCAL_GEMMA_INPUT_MODALITIES): boolean {
+}, modalities: readonly EmbeddingSourceModality[] = LOCAL_SEMANTIC_ENCODE_MODALITIES): boolean {
   return embeddingSourceForModalities({
     ...asset,
     currentRevisionId: asset.currentRevisionId ?? "revision",

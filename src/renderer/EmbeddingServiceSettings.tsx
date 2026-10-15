@@ -9,6 +9,12 @@ import {
   type EmbeddingServiceDestination,
   type EmbeddingServiceIssue,
 } from "../shared/embedding/http-service";
+import {
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+  normalizeSemanticImageBytes,
+  normalizeSemanticImageEdgePx,
+} from "../shared/embedding/image-limits";
 import { EMBEDDING_MODALITIES, type EmbeddingModality } from "../shared/embedding/modalities";
 import type { EmbeddingHttpServiceSummary } from "../shared/library-api";
 import { EmbeddingApiFormatControl } from "./EmbeddingApiFormatControl";
@@ -30,6 +36,8 @@ export type EmbeddingServiceSettingsApi = {
     apiKey?: string;
     modalities?: EmbeddingModality[];
     dimensions?: number | null;
+    maxImageEdgePx?: number;
+    maxImageBytes?: number;
   }) => Promise<{ ok: boolean; value?: { id: string } }>;
   embeddingDeleteService: (input: { id: string }) => Promise<{ ok: boolean }>;
   embeddingProbeService: (input: { id: string }) => Promise<{
@@ -61,6 +69,12 @@ const PLACEHOLDER_MODEL: Record<EmbeddingHttpAdapter, string> = {
   "dashscope-multimodal-v1": "qwen3-vl-embedding",
 };
 
+function parseImageMegabytes(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  return normalizeSemanticImageBytes(Number(trimmed) * 1024 * 1024);
+}
+
 const PROBE_FAILURE_KEYS = {
   network: "settings.semanticSearch.probeFailure.network",
   auth: "settings.semanticSearch.probeFailure.auth",
@@ -88,6 +102,8 @@ export function EmbeddingServiceSettings({
   const [modalities, setModalities] = useState<EmbeddingModality[]>(["text"]);
   const [adapter, setAdapter] = useState<EmbeddingHttpAdapter>("openai-embeddings-v1");
   const [dimensions, setDimensions] = useState("");
+  const [maxImageEdge, setMaxImageEdge] = useState(String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX));
+  const [maxImageMegabytes, setMaxImageMegabytes] = useState(String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES / (1024 * 1024)));
   const [issue, setIssue] = useState<EmbeddingServiceIssue | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,6 +139,8 @@ export function EmbeddingServiceSettings({
     setAdapter("openai-embeddings-v1");
     setModalities(["text"]);
     setDimensions("");
+    setMaxImageEdge(String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX));
+    setMaxImageMegabytes(String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES / (1024 * 1024)));
     setIssue(null);
     setFormError(null);
   }
@@ -137,6 +155,8 @@ export function EmbeddingServiceSettings({
     setAdapter(service.adapter);
     setModalities(service.modalities.length > 0 ? [...service.modalities] : ["text"]);
     setDimensions(service.dimensions == null ? "" : String(service.dimensions));
+    setMaxImageEdge(String(service.maxImageEdgePx));
+    setMaxImageMegabytes(String(Math.round(service.maxImageBytes / (1024 * 1024))));
     setIssue(null);
     setFormError(null);
     setOpen(true);
@@ -152,6 +172,8 @@ export function EmbeddingServiceSettings({
 
   async function save(): Promise<void> {
     const parsedDimensions = dimensions.trim() === "" ? null : parseEmbeddingDimensions(Number(dimensions.trim()));
+    const parsedEdge = normalizeSemanticImageEdgePx(Number(maxImageEdge.trim()));
+    const parsedBytes = parseImageMegabytes(maxImageMegabytes);
     const normalized = normalizeEmbeddingServiceUrl(baseUrl);
     const destination: EmbeddingServiceDestination = normalized?.place ?? "loopback";
     const nextIssue = validateEmbeddingServiceDraft({
@@ -160,6 +182,8 @@ export function EmbeddingServiceSettings({
       baseUrl,
       modalities,
       dimensions: dimensions.trim() === "" ? null : parsedDimensions,
+      maxImageEdgePx: parsedEdge ?? Number.NaN,
+      maxImageBytes: parsedBytes ?? Number.NaN,
     });
     const dimensionsIssue = dimensions.trim() !== "" && parsedDimensions === null;
     const resolvedIssue: EmbeddingServiceIssue | null = nextIssue ?? (dimensionsIssue ? "dimensions" : null);
@@ -180,6 +204,8 @@ export function EmbeddingServiceSettings({
       modelName,
       modalities,
       dimensions: parsedDimensions,
+      maxImageEdgePx: parsedEdge ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+      maxImageBytes: parsedBytes ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
       ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
     });
     setBusy(false);
@@ -346,6 +372,34 @@ export function EmbeddingServiceSettings({
               value={dimensions}
             />
             <p className="ai-config-hint">{t("settings.semanticSearch.dimensionsHint")}</p>
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-image-edge">{t("settings.semanticSearch.imageEdge")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-image-edge"
+              inputMode="numeric"
+              onChange={(event) => setMaxImageEdge(event.target.value)}
+              placeholder={String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX)}
+              spellCheck={false}
+              value={maxImageEdge}
+            />
+            <p className="ai-config-hint">{t("settings.semanticSearch.imageEdgeHint")}</p>
+          </div>
+
+          <div className="editor-field ai-config-field">
+            <label className="micro-label" htmlFor="embedding-service-image-bytes">{t("settings.semanticSearch.imageBytes")}</label>
+            <input
+              className="text-field ai-config-input"
+              id="embedding-service-image-bytes"
+              inputMode="numeric"
+              onChange={(event) => setMaxImageMegabytes(event.target.value)}
+              placeholder={String(CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES / (1024 * 1024))}
+              spellCheck={false}
+              value={maxImageMegabytes}
+            />
+            <p className="ai-config-hint">{t("settings.semanticSearch.imageBytesHint")}</p>
           </div>
 
           <div className="editor-field ai-config-field">

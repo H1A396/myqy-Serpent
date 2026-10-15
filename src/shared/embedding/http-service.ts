@@ -7,6 +7,12 @@
  * A saved address is not a verified model.
  */
 
+import {
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+  normalizeSemanticImageBytes,
+  normalizeSemanticImageEdgePx,
+} from "./image-limits";
 import { explicitEmbeddingModalities } from "./modalities";
 
 export const EMBEDDING_HTTP_ADAPTERS = ["openai-embeddings-v1", "llamacpp-multimodal-v1", "dashscope-multimodal-v1"] as const;
@@ -41,7 +47,17 @@ export function isEmbeddingServiceSelectionId(value: string): boolean {
   return /^svc_[a-z0-9]{8,40}$/.test(value);
 }
 
-export type EmbeddingServiceIssue = "name" | "model" | "url" | "loopback" | "lan" | "https" | "modalities" | "dimensions";
+export type EmbeddingServiceIssue =
+  | "name"
+  | "model"
+  | "url"
+  | "loopback"
+  | "lan"
+  | "https"
+  | "modalities"
+  | "dimensions"
+  | "imageEdge"
+  | "imageBytes";
 
 export function isEmbeddingHttpAdapter(value: string): value is EmbeddingHttpAdapter {
   return (EMBEDDING_HTTP_ADAPTERS as readonly string[]).includes(value);
@@ -106,6 +122,8 @@ export function validateEmbeddingServiceDraft(input: {
   baseUrl: string;
   modalities?: readonly string[];
   dimensions?: number | null;
+  maxImageEdgePx?: number;
+  maxImageBytes?: number;
 }): EmbeddingServiceIssue | null {
   const name = input.name.trim();
   const modelName = input.modelName.trim();
@@ -117,6 +135,12 @@ export function validateEmbeddingServiceDraft(input: {
   if (url.place === "internet" && url.protocol !== "https:") return "https";
   if (input.modalities !== undefined && explicitEmbeddingModalities(input.modalities) === null) return "modalities";
   if (input.dimensions != null && parseEmbeddingDimensions(input.dimensions) === null) return "dimensions";
+  if (input.maxImageEdgePx !== undefined && normalizeSemanticImageEdgePx(input.maxImageEdgePx) === null) {
+    return "imageEdge";
+  }
+  if (input.maxImageBytes !== undefined && normalizeSemanticImageBytes(input.maxImageBytes) === null) {
+    return "imageBytes";
+  }
   return null;
 }
 
@@ -207,12 +231,17 @@ export function embeddingHttpProfileKey(input: {
   baseUrl: string;
   modelName: string;
   dimensions: number;
+  /** Included so a limit change rebuilds vectors in a separate profile. */
+  maxImageEdgePx?: number;
+  maxImageBytes?: number;
 }): string {
   return [
     input.adapter,
     input.baseUrl,
     input.modelName.trim(),
     String(input.dimensions),
+    String(input.maxImageEdgePx ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX),
+    String(input.maxImageBytes ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES),
   ].join("\n");
 }
 

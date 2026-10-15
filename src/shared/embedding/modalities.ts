@@ -6,13 +6,21 @@
 export const EMBEDDING_MODALITIES = ["image", "video", "audio", "text"] as const;
 export type EmbeddingModality = (typeof EMBEDDING_MODALITIES)[number];
 
-/** Input forms the local EmbeddingGemma runtime sends to the fixed llama-server. */
+/** Input forms the local EmbeddingGemma runtime can send to the fixed llama-server. */
 export const LOCAL_GEMMA_INPUT_MODALITIES = ["image", "video", "audio", "text"] as const;
 
 /** Model card capabilities exposed by the fixed local runtime. */
 export const LOCAL_GEMMA_MODALITIES: readonly EmbeddingModality[] = ["image", "video", "audio", "text"];
 
 export type EmbeddingSourceModality = (typeof LOCAL_GEMMA_INPUT_MODALITIES)[number];
+
+/**
+ * What this release actually prepares for local semantic indexing.
+ * Video assets use the cover image. Multi-frame / `input_video` sampling
+ * may return later; it is not a product path here.
+ * A video with no cover yet is not a target until a thumbnail-ready event.
+ */
+export const LOCAL_SEMANTIC_ENCODE_MODALITIES = ["image", "audio", "text"] as const satisfies readonly EmbeddingSourceModality[];
 
 export function isEmbeddingModality(value: string): value is EmbeddingModality {
   return (EMBEDDING_MODALITIES as readonly string[]).includes(value);

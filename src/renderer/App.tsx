@@ -518,7 +518,7 @@ import { isEmbeddingServiceSelectionId } from "../shared/embedding/http-service"
 import {
   embeddingInputModalitiesForAdapter,
   embeddingServiceTextOnly,
-  LOCAL_GEMMA_INPUT_MODALITIES,
+  LOCAL_SEMANTIC_ENCODE_MODALITIES,
 } from "../shared/embedding/modalities";
 import {
   semanticBackgroundWorkActive,
@@ -9091,7 +9091,7 @@ function AppInner() {
       source = listed.value[0];
     }
     const sourceModalities = isSemanticSearchModelId(modelId)
-      ? LOCAL_GEMMA_INPUT_MODALITIES
+      ? LOCAL_SEMANTIC_ENCODE_MODALITIES
       : embeddingService
         ? embeddingInputModalitiesForAdapter(embeddingService.adapter, embeddingService.modalities)
         : [];

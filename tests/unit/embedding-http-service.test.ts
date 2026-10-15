@@ -8,8 +8,13 @@ import {
   embeddingHttpEndpoint,
   readEmbeddingHttpBatch,
   readEmbeddingResponse,
+  embeddingHttpProfileKey,
   validateEmbeddingServiceDraft,
 } from "../../src/shared/embedding/http-service";
+import {
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+} from "../../src/shared/embedding/image-limits";
 import {
   markEmbeddingServiceProbe,
   parseEmbeddingServiceCatalog,
@@ -409,5 +414,69 @@ describe("embedding http services", () => {
       input: ["red fruit"],
       dimensions: 1024,
     });
+  });
+
+  it("defaults image limits for older catalogs and keeps a verified probe when only those limits change", () => {
+    const credentials = memoryCredentials();
+    const legacy = parseEmbeddingServiceCatalog({
+      version: 1,
+      services: [{
+        id: "svc_abcdefghij1234567890",
+        name: "Legacy",
+        adapter: "llamacpp-multimodal-v1",
+        destination: "loopback",
+        baseUrl: "http://127.0.0.1:8080",
+        modelName: "embeddinggemma",
+        textStatus: "verified",
+        dimensions: 768,
+        grantedLibraryIds: ["library-one"],
+        modalities: ["text", "image"],
+      }],
+    });
+    expect(legacy.services[0]).toMatchObject({
+      maxImageEdgePx: CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+      maxImageBytes: CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+      textStatus: "verified",
+    });
+    const updated = saveEmbeddingService(legacy, credentials, {
+      id: legacy.services[0]?.id,
+      name: "Legacy",
+      adapter: "llamacpp-multimodal-v1",
+      destination: "loopback",
+      baseUrl: "http://127.0.0.1:8080",
+      modelName: "embeddinggemma",
+      modalities: ["text", "image"],
+      dimensions: 768,
+      maxImageEdgePx: 1024,
+      maxImageBytes: 2 * 1024 * 1024,
+    });
+    expect(updated.services[0]).toMatchObject({
+      textStatus: "verified",
+      dimensions: 768,
+      maxImageEdgePx: 1024,
+      maxImageBytes: 2 * 1024 * 1024,
+      grantedLibraryIds: ["library-one"],
+    });
+    const [summary] = summarizeEmbeddingServices(updated, credentials);
+    expect(summary?.profileKey).toBe(embeddingHttpProfileKey({
+      adapter: "llamacpp-multimodal-v1",
+      baseUrl: "http://127.0.0.1:8080",
+      modelName: "embeddinggemma",
+      dimensions: 768,
+      maxImageEdgePx: 1024,
+      maxImageBytes: 2 * 1024 * 1024,
+    }));
+    expect(validateEmbeddingServiceDraft({
+      name: "Legacy",
+      modelName: "embeddinggemma",
+      baseUrl: "http://127.0.0.1:8080",
+      maxImageEdgePx: 100,
+    })).toBe("imageEdge");
+    expect(validateEmbeddingServiceDraft({
+      name: "Legacy",
+      modelName: "embeddinggemma",
+      baseUrl: "http://127.0.0.1:8080",
+      maxImageBytes: 100,
+    })).toBe("imageBytes");
   });
 });
