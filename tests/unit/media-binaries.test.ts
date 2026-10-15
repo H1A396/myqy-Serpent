@@ -236,11 +236,28 @@ describe.skipIf(process.platform === 'win32')('media binary release gate', () =>
         packagedResources,
         'app.asar.unpacked/node_modules/trash/lib/macos-trash',
       ));
+      // verify-package also requires the pinned sqlite-vec extension; copy the
+      // installed binary so its integrity hash matches the pinned manifest.
+      cpSync(
+        path.join(process.cwd(), 'node_modules/sqlite-vec-darwin-arm64/vec0.dylib'),
+        path.join(packagedResources, 'app.asar.unpacked/node_modules/sqlite-vec-darwin-arm64/vec0.dylib'),
+      );
       cpSync(root, path.join(packagedResources, 'resources'), { recursive: true });
+      // verify-package requires a sealed (ad-hoc signed) macOS bundle, so
+      // give the fixture a minimal executable + Info.plist and sign it.
+      const appBundle = path.join(packageRoot, 'Serpent.app');
+      writeFixtureFile(
+        path.join(appBundle, 'Contents', 'Info.plist'),
+        '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>CFBundleExecutable</key><string>Serpent</string><key>CFBundleIdentifier</key><string>dev.serpent.package-test</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>\n',
+      );
+      mkdirSync(path.join(appBundle, 'Contents', 'MacOS'), { recursive: true });
+      cpSync('/usr/bin/true', path.join(appBundle, 'Contents', 'MacOS', 'Serpent'));
+      const signing = spawnSync('codesign', ['--force', '--sign', '-', appBundle], { encoding: 'utf8' });
+      expect(signing.status, signing.stderr).toBe(0);
 
       const result = spawnSync(process.execPath, [packageVerifier], {
         encoding: 'utf8',
-        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot },
+        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot, SERPENT_PACKAGE_PLATFORM: 'darwin-arm64' },
       });
       expect(result.status, result.stderr).toBe(0);
       expect(result.stdout).toContain('Verified packaged runtime files');
@@ -256,7 +273,7 @@ describe.skipIf(process.platform === 'win32')('media binary release gate', () =>
       );
       const substituted = spawnSync(process.execPath, [packageVerifier], {
         encoding: 'utf8',
-        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot },
+        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot, SERPENT_PACKAGE_PLATFORM: 'darwin-arm64' },
       });
       expect(substituted.status).not.toBe(0);
       expect(substituted.stderr).toContain('receipt archiveSha256');
