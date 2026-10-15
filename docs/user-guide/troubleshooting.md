@@ -8,7 +8,7 @@
 
 - **权限**：`chmod +x Serpent-linux-x86-64-<版本>.AppImage` 后再运行。
 - **FUSE**：需要 `libfuse2`；没有 FUSE 时使用 `./Serpent-….AppImage --appimage-extract-and-run`。
-- **视频预览**：Linux 使用系统 `ffmpeg` / `ffprobe`。未安装时图片导入仍可用，但视频缩略图/代理会失败——安装发行版的 `ffmpeg` 包后完全退出再启动。
+- **视频预览**：发布用 AppImage 已内置 `ffmpeg` / `ffprobe` / `oiiotool`，不必先安装发行版的 `ffmpeg`。若仍没有视频预览，检查 `SERPENT_FFMPEG_PATH` 是否指到了不存在的文件，然后完全退出再启动。从源码运行且没有媒体包时，才需要安装发行版的 `ffmpeg`。
 - **3D 查看器黑屏（无 GPU）**：启动前设置 `SERPENT_SOFTWARE_GL=1`。
 - **关闭即退出**：Linux 没有系统托盘；关闭窗口会结束进程（与 Windows「关闭到托盘」不同）。
 

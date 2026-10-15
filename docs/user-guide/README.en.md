@@ -3,8 +3,8 @@
 A Serpent usage guide for end users. For Chinese, switch the site language; in the repository see `README.md`.
 
 - [Install](installation.md) — macOS / Windows / Linux, upgrades
-- [Basics](basics.md) — libraries, importing, workspace tabs, custom folder/collection appearance, browsing layouts, tags, collections, and the viewer
-- [Search and filters](search-and-filters.md) — advanced query syntax, filter dimensions, and Shift multi-select
+- [Basics](basics.md) — libraries, importing, workspace tabs, folder covers, the New UI, launch at login, browsing layouts, tags, collections, and the viewer
+- [Search and filters](search-and-filters.md) — advanced query syntax, filter dimensions, experimental semantic search, and Shift multi-select
 - [WebDAV cloud sync](sync.md) — server configuration, library binding, auto-sync, opening remote synced libraries
 - [AI analysis](ai.md) — supported assets, automatic/manual analysis, jobs, and privacy
 - [Browser extension](browser-extension.md) — save web images/videos from Chrome / Edge / Firefox

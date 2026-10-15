@@ -55,6 +55,19 @@ The bottom of the filter popover repeats “Hold Shift to multi-select”. Activ
 
 ![Filter dimensions and Shift multi-select](../assets/ui/asset-filter.png)
 
+## Semantic search (experimental)
+
+**Settings → Semantic search** is marked **Experimental**. It finds images and text by meaning, and can look for similar assets. It does not replace keyword search over file names, tags, and the other indexed fields, and it is not AI analysis.
+
+- **Master switch**: Off by default. While it is off, no library uses semantic search.
+- **Local model**: Under **Local**, install EmbeddingGemma2. This build uses less space and is the one to install first. The model is downloaded into application data on this computer and is not part of the installer. If this system has no downloadable runtime, use a custom service instead.
+- **Custom embedding service**: Under **Custom**, add a service and choose the kinds of content it supports. Vector length can be filled in or left empty; after saving, choose **Test**. The key stays on this computer. Custom services are used for text search for now; finding similar images still uses the local model. A cloud address needs https. Before search text and text files are sent to a remote address, allow that library to send text.
+- **Per library**: Open **Library settings → Semantic search**, choose a model for this library, follow the Settings default, or turn it off, then choose **Save**. Another library does not pick up the same choice. Index progress appears on this page or in **Background jobs**.
+- **Where the index lives**: The index is stored in that library’s `.serpent/semantic/` directory and stays with the library. Rebuilding clears the saved vectors and processes assets again. A remote service receives the content again.
+- **Searching**: After the selected model is ready, the semantic button beside the search field switches between semantic search and keyword search. Right-click an asset and choose **Find similar**. The local model can handle images, video, audio, and text. Assets in Trash, and types the current model cannot handle, do not show this command.
+- **Batch size**: **Pictures per batch** can be 25, 50, or 100. The default is 50. A change applies starting with the next semantic search.
+- Turning this on makes library preparation take longer and uses more memory. Items that are already encoded can be searched first. While the rest are still being encoded, the results may be incomplete.
+
 ## Sorting and smart collections
 
 Sort by name, modified time, created time, file size, resolution, duration, rating, color, or author, ascending or descending; shuffle is also available. A search, its filters, and its sort can be saved as a smart collection. Smart collections recalculate when opened, so their results follow library changes.

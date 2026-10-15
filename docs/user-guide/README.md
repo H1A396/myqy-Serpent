@@ -3,8 +3,8 @@
 面向最终用户的 Serpent 使用指南。英文版请切换站点语言；仓库内见同目录 `README.en.md`。
 
 - [安装](installation.md)——macOS / Windows / Linux 安装、升级
-- [基本使用](basics.md)——资源库、导入、工作区多标签页、文件夹/合集自定义外观、浏览排版、标签合集与查看器
-- [搜索与过滤](search-and-filters.md)——高级搜索语法、过滤维度和 Shift 多选
+- [基本使用](basics.md)——资源库、导入、工作区多标签页、文件夹封面、全新 UI、登录时启动、浏览排版、标签合集与查看器
+- [搜索与过滤](search-and-filters.md)——高级搜索语法、过滤维度、实验性语义搜索和 Shift 多选
 - [WebDAV 云同步](sync.md)——服务器配置、资源库绑定、自动同步与打开远端同步库
 - [AI 分析](ai.md)——支持的资产、自动/手动分析、任务进度和隐私提示
 - [浏览器扩展](browser-extension.md)——Chrome / Edge / Firefox 保存网页图片视频

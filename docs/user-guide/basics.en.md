@@ -79,10 +79,21 @@ Customize icons and color accents for managed library folders, linked folder roo
 - **Linked folder indicators**: Linked folder roots retain linked and offline badges even with custom icons; virtual subdirectories within linked folders do not support custom appearance.
 - **Data safety**: Appearance is stored purely as internal library metadata and never renames or moves real folders on disk.
 
+## Folder covers
+
+A folder can use a chosen cover, or return to the automatic one. The library root itself cannot take a cover; managed folders and linked folders can.
+
+- **From the library**: Right-click a folder in the sidebar or on the canvas and choose **Choose cover → From library**. The dialog searches library images by name or path. Select one and choose **Use this cover**.
+- **From a file**: **From file** in the same menu picks an image on disk. PNG, JPEG, WebP, GIF, BMP, and TIFF are accepted.
+- **From the current image**: Right-click an image asset and choose **Set as folder cover**. Images that sit in the library root, non-image assets, and items in Trash do not offer this command.
+- **Restore the default**: When a folder already has a custom cover, the menu includes **Restore default cover**, which returns to the automatic cover.
+- The cover is stored in that library and remains after restart. Serpent reports an error when disk space is too low, or when the chosen file is not one of the image types above.
+
 ## Browse and organize
 
 - **Sidebar**: All assets, Trash, folders, collections, and smart collections. Click or drag to the empty space at the bottom to return to the library root; use the context menu on managed folders to import linked folders.
 - **Canvas**: Supports tile and masonry layouts; use the top toolbar to switch views and toggle visible card fields (filename, size, date, resolution, etc.).
+- **Card text alignment**: File name, size/date, and resolution can be left, center, or right aligned. Choose this in **Settings → Browse**, or cycle it with the alignment button on the browse toolbar (left → center → right). The choice is remembered. The default is left.
 - **Hover scrub**: Hovering over a video or audio card displays a scrub bar to quickly jump and preview playback.
 - **Toolbar**: Search, advanced filters, sorting, and view controls.
 - **Inspector**: Displays information, tags, rating, favorite status, description, source URL, technical metadata, and AI analysis results for the selected asset.
@@ -121,6 +132,25 @@ Normal `Delete` / macOS `⌘⌫` moves an asset or folder to Trash. Windows `Shi
 ## WebDAV cloud sync
 
 Serpent can sync a library across machines over WebDAV: configure servers globally, bind each library, set auto-sync and the poll interval, and open remote synced libraries. See [Sync and external libraries](sync.md).
+
+## Appearance: New UI
+
+Adjust the interface in **Settings → Appearance**. The switch on the theme row is labeled **New UI**.
+
+- **New UI and the legacy layout**: The switch is on by default and uses the New UI. Turning it off selects the legacy layout. The choice is remembered and still applies on the next launch.
+- **Themes**: Use a built-in theme, or edit colors and **Save as new theme**. Light and dark variants are edited separately. Deleting the custom theme that is in use returns the interface to the built-in theme it was based on.
+- **Background and opacity**: **App background** sets a background image and adjusts background opacity and panel opacity.
+- The same page also has font size, elevation, corner radius, and related appearance controls. They belong to the New UI appearance settings and are not separate features.
+
+## Launch at login
+
+**Launch at login** in **Settings → General** opens the installed Serpent after you sign in to this computer.
+
+- Installed macOS and Windows builds register Serpent with the system login items.
+- If macOS has not allowed it yet, the switch stays on and Settings asks you to enable Serpent under Login Items in System Settings.
+- If registration fails, Settings asks you to check Login Items or Startup Apps in system settings, then try again.
+- Linux does not offer this yet. Settings shows "This system does not provide launch at login" and does not show a switch.
+- An unpackaged development run only remembers the switch. It does not register the current program as a login item.
 
 ## Shortcuts
 

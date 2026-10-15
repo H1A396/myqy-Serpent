@@ -44,14 +44,14 @@ chmod +x Serpent-linux-x86-64-<版本>.AppImage
 运行依赖：
 
 - **FUSE**（`libfuse2`）。没有 FUSE 时加 `--appimage-extract-and-run`。
-- **系统 `ffmpeg` / `ffprobe`** 仍可作为环境变量覆盖；linux-x64 安装包内置与 macOS/Windows 相同的 `ffmpeg` / `ffprobe` / `oiiotool`。
-- Debian/Ubuntu 示例：`sudo apt install libfuse2`。未携带媒体包的开发运行仍可安装系统 `ffmpeg`。
+- 发布用的 linux-x64 AppImage 内置与 macOS、Windows 相同的 `ffmpeg`、`ffprobe` 和 `oiiotool`（`oiiotool` 含 LibRaw / OCIO）。视频预览和专业图像格式一般不需要再安装系统里的这些程序。`SERPENT_FFMPEG_PATH` 和 `SERPENT_OIIO_PATH` 仍可改用其他路径。
+- Debian/Ubuntu 示例：`sudo apt install libfuse2`。从源码运行且还没有媒体包时，才需要系统 `ffmpeg`。
 
 当前 Linux 行为与限制：
 
 - 界面沿用 Windows 风格：无边框窗口、应用内主菜单（≡）、有合成器时圆角。
 - **没有系统托盘**：关闭窗口会退出应用（不会像 Windows 那样隐藏到通知区域）。
-- linux-x64 AppImage 内置 pinned 媒体二进制（`oiiotool` 含 LibRaw / OCIO）。bundle 未晋升前的本地打包见开发文档。
+- **登录时启动**暂不提供。详见[基本使用](basics.md)。
 - 已在 Debian 13（X11）和嵌套 Wayland 合成器下测试；原生 Wayland 会话仍待专项验收。
 - 无可用 GPU / GL 时可设置 `SERPENT_SOFTWARE_GL=1` 启用软件 WebGL。圆角可用 `SERPENT_LINUX_ROUNDED_CORNERS=0` / `1` 强制关闭或开启。
 

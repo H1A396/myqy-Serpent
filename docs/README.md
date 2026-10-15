@@ -6,7 +6,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [使用手册](user-guide/README.md) | 安装、导入、浏览、搜索与过滤、标签/合集、查看器、AI 分析、插件/MCP、故障排查（中英双语） |
+| [使用手册](user-guide/README.md) | 安装、导入、浏览、搜索与过滤（含实验性语义搜索）、全新 UI、标签/合集、查看器、AI 分析、插件/MCP、故障排查（中英双语） |
 | [开发者文档](developer/README.md) | 本地开发、架构、测试、构建打包（中英双语；随 `main` 发布） |
 | [开源贡献指南](developer/contributing.md) | 社区协作准则、Pull Request 规范与代码提交流程 |
 | [扩展作者手册](manual/README.md) | 插件、脚本、MCP 开发指南与 API 参考 |
