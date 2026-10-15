@@ -26,6 +26,10 @@ export const APP_UPDATE_INSTALL_CHANNEL = 'serpent:app-update:install' as const;
 export const APP_UPDATE_CANCEL_CHANNEL = 'serpent:app-update:cancel' as const;
 /** Main → Renderer: update download/install progress for the About dialog. */
 export const APP_UPDATE_PROGRESS_CHANNEL = 'serpent:app-update:progress' as const;
+/** Renderer → Main: read login and silent-launch preferences. */
+export const STARTUP_PREFERENCES_GET_CHANNEL = 'serpent:startup-preferences:get' as const;
+/** Renderer → Main: persist login and silent-launch preferences. */
+export const STARTUP_PREFERENCES_SET_CHANNEL = 'serpent:startup-preferences:set' as const;
 /** Main → Renderer: script/MCP/plugin user-visible toast or blocking dialog. */
 export const SHELL_NOTIFY_CHANNEL = 'serpent:shell:notify' as const;
 /**

@@ -659,6 +659,10 @@ export class AppUpdateService {
     let downloadPath: string | undefined;
     let extractedInstallerDirectory: string | undefined;
     let keepDownloadedUpdate = false;
+    // A handed-off installer must stay on disk. Deleting a mounted DMG or the
+    // Windows setup executable while it is launching makes the OS reopen the
+    // installer and the single-instance handoff show another Serpent window.
+    let retainOpenedInstaller = false;
     try {
       const cached = this.#cachedUpdate;
       const checked = cached === undefined ? await this.checkForUpdates() : undefined;
@@ -795,6 +799,7 @@ export class AppUpdateService {
           return installResultError('open-failed');
         }
       }
+      retainOpenedInstaller = true;
       this.#options.logger?.info('app-update.install', 'Update installer opened.', {
         version: update.release.version,
         assetName: asset.name,
@@ -815,7 +820,8 @@ export class AppUpdateService {
       this.#options.logger?.error('app-update.install', error, { code: 'download-failed' });
       return installResultError('download-failed');
     } finally {
-      if (!keepDownloadedUpdate) {
+      const retainOpenedDownload = retainOpenedInstaller && extractedInstallerDirectory === undefined;
+      if (!keepDownloadedUpdate && !retainOpenedDownload) {
         try {
           await removeUpdateArtifact(downloadPath);
         } catch (error) {
@@ -824,12 +830,14 @@ export class AppUpdateService {
           });
         }
       }
-      try {
-        await removeUpdateArtifact(extractedInstallerDirectory);
-      } catch (error) {
-        this.#options.logger?.error('app-update.cleanup', error, {
-          artifactKind: 'extracted-installer',
-        });
+      if (!retainOpenedInstaller) {
+        try {
+          await removeUpdateArtifact(extractedInstallerDirectory);
+        } catch (error) {
+          this.#options.logger?.error('app-update.cleanup', error, {
+            artifactKind: 'extracted-installer',
+          });
+        }
       }
       this.#downloadAbort = undefined;
       this.#busy = false;

@@ -1623,6 +1623,12 @@ export const en = {
     taskCompletionSoundHint: "Play a quiet sound only after imports, exports, or other eligible operations actually run longer than one minute.",
     featureHints: "Feature hints",
     featureHintsHint: "Show one-time hints that point out hidden ways to use the interface, such as expanding a folder's subfolders. Turning this off hides all hints.",
+    openAtLogin: "Launch at login",
+    openAtLoginHint: "Open the installed Serpent after signing in to this computer.",
+    openAtLoginUnsupported: "This system does not provide launch at login.",
+    openAtLoginApproval: "The system has not yet allowed Serpent to open at login. Enable it under Login Items in System Settings.",
+    silentLaunch: "Silent launch",
+    silentLaunchHint: "When opened from the login item, do not show the main window. Open it from the Dock or taskbar when needed.",
     folderCardsWhenRecursive: "Show subfolders when expanding recursively",
     folderCardsWhenRecursiveHint:
       "When a folder includes its subfolders, those folders still appear at the top of the canvas. Turn this off to show only files.",

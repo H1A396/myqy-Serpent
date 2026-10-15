@@ -37,6 +37,7 @@ import type {
 import { Icon } from "./Icons";
 import { iconActionAttrs } from "./icon-action-attrs";
 import { useLocale, useT } from "./i18n";
+import { useStartupPreferences } from "./use-startup-preferences";
 import {
   FONT_SIZE_INDEX_MAX,
   FONT_SIZE_INDEX_MIN,
@@ -135,8 +136,42 @@ export function GeneralSettingsPage({
     setFeatureHintsEnabled(enabled);
   }
 
+  const startup = useStartupPreferences();
+
   return (
     <>
+      {startup.available ? (
+        <SettingsCard>
+          {startup.snapshot.supported ? (
+            <>
+              <SettingsToggleRow
+                checked={startup.snapshot.openAtLogin}
+                hint={t("settings.openAtLoginHint")}
+                label={t("settings.openAtLogin")}
+                onChange={() => {
+                  startup.setOpenAtLogin(!startup.snapshot.openAtLogin);
+                }}
+              />
+              {startup.snapshot.approvalRequired ? (
+                <p className="app-settings-help-note">{t("settings.openAtLoginApproval")}</p>
+              ) : null}
+              <SettingsToggleRow
+                checked={startup.snapshot.silentLaunch}
+                hint={t("settings.silentLaunchHint")}
+                label={t("settings.silentLaunch")}
+                onChange={() => {
+                  startup.setSilentLaunch(!startup.snapshot.silentLaunch);
+                }}
+              />
+            </>
+          ) : (
+            <div className="app-settings-row-copy">
+              <strong>{t("settings.openAtLogin")}</strong>
+              <span>{t("settings.openAtLoginUnsupported")}</span>
+            </div>
+          )}
+        </SettingsCard>
+      ) : null}
       <SettingsCard>
         <div className="app-settings-row app-settings-row-stack">
           <div className="app-settings-row-copy">

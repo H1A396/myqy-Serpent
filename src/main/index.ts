@@ -144,6 +144,20 @@ import type {
   AppUpdateCheckResult,
   AppUpdateInstallResult,
 } from '../shared/app-update';
+import {
+  applyStartupLoginItem,
+  readStartupPreferences,
+  startupPreferencesFilePath,
+  writeStartupPreferences,
+} from './startup-preferences-store';
+import {
+  shouldHandleSecondaryLaunch,
+  shouldShowMainWindowOnReady,
+  shouldStartHidden,
+  startupPlatformSupported,
+  type StartupPreferences,
+  type StartupPreferencesSnapshot,
+} from '../shared/startup-preferences';
 
 import { popupEditContextMenu } from "./edit-context-menu";
 import {
@@ -188,6 +202,8 @@ import {
   APP_UPDATE_INSTALL_CHANNEL,
   APP_UPDATE_CANCEL_CHANNEL,
   APP_UPDATE_PROGRESS_CHANNEL,
+  STARTUP_PREFERENCES_GET_CHANNEL,
+  STARTUP_PREFERENCES_SET_CHANNEL,
   REVEAL_APP_LOG_CHANNEL,
   READ_APP_LOG_CHANNEL,
   SHOW_EDIT_CONTEXT_MENU_CHANNEL,
@@ -742,7 +758,11 @@ function initializePreviewCache(): void {
 /** Slice E: shared offscreen window that renders model thumbnails (Serpent-hnmg). */
 let offscreenThumbnailRenderer: OffscreenThumbnailRenderer | undefined;
 let quitAfterShutdown = false;
+let applicationQuitting = false;
+let updateHandoff = false;
+let startHidden = false;
 let startupComplete = false;
+const UPDATE_HANDOFF_EXIT_MS = 8_000;
 let logger: AppLogger | undefined;
 const VIEWER_TIMING_LOG = process.env.SERPENT_VIEWER_TIMING_LOG === "1";
 let appLogPath: string | undefined;
@@ -1418,7 +1438,123 @@ function focusMainWindow(): boolean {
   );
 }
 
+let loopbackRelease: Promise<void> | undefined;
+
+function releaseLoopbackListeners(): Promise<void> {
+  if (loopbackRelease !== undefined) return loopbackRelease;
+  try {
+    extensionServer?.server.close();
+  } catch (error) {
+    logger?.error("extension-server", error);
+  }
+  extensionServer = undefined;
+  const mcpClose = embeddedMcpServer?.close() ?? Promise.resolve();
+  loopbackRelease = mcpClose.catch((error: unknown) => {
+    logger?.error("automation.mcp.close", error);
+  });
+  return loopbackRelease;
+}
+
+function beginUpdateHandoff(): void {
+  if (updateHandoff) return;
+  updateHandoff = true;
+  applicationQuitting = true;
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.hide();
+  }
+  void releaseLoopbackListeners();
+  const exitTimer = setTimeout(() => {
+    app.exit(0);
+  }, UPDATE_HANDOFF_EXIT_MS);
+  exitTimer.unref();
+}
+
+function startupPreferencesPath(): string {
+  return startupPreferencesFilePath(app.getPath("userData"));
+}
+
+function macLoginLaunchState(): {
+  wasOpenedAtLogin: boolean;
+  wasOpenedAsHidden: boolean;
+} {
+  if (process.platform !== "darwin" || process.env.SERPENT_E2E === "1") {
+    return { wasOpenedAtLogin: false, wasOpenedAsHidden: false };
+  }
+  try {
+    const settings = app.getLoginItemSettings();
+    return {
+      wasOpenedAtLogin: settings.wasOpenedAtLogin === true,
+      wasOpenedAsHidden: settings.wasOpenedAsHidden === true,
+    };
+  } catch (error) {
+    logger?.error("startup.login-item", error);
+    return { wasOpenedAtLogin: false, wasOpenedAsHidden: false };
+  }
+}
+
+function startupPreferencesSnapshot(
+  preferences: StartupPreferences,
+  approvalRequired = false,
+): StartupPreferencesSnapshot {
+  return {
+    openAtLogin: preferences.openAtLogin,
+    silentLaunch: preferences.silentLaunch,
+    supported: startupPlatformSupported(process.platform),
+    approvalRequired,
+  };
+}
+
+function readStartupPreferencesSnapshot(): StartupPreferencesSnapshot {
+  const preferences = readStartupPreferences(startupPreferencesPath());
+  let approvalRequired = false;
+  if (
+    process.platform === "darwin"
+    && app.isPackaged
+    && process.env.SERPENT_E2E !== "1"
+  ) {
+    try {
+      approvalRequired = app.getLoginItemSettings().status === "requires-approval";
+    } catch (error) {
+      logger?.error("startup.login-item", error);
+    }
+  }
+  return startupPreferencesSnapshot(preferences, approvalRequired);
+}
+
+function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
+  const current = readStartupPreferences(startupPreferencesPath());
+  const record = typeof input === "object" && input !== null ? input as {
+    openAtLogin?: unknown;
+    silentLaunch?: unknown;
+  } : {};
+  const preferences: StartupPreferences = {
+    version: 1,
+    openAtLogin: typeof record.openAtLogin === "boolean" ? record.openAtLogin : current.openAtLogin,
+    silentLaunch: typeof record.silentLaunch === "boolean" ? record.silentLaunch : current.silentLaunch,
+  };
+  writeStartupPreferences(startupPreferencesPath(), preferences);
+  return applyStartupLoginItem({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    e2e: process.env.SERPENT_E2E === "1",
+    preferences,
+    setLoginItemSettings: (settings) => {
+      app.setLoginItemSettings({
+        openAtLogin: settings.openAtLogin,
+        ...(settings.args === undefined ? {} : { args: [...settings.args] }),
+        ...(settings.enabled === undefined ? {} : { enabled: settings.enabled }),
+      });
+    },
+    getLoginItemStatus: () => {
+      if (process.platform !== "darwin") return undefined;
+      return app.getLoginItemSettings().status;
+    },
+  });
+}
+
 function handleSecondInstance(): void {
+  if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
+  startHidden = false;
   if (
     MAIN_WINDOW_VITE_DEV_SERVER_URL &&
     mainWindow &&
@@ -1644,11 +1780,15 @@ async function createMainWindow(): Promise<void> {
   attachRendererDiagnostics(window);
   window.on("ready-to-show", () => {
     // E2E can keep its renderer fully loaded and automatable without putting
-    // a test window over the user's desktop session.
-    if (
-      process.env.SERPENT_E2E !== "1"
-      || process.env.SERPENT_E2E_HIDE_WINDOW !== "1"
-    ) {
+    // a test window over the user's desktop session. Silent login and an
+    // update handoff also stay hidden so a second launch cannot flash a window.
+    if (shouldShowMainWindowOnReady({
+      startHidden,
+      updateHandoff,
+      applicationQuitting,
+      e2eHideWindow: process.env.SERPENT_E2E === "1"
+        && process.env.SERPENT_E2E_HIDE_WINDOW === "1",
+    })) {
       window.show();
     }
   });
@@ -3869,9 +4009,7 @@ async function startApplication(): Promise<void> {
         const openError = await shell.openPath(installerPath);
         if (openError !== '') throw new Error(openError);
       }
-      setImmediate(() => {
-        app.quit();
-      });
+      beginUpdateHandoff();
     },
     onDownloadProgress: (progress) => {
       mainWindow?.webContents.send(APP_UPDATE_PROGRESS_CHANNEL, progress);
@@ -5924,6 +6062,28 @@ async function startApplication(): Promise<void> {
     return pluginPackageRequest(input);
   });
 
+  ipcMain.handle(STARTUP_PREFERENCES_GET_CHANNEL, (event): StartupPreferencesSnapshot => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      return startupPreferencesSnapshot(readStartupPreferences(startupPreferencesPath()));
+    }
+    return readStartupPreferencesSnapshot();
+  });
+
+  ipcMain.handle(STARTUP_PREFERENCES_SET_CHANNEL, (event, input: unknown): StartupPreferencesSnapshot => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      logger?.info("ipc.startup-preferences", "Rejected startup preference update.", {
+        code: "unauthorized-sender",
+      });
+      return readStartupPreferencesSnapshot();
+    }
+    try {
+      return storeStartupPreferences(input);
+    } catch (error) {
+      logger?.error("startup.login-item", error);
+      return readStartupPreferencesSnapshot();
+    }
+  });
+
   ipcMain.handle(
     APP_UPDATE_CHECK_CHANNEL,
     async (event): Promise<AppUpdateCheckResult> => {
@@ -5952,7 +6112,14 @@ async function startApplication(): Promise<void> {
       if (appUpdateService === undefined) {
         return { ok: false, status: 'error', code: 'service-unavailable' };
       }
-      return appUpdateService.downloadAndInstall();
+      const result = await appUpdateService.downloadAndInstall();
+      if (result.ok && result.action === 'installer-opened') {
+        beginUpdateHandoff();
+        setImmediate(() => {
+          app.quit();
+        });
+      }
+      return result;
     },
   );
 
@@ -6229,6 +6396,34 @@ async function startApplication(): Promise<void> {
     logger,
   });
 
+  const startupPreferences = readStartupPreferences(startupPreferencesPath());
+  const loginLaunch = macLoginLaunchState();
+  startHidden = shouldStartHidden({
+    preferences: startupPreferences,
+    argv: process.argv,
+    wasOpenedAtLogin: loginLaunch.wasOpenedAtLogin,
+    wasOpenedAsHidden: loginLaunch.wasOpenedAsHidden,
+  });
+  if (startupPreferences.openAtLogin) {
+    try {
+      applyStartupLoginItem({
+        platform: process.platform,
+        packaged: app.isPackaged,
+        e2e: process.env.SERPENT_E2E === "1",
+        preferences: startupPreferences,
+        setLoginItemSettings: (settings) => {
+          app.setLoginItemSettings({
+            openAtLogin: settings.openAtLogin,
+            ...(settings.args === undefined ? {} : { args: [...settings.args] }),
+            ...(settings.enabled === undefined ? {} : { enabled: settings.enabled }),
+          });
+        },
+      });
+    } catch (error) {
+      logger?.error("startup.login-item", error);
+    }
+  }
+
   await createMainWindow();
   try {
     await embeddedMcpServer?.initialize();
@@ -6293,7 +6488,9 @@ if (!hasSingleInstanceLock) {
     });
 
   app.on("activate", () => {
+    if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
     if (!startupComplete) return;
+    startHidden = false;
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
     else focusMainWindow();
   });
@@ -6315,6 +6512,7 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("before-quit", (event) => {
+    applicationQuitting = true;
     aiQueueScheduler.clearAll();
     criticalConfirmationWindowManager?.dispose();
     criticalConfirmationWindowManager = undefined;
@@ -6329,15 +6527,9 @@ if (!hasSingleInstanceLock) {
 
     pluginActivationCoordinator?.dispose('supervisor-shutdown');
 
-    // Close the extension server early; stop accepting new save intents.
-    try {
-      extensionServer?.server.close();
-      extensionServer = undefined;
-    } catch {
-      // Best effort.
-    }
-
-    const mcpClose = embeddedMcpServer?.close() ?? Promise.resolve();
+    // Close loopback listeners before the worker drain so an update handoff
+    // does not keep a port open while the installer starts the next process.
+    const mcpClose = releaseLoopbackListeners();
     void Promise.all([mcpClose])
       .catch((error: unknown) => {
         logger?.error("automation.mcp.close", error);

@@ -502,6 +502,45 @@ describe('Serpent app update release contract', () => {
     }
   });
 
+  it('keeps a macOS disk image after the installer has been opened', async () => {
+    const installerBytes = Buffer.from('macOS installer bytes');
+    const checksum = createHash('sha256').update(installerBytes).digest('hex');
+    const root = await mkdtemp(path.join(tmpdir(), 'serpent-app-update-dmg-retain-test-'));
+    try {
+      const payload = releasePayload({
+        assets: [{
+          name: 'Serpent-darwin-arm64-0.1.3-package.dmg',
+          browser_download_url: 'https://github.com/dolag233/Serpent/releases/download/v0.1.3/Serpent-darwin-arm64-0.1.3-package.dmg',
+          size: installerBytes.byteLength,
+          digest: `sha256:${checksum}`,
+        }],
+      });
+      const service = createAppUpdateService({
+        currentVersion: '0.1.1',
+        isPackaged: true,
+        platform: 'darwin',
+        arch: 'arm64',
+        executablePath: path.join(root, 'Serpent.app', 'Contents', 'MacOS', 'Serpent'),
+        tempDirectory: root,
+        downloadsDirectory: path.join(root, 'Downloads'),
+        environment: { SERPENT_DISTRIBUTION: 'installed' },
+        fetchImpl: async (url) => {
+          if (url.endsWith('/releases/latest')) return new Response(JSON.stringify(payload));
+          return new Response(installerBytes as unknown as BodyInit);
+        },
+        openPath: async () => '',
+      });
+
+      const result = await service.downloadAndInstall();
+      expect(result).toMatchObject({ ok: true, action: 'installer-opened' });
+      expect(await readdir(path.join(root, 'Downloads'))).toEqual([
+        'Serpent-darwin-arm64-0.1.3-package.dmg',
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('cleans the archive and extraction directory when the Windows archive is invalid', async () => {
     const archive = new AdmZip();
     archive.addFile('not-an-installer.txt', Buffer.from('wrong entry'));
@@ -595,8 +634,7 @@ describe('Serpent app update release contract', () => {
       expect(path.basename(launched[0]!)).toBe('SerpentSetup.exe');
       expect(launchedBytes).toEqual(installerBytes);
       expect((await readdir(path.join(root, 'Downloads')))).toEqual([]);
-      expect((await readdir(root)).filter((entry) => entry.startsWith('serpent-installer-')))
-        .toEqual([]);
+      expect(await readFile(launched[0]!)).toEqual(installerBytes);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -656,8 +694,7 @@ describe('Serpent app update release contract', () => {
       expect(path.basename(opened[0]!)).toBe('SerpentSetup.exe');
       expect(openedBytes).toEqual(installerBytes);
       expect((await readdir(path.join(root, 'Downloads')))).toEqual([]);
-      expect((await readdir(root)).filter((entry) => entry.startsWith('serpent-installer-')))
-        .toEqual([]);
+      expect(await readFile(opened[0]!)).toEqual(installerBytes);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

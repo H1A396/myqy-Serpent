@@ -1604,6 +1604,12 @@ export const zhCN = {
     taskCompletionSoundHint: "仅当导入、导出等操作实际耗时超过 1 分钟时，在完成或失败后播放轻提示音。关闭后不再播放。",
     featureHints: "功能提示",
     featureHintsHint: "在遇到隐藏用法（例如展开文件夹的子文件夹）时显示一次性提示。关闭后不再出现任何提示。",
+    openAtLogin: "登录时启动",
+    openAtLoginHint: "登录这台电脑后自动打开已安装的 Serpent。",
+    openAtLoginUnsupported: "此系统不提供登录时启动。",
+    openAtLoginApproval: "系统尚未允许登录时启动。请在系统设置的登录项中启用 Serpent。",
+    silentLaunch: "静默启动",
+    silentLaunchHint: "由登录项打开时不显示主窗口。需要查看时，从程序坞或任务栏打开。",
     folderCardsWhenRecursive: "递归展开时显示子文件夹",
     folderCardsWhenRecursiveHint:
       "打开「递归显示子文件夹内容」时，画布开头仍显示当前文件夹下的子文件夹。关闭后只显示文件。",
