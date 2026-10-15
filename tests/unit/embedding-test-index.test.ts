@@ -243,4 +243,106 @@ describe("embedding test index", () => {
     expect(session.embedImagePayload).not.toHaveBeenCalled();
     await index.close();
   });
+
+  it("cancels an opening session when switching models without failing the replacement", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-semantic-session-switch-"));
+    temporaryRoots.push(root);
+    const files = Object.values(EMBEDDING_GEMMA2_TIER_FILES).flatMap((entry) => [entry.coreFile, entry.projectorFile]);
+    const modelDirectory = path.join(root, "models");
+    mkdirSync(modelDirectory, { recursive: true });
+    for (const file of files) writeFileSync(path.join(modelDirectory, file), "fixture");
+    const runtimePath = path.join(root, "fake-runtime");
+    writeFileSync(runtimePath, "fixture runtime");
+    const session = {
+      embedText: vi.fn(async () => [1]),
+      embedImage: vi.fn(async () => [1]),
+      embedImagePayload: vi.fn(async () => [1]),
+      embedVideoPayload: vi.fn(async () => [1]),
+      embedAudio: vi.fn(async () => [1]),
+      embedAudioPayload: vi.fn(async () => [1]),
+      close: vi.fn(async () => undefined),
+    };
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      if (command.type === "semantic.index.begin") return {
+        ok: true, type: "semantic.index.started", profileId: "a".repeat(64), nativeCosineAvailable: false,
+      };
+      if (command.type === "semantic.index.import-legacy") return {
+        ok: true, type: "semantic.index.legacy-imported", attempted: true, acceptedRows: 0, rejectedRows: 0,
+      };
+      if (command.type === "semantic.index.targets") return {
+        ok: true, type: "semantic.index.targets", revisionSnapshot: 1, total: 0, nextOffset: null, targets: [],
+      };
+      if (command.type === "semantic.index.close") return { ok: true, type: "semantic.index.closed" };
+      throw new Error(`Unexpected Worker command: ${command.type}`);
+    });
+    let firstSignal: AbortSignal | undefined;
+    const startSession = vi.fn(async (options: Parameters<typeof import("../../src/main/embedding-llama-session").startLlamaEmbeddingSession>[0]) => {
+      if (options.files.corePath.endsWith(EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL.coreFile)) {
+        firstSignal = options.signal;
+        return new Promise<typeof session>((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => reject(options.signal?.reason), { once: true });
+        });
+      }
+      return session;
+    });
+    const index = new EmbeddingTestIndex({
+      configDirectories: [],
+      installedLayout: () => ({ modelDirectory, runtimePath }),
+      requestWorker,
+      startSession,
+    });
+
+    index.handleStatus({ libraryId: "library-switch", modelId: "embeddinggemma-2-compact", run: true, restart: false });
+    await vi.waitFor(() => expect(startSession).toHaveBeenCalledTimes(1));
+    index.handleStatus({ libraryId: "library-switch", modelId: "embeddinggemma-2-balanced", run: true, restart: false });
+    expect(firstSignal?.aborted).toBe(true);
+    await vi.waitFor(() => {
+      expect(index.handleStatus({ libraryId: "library-switch", modelId: "embeddinggemma-2-balanced", run: false, restart: false }))
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready" });
+    });
+    expect(startSession).toHaveBeenCalledTimes(2);
+    await Promise.all([index.close(), index.close()]);
+    expect(session.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not start a CPU fallback when GPU runtime cleanup failed", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "serpent-semantic-start-cleanup-"));
+    temporaryRoots.push(root);
+    const modelDirectory = path.join(root, "models");
+    mkdirSync(modelDirectory, { recursive: true });
+    const files = EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL;
+    writeFileSync(path.join(modelDirectory, files.coreFile), "fixture");
+    writeFileSync(path.join(modelDirectory, files.projectorFile), "fixture");
+    const runtimePath = path.join(root, "fake-runtime");
+    writeFileSync(runtimePath, "fixture runtime");
+    const cleanupFailure = new AggregateError([new Error("fixture cleanup failed")]);
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      if (command.type === "semantic.index.begin") return {
+        ok: true, type: "semantic.index.started", profileId: "a".repeat(64), nativeCosineAvailable: false,
+      };
+      if (command.type === "semantic.index.import-legacy") return {
+        ok: true, type: "semantic.index.legacy-imported", attempted: true, acceptedRows: 0, rejectedRows: 0,
+      };
+      if (command.type === "semantic.index.close") return { ok: true, type: "semantic.index.closed" };
+      throw new Error(`Unexpected Worker command: ${command.type}`);
+    });
+    const startSession = vi.fn(async (_options: Parameters<typeof import("../../src/main/embedding-llama-session").startLlamaEmbeddingSession>[0]) => {
+      throw cleanupFailure;
+    });
+    const index = new EmbeddingTestIndex({
+      configDirectories: [],
+      installedLayout: () => ({ modelDirectory, runtimePath }),
+      requestWorker,
+      startSession,
+    });
+
+    index.handleStatus({ libraryId: "library-cleanup", modelId: "embeddinggemma-2-compact", run: true, restart: false });
+    await vi.waitFor(() => {
+      expect(index.handleStatus({ libraryId: "library-cleanup", modelId: "embeddinggemma-2-compact", run: false, restart: false }))
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "failed" });
+    });
+    expect(startSession).toHaveBeenCalledTimes(1);
+    expect(startSession.mock.calls[0]?.[0]).toMatchObject({ gpuLayers: 99 });
+    await expect(index.close()).rejects.toBe(cleanupFailure);
+  });
 });

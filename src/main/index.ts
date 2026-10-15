@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import {
   existsSync,
   mkdirSync,
@@ -544,6 +545,9 @@ let embeddingHttpIndex: EmbeddingHttpIndex | undefined;
 function embeddingIndex(): EmbeddingTestIndex {
   embeddingTestIndex ??= new EmbeddingTestIndex({
     configDirectories: [process.cwd(), app.getAppPath()],
+    ...(process.platform === "win32"
+      ? { koffiPath: createRequire(path.join(app.getAppPath(), "package.json")).resolve("koffi") }
+      : {}),
     requestWorker: (command) => {
       if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
       return workerClient.request(command);
@@ -758,6 +762,7 @@ function initializePreviewCache(): void {
 let offscreenThumbnailRenderer: OffscreenThumbnailRenderer | undefined;
 let quitAfterShutdown = false;
 let applicationQuitting = false;
+let applicationShutdownPromise: Promise<void> | null = null;
 let updateHandoff = false;
 let startupComplete = false;
 const UPDATE_HANDOFF_EXIT_MS = 8_000;
@@ -6485,7 +6490,9 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
-    void embeddingTestIndex?.close();
+    void embeddingTestIndex?.close().catch((error) => {
+      logger?.error('embedding.local-index.close', error, { reason: 'application-quit' });
+    });
     void embeddingHttpIndex?.close().catch((error) => {
       logger?.error('embedding.http-index.close', error, { reason: 'application-quit' });
     });
@@ -6503,8 +6510,9 @@ if (!hasSingleInstanceLock) {
     criticalConfirmationWindowManager = undefined;
     criticalConfirmationBroker?.dispose();
     criticalConfirmationBroker = undefined;
-    if (quitAfterShutdown || !workerClient) return;
+    if (quitAfterShutdown || (!workerClient && !embeddingTestIndex && !embeddingHttpIndex)) return;
     event.preventDefault();
+    if (applicationShutdownPromise) return;
 
     // Slice E: fail in-flight model thumbnail renders and destroy the window.
     offscreenThumbnailRenderer?.dispose();
@@ -6515,19 +6523,33 @@ if (!hasSingleInstanceLock) {
     // Close loopback listeners before the worker drain so an update handoff
     // does not keep a port open while the installer starts the next process.
     const mcpClose = releaseLoopbackListeners();
-    void Promise.all([mcpClose])
-      .catch((error: unknown) => {
-        logger?.error("automation.mcp.close", error);
-      })
-      .then(() => workerClient?.shutdown())
-      .finally(() => {
-        quitAfterShutdown = true;
-      // The first app.quit() is intentionally intercepted above while the
-      // worker drains. Once the worker is shut down there is nothing left to
-      // close asynchronously; app.exit() completes the already-authorized
-      // application shutdown instead of re-entering the quit lifecycle and
-      // leaving a hidden Electron process behind on Windows.
+    // Stop model processes before app.exit(), which bypasses will-quit.
+    applicationShutdownPromise = (async (): Promise<void> => {
+      const results = await Promise.allSettled([
+        mcpClose,
+        embeddingTestIndex?.close(),
+        embeddingHttpIndex?.close(),
+      ]);
+      for (const [index, result] of results.entries()) {
+        if (result.status !== "rejected") continue;
+        const source = ["automation.mcp.close", "embedding.local-index.close", "embedding.http-index.close"][index]
+          ?? "application.shutdown.close";
+        logger?.error(source, result.reason, { reason: "application-quit" });
+      }
+      try {
+        await workerClient?.shutdown();
+      } catch (error) {
+        logger?.error("library.worker.shutdown", error, { reason: "application-quit" });
+      }
+      quitAfterShutdown = true;
+      // The first app.quit() is intentionally intercepted above while owned
+      // processes and the Worker drain. app.exit() then completes that quit.
       app.exit(0);
-      });
+    })();
+    void applicationShutdownPromise.catch((error: unknown) => {
+      logger?.error("application.shutdown", error);
+      quitAfterShutdown = true;
+      app.exit(0);
+    });
   });
 }

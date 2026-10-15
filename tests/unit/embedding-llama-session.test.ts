@@ -20,6 +20,9 @@ class FakeChild extends EventEmitter {
   stdout = new EventEmitter();
   stderr = new EventEmitter();
   kill = vi.fn(() => true);
+  stdin = { write: vi.fn(), on: vi.fn(), end: vi.fn(() => {
+    this.exitCode = 0; this.emit("exit", 0, null);
+  }) };
 }
 
 describe('llama.cpp native video embedding', () => {
@@ -53,7 +56,12 @@ describe('llama.cpp native video embedding', () => {
     const vector = await session.embedVideoPayload(Buffer.from('synthetic mp4 payload').toString('base64'));
 
     expect(vector).toEqual([0.1, 0.2, 0.3]);
-    expect(spawnMock).toHaveBeenCalledWith(executable, [
+    expect(spawnMock).toHaveBeenCalledWith(process.execPath, ["-e", expect.any(String)],
+      expect.objectContaining({ windowsHide: true, env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: "1" }) }));
+    const launch = JSON.parse(child.stdin.write.mock.calls[0]![0]!);
+    expect(launch.executable).toBe(executable);
+    expect(launch.cwd).toBe(path.dirname(executable));
+    expect(launch.args).toEqual([
       '--model', corePath,
       '--mmproj', projectorPath,
       '--embedding',
@@ -67,7 +75,7 @@ describe('llama.cpp native video embedding', () => {
       '--video-ffmpeg-dir', path.dirname(ffmpegPath),
       '--host', '127.0.0.1',
       '--port', expect.any(String),
-    ], expect.objectContaining({ cwd: path.dirname(executable), windowsHide: true }));
+    ]);
     const embeddingRequest = requests.find((request) => request.url.endsWith('/v1/embeddings'));
     expect(JSON.parse(embeddingRequest?.body ?? 'null')).toEqual({
       model: 'embeddinggemma-2',

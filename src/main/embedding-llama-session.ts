@@ -1,10 +1,9 @@
-import { spawn, execFile, type ChildProcess } from "node:child_process";
-import { promisify } from "node:util";
+import type { ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-const execFileAsync = promisify(execFile);
+import { spawnOwnedEmbeddingRuntime, closeOwnedEmbeddingRuntime } from "./embedding-process-owner";
 const MAX_IMAGE_BYTES = 64 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
 const MAX_AUDIO_WAV_BYTES = 8 * 1024 * 1024;
@@ -89,36 +88,23 @@ function processHasExited(child: ChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null;
 }
 
-async function stopProcessTree(child: ChildProcess): Promise<void> {
-  if (processHasExited(child) || !child.pid) return;
-  if (process.platform === "win32") {
-    try {
-      await execFileAsync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
-        windowsHide: true,
-        timeout: 10_000,
-      });
-      return;
-    } catch {
-      child.kill();
-      return;
-    }
-  }
-  child.kill("SIGTERM");
-}
-
 async function waitForHealth(input: {
   child: ChildProcess;
   baseUrl: string;
   spawnFailed: () => boolean;
   timeoutMs: number;
+  signal?: AbortSignal;
 }): Promise<void> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < input.timeoutMs) {
+    if (input.signal?.aborted) throw input.signal.reason ?? new Error("Semantic runtime startup was cancelled.");
     if (input.spawnFailed() || processHasExited(input.child)) {
       throw new Error("llama-server exited before it was ready.");
     }
     try {
-      const response = await fetch(`${input.baseUrl}/health`, { signal: AbortSignal.timeout(2_000) });
+      const timeout = AbortSignal.timeout(2_000);
+      const signal = input.signal ? AbortSignal.any([input.signal, timeout]) : timeout;
+      const response = await fetch(`${input.baseUrl}/health`, { signal });
       if (response.ok) return;
     } catch {
       // Health stays down until the weights finish loading.
@@ -158,7 +144,11 @@ export async function startLlamaEmbeddingSession(input: {
   gpuLayers: number;
   startupTimeoutMs?: number;
   requestTimeoutMs?: number;
+  signal?: AbortSignal;
+  /** Resolved by Main relative to the packaged app so the inline owner can load koffi. */
+  koffiPath?: string;
 }): Promise<LlamaEmbeddingSession> {
+  if (input.signal?.aborted) throw input.signal.reason ?? new Error("Semantic runtime startup was cancelled.");
   const port = await chooseLoopbackPort();
   const baseUrl = `http://127.0.0.1:${port}`;
   const startupTimeoutMs = input.startupTimeoutMs ?? 180_000;
@@ -171,7 +161,7 @@ export async function startLlamaEmbeddingSession(input: {
   const videoRuntimeArgs = videoRuntimeDirectory
     ? ["--video-fps", "1", "--video-ffmpeg-dir", videoRuntimeDirectory]
     : [];
-  const child = spawn(input.executable, [
+  const child = spawnOwnedEmbeddingRuntime(input.executable, [
     "--model", input.files.corePath,
     "--mmproj", input.files.projectorPath,
     "--embedding",
@@ -184,12 +174,7 @@ export async function startLlamaEmbeddingSession(input: {
     ...videoRuntimeArgs,
     "--host", "127.0.0.1",
     "--port", String(port),
-  ], {
-    cwd: path.dirname(input.executable),
-    detached: process.platform !== "win32",
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsHide: true,
-  });
+  ], path.dirname(input.executable), { signal: input.signal, koffiPath: input.koffiPath });
   let spawnFailed = false;
   child.once("error", () => {
     spawnFailed = true;
@@ -202,13 +187,16 @@ export async function startLlamaEmbeddingSession(input: {
       baseUrl,
       spawnFailed: () => spawnFailed,
       timeoutMs: startupTimeoutMs,
+      signal: input.signal,
     });
   } catch (error) {
-    await stopProcessTree(child);
+    await closeOwnedEmbeddingRuntime(child).catch((cleanupError: unknown) => {
+      throw new AggregateError([error, cleanupError], "Semantic runtime startup and cleanup both failed.");
+    });
     throw error;
   }
 
-  let closed = false;
+  let closing: Promise<void> | undefined;
   return {
     embedText: (text) => postEmbedding({
       baseUrl,
@@ -242,11 +230,7 @@ export async function startLlamaEmbeddingSession(input: {
       return embedAudioPayload((await readFile(wavPath)).toString("base64"));
     },
     embedAudioPayload: (bytesBase64) => embedAudioPayload(bytesBase64),
-    close: async () => {
-      if (closed) return;
-      closed = true;
-      await stopProcessTree(child);
-    },
+    close: () => closing ??= closeOwnedEmbeddingRuntime(child),
   };
 
   function embedImagePayload(mimeType: string, bytesBase64: string): Promise<number[]> {

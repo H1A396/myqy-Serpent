@@ -144,6 +144,12 @@ export class EmbeddingTestIndex {
   #state: JobState | null = null;
   #session: LlamaEmbeddingSession | null = null;
   #sessionGate: Promise<LlamaEmbeddingSession | null> = Promise.resolve(null);
+  #sessionStartController: AbortController | null = null;
+  #sessionStartPromise: Promise<LlamaEmbeddingSession> | null = null;
+  #sessionStartPromiseController: AbortController | null = null;
+  #sessionStartFailure: AggregateError | null = null;
+  #deferredCleanupFailure: { error: unknown } | null = null;
+  #closing: Promise<void> | null = null;
   #queue: Promise<void> = Promise.resolve();
   #skipped = new Set<string>();
   #priorityAssetId: string | null = null;
@@ -159,10 +165,22 @@ export class EmbeddingTestIndex {
     requestWorker: (command: WorkerCommand) => Promise<WorkerResult>;
     installedLayout?: (modelId: SemanticSearchModelId) => LocalEmbeddingTestConfig | null;
     resolveMediaBinaries?: () => LlamaEmbeddingMediaBinaries | undefined;
+    koffiPath?: string;
     startSession?: typeof startLlamaEmbeddingSession;
   }) {}
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    const closing = this.#closeIndex();
+    this.#closing = closing;
+    void closing.then(
+      () => { if (this.#closing === closing) this.#closing = null; },
+      () => { if (this.#closing === closing) this.#closing = null; },
+    );
+    return closing;
+  }
+
+  async #closeIndex(): Promise<void> {
     const state = this.#state;
     const activeQueryId = this.#activeQueryId;
     const activeQuerySessionGeneration = this.#activeQuerySessionGeneration;
@@ -402,11 +420,14 @@ export class EmbeddingTestIndex {
       ?? this.options.installedLayout?.(request.modelId)
       ?? null;
     if (!config || !localEmbeddingFilesReady(config, request.modelId)) {
-      this.#generation += 1;
-      void this.#closeSession();
+      const generation = ++this.#generation;
+      void this.#closeSession().catch((error: unknown) => {
+        this.#deferredCleanupFailure = { error };
+        if (this.#state?.generation === generation) this.#write(generation, { phase: "failed" });
+      });
       this.#state = {
         ...emptySnapshot("unavailable"),
-        generation: this.#generation,
+        generation,
         libraryId: request.libraryId,
         modelId: request.modelId,
         sessionGeneration: randomUUID(),
@@ -420,6 +441,9 @@ export class EmbeddingTestIndex {
     this.#skipped.clear();
     this.#catchUpRequested = false;
     const generation = this.#generation;
+    this.#sessionStartController?.abort(new Error("Semantic runtime startup was superseded."));
+    const startController = new AbortController();
+    this.#sessionStartController = startController;
     this.#state = {
       ...emptySnapshot("starting"),
       generation,
@@ -432,7 +456,7 @@ export class EmbeddingTestIndex {
     this.#sessionGate = new Promise((resolve) => {
       resolveGate = resolve;
     });
-    void this.#run(generation, request.libraryId, request.modelId, config, resolveGate);
+    void this.#run(generation, request.libraryId, request.modelId, config, resolveGate, startController);
   }
 
   #rebuild(libraryId: string, modelId: SemanticSearchModelId): void {
@@ -463,9 +487,10 @@ export class EmbeddingTestIndex {
     modelId: SemanticSearchModelId,
     config: LocalEmbeddingTestConfig,
     resolveGate: (session: LlamaEmbeddingSession | null) => void,
+    startController: AbortController,
   ): Promise<void> {
     try {
-      await this.#closeSession();
+      await this.#closeSession(startController);
       const initial = this.#state;
       if (!initial || initial.generation !== generation) {
         resolveGate(null);
@@ -490,12 +515,24 @@ export class EmbeddingTestIndex {
       if (!imported.ok || imported.type !== "semantic.index.legacy-imported") {
         throw new Error("Legacy semantic cache migration could not be checked.");
       }
-      const session = await this.#openSession(config, modelId);
+      const starting = this.#openSession(config, modelId, startController.signal);
+      this.#sessionStartPromise = starting;
+      this.#sessionStartPromiseController = startController;
+      let session: LlamaEmbeddingSession;
+      try {
+        session = await starting;
+      } finally {
+        if (this.#sessionStartPromise === starting) this.#sessionStartPromise = null;
+        if (this.#sessionStartPromiseController === startController) this.#sessionStartPromiseController = null;
+      }
       if (this.#state?.generation !== generation) {
-        await session.close();
+        await session.close().catch((error: unknown) => {
+          throw new AggregateError([error], "Superseded semantic runtime cleanup failed.");
+        });
         resolveGate(null);
         return;
       }
+      if (this.#sessionStartController === startController) this.#sessionStartController = null;
       this.#session = session;
       resolveGate(session);
       this.#write(generation, { phase: "indexing", done: 0, total: 0 });
@@ -530,7 +567,10 @@ export class EmbeddingTestIndex {
         return;
       }
       this.#write(generation, { phase: "ready" });
-    } catch {
+    } catch (error: unknown) {
+      if (error instanceof AggregateError) {
+        this.#sessionStartFailure = error;
+      }
       if (this.#state?.generation !== generation) {
         resolveGate(null);
         return;
@@ -640,6 +680,7 @@ export class EmbeddingTestIndex {
   async #openSession(
     config: LocalEmbeddingTestConfig,
     modelId: SemanticSearchModelId,
+    signal: AbortSignal,
   ): Promise<LlamaEmbeddingSession> {
     const model = SEMANTIC_SEARCH_MODELS.find((entry) => entry.id === modelId);
     if (!model) throw new Error("Unknown semantic model.");
@@ -654,16 +695,21 @@ export class EmbeddingTestIndex {
       executable: config.runtimePath,
       files: sessionFiles,
       ...(mediaBinaries ? { mediaBinaries } : {}),
+      ...(this.options.koffiPath ? { koffiPath: this.options.koffiPath } : {}),
     };
     try {
       return await startSession({
         ...baseSessionOptions,
         gpuLayers: 99,
+        signal,
       });
-    } catch {
+    } catch (error: unknown) {
+      if (signal.aborted) throw signal.reason ?? new Error("Semantic runtime startup was cancelled.");
+      if (error instanceof AggregateError) throw error;
       return startSession({
         ...baseSessionOptions,
         gpuLayers: 0,
+        signal,
       });
     }
   }
@@ -819,10 +865,33 @@ export class EmbeddingTestIndex {
     return run;
   }
 
-  async #closeSession(): Promise<void> {
+  async #closeSession(preserveStartController?: AbortController): Promise<void> {
+    if (this.#sessionStartController && this.#sessionStartController !== preserveStartController) {
+      this.#sessionStartController.abort(new Error("Semantic runtime startup was cancelled."));
+      this.#sessionStartController = null;
+    }
     const session = this.#session;
     this.#session = null;
-    await session?.close();
+    const starting = this.#sessionStartPromise;
+    const startingController = this.#sessionStartPromiseController;
+    const startFailure = this.#sessionStartFailure;
+    const deferredFailure = this.#deferredCleanupFailure;
+    this.#sessionStartFailure = null;
+    this.#deferredCleanupFailure = null;
+    const results = await Promise.allSettled([
+      ...(session ? [session.close()] : []),
+      ...(startFailure ? [Promise.reject(startFailure)] : []),
+      ...(deferredFailure ? [Promise.reject(deferredFailure.error)] : []),
+      ...(starting ? [starting.then((opened) => opened.close(), (error: unknown) => {
+        // The concrete session startup only rejects an aborted open after its
+        // owner has confirmed tree cleanup. AggregateError marks an additional
+        // cleanup failure and must remain observable by application shutdown.
+        if (startingController?.signal.aborted && !(error instanceof AggregateError)) return;
+        throw error;
+      })] : []),
+    ]);
+    const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failure) throw failure.reason;
   }
 
   #startQuery(libraryId: string): string {
