@@ -1794,7 +1794,7 @@ export const zhCN = {
       enabled: "开启语义搜索",
       enabledHint: "关闭后，所有资源库都不使用语义搜索。默认关闭。",
       resourceNotice: "可以用自然语言模糊查找内容，也可以查找相似资产。启用后，资源库准备时间会变长，内存占用会增加。",
-      videoCoverNote: "这一版里，视频的语义搜索使用封面，不会逐帧分析视频。",
+      videoCoverNote: "视频的语义搜索使用封面，不会逐帧分析。",
       defaultModel: "默认模型",
       defaultModelHint: "资源库未单独选择时，沿用这里的默认模型。",
       defaultModelEmpty: "先安装本地模型，或添加自定义服务。",
