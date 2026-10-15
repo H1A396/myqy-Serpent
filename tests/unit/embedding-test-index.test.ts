@@ -18,6 +18,7 @@ vi.mock("../../src/main/embedding-image-fit", async () => {
 import { rendererResultSchema } from "../../src/shared/protocol/responses";
 import type { WorkerCommand } from "../../src/shared/protocol/requests";
 import type { WorkerResult } from "../../src/shared/protocol/responses";
+import type { startLlamaEmbeddingSession } from "../../src/main/embedding-llama-session";
 
 import {
   localEmbeddingFilesReady,
@@ -420,7 +421,7 @@ describe("embedding test index", () => {
       throw new Error(`Unexpected Worker command: ${command.type}`);
     });
     let firstSignal: AbortSignal | undefined;
-    const startSession = vi.fn(async (options: Parameters<typeof import("../../src/main/embedding-llama-session").startLlamaEmbeddingSession>[0]) => {
+    const startSession = vi.fn(async (options: Parameters<typeof startLlamaEmbeddingSession>[0]) => {
       if (options.files.corePath.endsWith(EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL.coreFile)) {
         firstSignal = options.signal;
         return new Promise<typeof session>((_resolve, reject) => {
@@ -470,7 +471,7 @@ describe("embedding test index", () => {
       if (command.type === "semantic.index.close") return { ok: true, type: "semantic.index.closed" };
       throw new Error(`Unexpected Worker command: ${command.type}`);
     });
-    const startSession = vi.fn(async (_options: Parameters<typeof import("../../src/main/embedding-llama-session").startLlamaEmbeddingSession>[0]) => {
+    const startSession = vi.fn<(options: Parameters<typeof startLlamaEmbeddingSession>[0]) => Promise<never>>(async () => {
       throw cleanupFailure;
     });
     const index = new EmbeddingTestIndex({

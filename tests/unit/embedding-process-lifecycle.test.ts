@@ -307,8 +307,8 @@ it.skipIf(process.platform === 'win32')('closing one runtime does not affect ano
   }
 }, 30000);
 
-it.skipIf(process.platform === 'win32' || process.env.SERPENT_EMBEDDING_TEST_ELECTRON !== '1')
-  ('reaps semantic runtime after real Electron Main closes normally or is killed', async () => {
+it.skipIf(process.platform === 'win32' || process.env.SERPENT_EMBEDDING_TEST_ELECTRON !== '1')(
+  'reaps semantic runtime after real Electron Main closes normally or is killed', async () => {
     for (const closeNormally of [true, false]) {
       const root = await mkdtemp(path.join(tmpdir(), 'serpent-electron-embedding-lifetime-'));
       const runtime = await writeFakeRuntime(root);
