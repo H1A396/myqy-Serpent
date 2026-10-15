@@ -52,7 +52,7 @@ Serpent 是一款开源（MIT 许可证）、跨平台的数字资产管理软�
    - Node.js 版本要求为 **`24.15.0`**（推荐使用 `nvm`：`nvm use`）；
    - Windows 平台需要安装 Visual Studio Build Tools（含 C++ 桌面开发工作负载及 Windows SDK，用于编译 `better-sqlite3`）；若需要构建 Windows 安装器包（`npm run make:inno`），还需要安装 Inno Setup 6（见[环境搭建](setup.md)）；
    - macOS 平台需要安装 Xcode Command Line Tools；
-   - Linux 平台需要 `build-essential` / `python3`，以及系统 `ffmpeg`（见[环境搭建](setup.md)）；构建 AppImage 发布产物建议使用 Docker；
+   - Linux 平台需要 `build-essential` / `python3`。未取得媒体包时，`npm start` 还需要系统 `ffmpeg`（见[环境搭建](setup.md)）；发布用 AppImage 会打入 pinned 媒体工具。构建 AppImage 建议使用 Docker；
    - 执行依赖安装与原生模块编译：
      ```bash
      npm ci --registry=https://registry.npmjs.org

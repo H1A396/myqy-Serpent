@@ -25,7 +25,7 @@
 
 ```bash
 npm run release:verify     # rebuild:native + verify:mainline（CI 同款门禁）
-npm run release:media      # media:acquire + media:verify（Linux 自动跳过：使用系统 ffmpeg）
+npm run release:media      # media:acquire + media:verify（linux-x64 与 macOS/Windows 一样校验 pinned bundle；仅 linux-arm64 跳过）
 npm run release:package    # package + verify:package
 npm run release:e2e        # test:e2e:packaged（针对打包产物）
 npm run release:make       # macOS/Windows: electron-forge make；Linux: AppImage（优先 docker）
@@ -66,7 +66,7 @@ Windows 安装器（Inno Setup，2026-08-08 决策替代 WiX MSI）：
 
 Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
 - 发布管线 `release:make` 在 Linux 上优先 `npm run make:appimage:docker`（无 docker 时回退 `make:appimage`）。
-- 不内置 pinned media 二进制，运行依赖系统 `ffmpeg` / `ffprobe` / `oiiotool`（可选 `openimageio-tools`）。
+- linux-x64 内置与 macOS/Windows 相同的 pinned 媒体工具（`ffmpeg` / `ffprobe` / `oiiotool`），减少对系统 PATH 的依赖。`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 仍可覆盖。linux-arm64 不在当前发布范围内，也没有该 bundle。
 - 需要 FUSE（`libfuse2`）；无 FUSE 时用 `--appimage-extract-and-run`。
 
 ### 自动更新资产契约（2026-08-20）
@@ -101,7 +101,7 @@ Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
 - **按重要程度排序**：新功能 > 性能/可靠性 > 错误提示 > 其他。
 - 重要功能逐条详细描述（中英对照条目，说明用户价值）；**UI 修改、简单 bug 修复用概括语句**（如「优化了若干 UI」「修复了若干稳定性问题」），不逐一列举。
 - **只写用户能直接感知的变化（2026-09-27，强制）**：Release 正文和 `release-meta.json` 只写用户会遇到的结果。版本内部的实现调整不写进去，包括查看管线替换、兼容层、解码路径，以及同一次更新自己引入又自己修掉、用户无从对照的行为。格式能不能打开、设置里新出现的开关、原来会碰到的问题是否消失，才可以写。先例：0.2.4 曾把「链接目录可以展开子文件夹」写成新特性，那是同一次更新造成的回归，用户不知道原先有这条；0.2.9 曾把「Illustrator 文件按图片查看，并说明当前是 PDF 画面」写进更新日志，这是查看实现的内部调整，没有需要单独告诉用户的新结果。发布前对照本条删掉这类条目，正文和 `release-meta.json` 一起改。
-- **未对用户发布过的中间改动不进 Release Note（2026-10-15，强制）**：若某功能或修复在上一正式版之后才合入，且在本版发布给用户之前又被改掉、撤回或重写，只写最终交付给用户的结果，不写开发过程中的中间形态、误加后删除的开关、同一次未发布周期内的反复打磨条目。对照基准是上一 GitHub 正式 Release（如 v0.2.10），不是开发分支上的临时行为。先例：0.2.11 开发中一度加入「静默启动」又在发布前移除——Release Note 不得出现该开关；Islands 界面迭代中的阴影滑块、浮岛叫法等内部命名，若只是新 UI 的组成部分，应并入「全新 UI」概括，不必单独成条。
+- **未对用户发布过的中间改动不进 Release Note（2026-10-15，强制）**：若某功能或修复在上一正式版之后才合入，且在本版发布给用户之前又被改掉、撤回或重写，只写最终交付给用户的结果，不写开发过程中的中间形态、误加后删除的开关、同一次未发布周期内的反复打磨条目。对照基准是上一 GitHub 正式 Release（当前为 v0.2.10），不是开发分支上的临时行为，也不是未发布的过渡版本号（例如草稿里一度使用的 0.2.11）。先例：0.2.11 开发中一度加入「静默启动」又在发布前移除——Release Note 不得出现该开关；退出时回收本机语义模型进程属于开发周期内的修复，用户无从对照，不单列。界面迭代中的阴影滑块、浮岛等内部命名，若只是新 UI 的组成部分，应并入「全新 UI」概括，不必单独成条。用户文档同样不使用这些内部称呼。
 - **不在仓库维护 `release-notes-<ver>.md`**。Changelog 直接写入 GitHub Release 正文；关于窗口短条目可选写入 `release-meta.json` 资产（见 §4）。发布时用本地临时草稿配合 `gh release create --notes-file` 或 `gh release edit`，草稿不要提交进 git。
 
 参考：[v0.1.1 release notes](https://github.com/dolag233/Serpent/releases/tag/v0.1.1)（WebDAV 同步、外部资源库、数据恢复、性能、错误提示的写法与排序）。
@@ -150,7 +150,7 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 
 **Linux**：
 - 发布构建优先 `make:appimage:docker`（Ubuntu 22.04 / glibc 2.35），避免在较新发行版上打出高 glibc 依赖。
-- AppImage 使用系统媒体工具；验收机需能 `ffmpeg -version`（可选 `oiiotool`）。
+- 发布用 AppImage 内置 pinned 媒体工具。验收不必再依赖系统 `ffmpeg`，除非用环境变量改到了外部路径。linux-arm64 无此包。
 
 ## 8. 发布检查清单（逐条对照，禁止凭印象执行）
 
@@ -160,6 +160,7 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 - [ ] 全部发布门禁通过（media verify / verify-package / ufbx WASM）——**在 dev 分支打包**
 - [ ] 产物按 §4 规范名精确重命名（`win-x86-64` 不是 `win32-x64`；安装包是 `-setup.zip` 不是裸 exe）+ 每个资产同名 `.sha256`（只含哈希）
 - [ ] Changelog 中英双语（中文在前，标题 `**Serpent <版本>** — 一句话 · English one-liner`）、按重要度排序、次要改动概括；已写入 GitHub Release 正文。只保留用户能直接感知的变化；内部实现调整（查看管线、兼容层、同一次更新自己引入又修掉的行为）不出现在正文或 `release-meta.json`（§5）
+- [ ] Release 正文和 `release-meta.json` 不包含上一正式版之后、本版发布前又撤回或重写的中间改动（§5「未对用户发布过的中间改动不进 Release Note」）。对照基准是上一 GitHub 正式 Release，不是 dev 上曾经出现过的开关、内部称呼或未发布的过渡版本号
 - [ ] **`release-meta.json` 与 `release-meta-<ver>.json` 已上传，且 `version` 等于 tag 版本**（§4 强制项）
 - [ ] Release 正文只面向用户：不写构建/打包/平台流程或内部约束（如「本页只含某平台产物」）
 - [ ] `gh release create v<ver> --title "Serpent <ver>" --notes-file <本地临时草稿.md> --target main`（gh 全路径调用；草稿不提交进仓库）

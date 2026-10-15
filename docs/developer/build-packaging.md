@@ -91,7 +91,7 @@ npm run make:appimage:docker    # Ubuntu 22.04 / glibc 2.35 基线（推荐发�
 npm run release:make            # 优先 docker，并重命名为 Serpent-linux-x86-64-<ver>.AppImage
 ```
 
-- linux-x64 内置与 macOS/Windows 相同的 pinned media bundle（`ffmpeg` / `ffprobe` / `oiiotool`）。`package` 的 `prePackage` 会执行 `media:ensure`。bundle 尚未晋升时，先在 Linux x86_64 上运行 `scripts/media-build/linux-x64.sh`，把 `artifacts/media-binaries/serpent-media-linux-x64.zip` 上传到 Serpent-Build Release，再把 URL 与 SHA-256 写入 `bundle-lock.json`。本地试跑可用 `SERPENT_MEDIA_SKIP_PROVENANCE=1`。
+- linux-x64 内置与 macOS/Windows 相同的 pinned media bundle（`ffmpeg` / `ffprobe` / `oiiotool`）。`bundle-lock.json` 里该平台目前为 `ready`。`package` 的 `prePackage` 会执行 `media:ensure`。若锁文件退回未晋升，再在 Linux x86_64 上运行 `scripts/media-build/linux-x64.sh`，把 `artifacts/media-binaries/serpent-media-linux-x64.zip` 上传到 Serpent-Build Release，并把 URL 与 SHA-256 写回 `bundle-lock.json`。本地试跑可用 `SERPENT_MEDIA_SKIP_PROVENANCE=1`。
 - linux-arm64 仍无 pinned bundle。
 - 需要 FUSE（`libfuse2`）；无 FUSE 时 `--appimage-extract-and-run`。
 - Release 上传名与应用内更新器一致：`Serpent-linux-x86-64-<ver>.AppImage`（另附同名 `.sha256`）。

@@ -85,9 +85,9 @@ Chocolatey, `ffmpeg-static`, or an unverified binary download.
 - Linux x64: build natively with `scripts/media-build/linux-x64.sh` (static
   triplet `serpent-x64-linux-static`). `ldd` rejects every dependency outside
   the glibc/libstdc++ system set. The release asset name is
-  `serpent-media-linux-x64.zip`. Until that zip is uploaded to the Serpent-Build
-  release and promoted in `bundle-lock.json`, `media:ensure` stays fail-closed.
-  A local trial can build the tree and run
+  `serpent-media-linux-x64.zip`. That zip is promoted when `bundle-lock.json`
+  marks `linux-x64` as `ready` (it is ready now). If the entry is not `ready`,
+  `media:ensure` stays fail-closed. A local trial can build the tree and run
   `SERPENT_MEDIA_SKIP_PROVENANCE=1 npm run media:ensure`.
 
 The vcpkg commit, port source SHA-512 values, triplets and overlay transform are

@@ -25,7 +25,7 @@
 ### Linux
 
 - 编译工具链与 Python（`better-sqlite3`）：Debian/Ubuntu 可用 `sudo apt install build-essential python3`
-- **系统媒体工具**（无 pinned media bundle）：`ffmpeg` / `ffprobe` 必需才能生成视频缩略图与代理；可选 `openimageio-tools`（`oiiotool`）用于 EXR/RAW/PSD 等
+- **媒体工具**：linux-x64 的 pinned bundle 已在 `bundle-lock.json` 中就绪。`npm ci` 不会安装它；未运行 `media:ensure` 或 `release:media` 时，`npm start` 仍使用 PATH 上的 `ffmpeg` / `ffprobe`，可选 `openimageio-tools`（`oiiotool`）处理 EXR/RAW/PSD。发布用 AppImage 会打入该 bundle，减少对系统 PATH 的依赖。linux-arm64 仍无 bundle。
 - AppImage 发布构建建议安装 Docker（`npm run make:appimage:docker` 使用 Ubuntu 22.04 / glibc 2.35 基线）；无 Docker 时可本机 `npm run make:appimage`
 - 常用环境变量：`SERPENT_SOFTWARE_GL=1`（无 GPU 时软件 WebGL）、`SERPENT_LINUX_ROUNDED_CORNERS=0|1`（强制直角/圆角）、`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH`（覆盖 PATH 查找）
 
