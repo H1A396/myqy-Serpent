@@ -26,12 +26,19 @@ export interface SemanticImageSharpInstance {
 export type SemanticImageSharpFactory = (input: Buffer) => SemanticImageSharpInstance;
 
 function requireDefaultSharp(): SemanticImageSharpFactory {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const sharp = require("sharp") as SemanticImageSharpFactory & {
-    cache?: (options: { files: number }) => void;
-  };
-  sharp.cache?.({ files: 0 });
-  return sharp;
+  try {
+    // Resolved from node_modules at runtime. vite.main.config.ts keeps this
+    // external so the bundler does not try to parse the platform `.node`.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sharp = require("sharp") as SemanticImageSharpFactory & {
+      cache?: (options: { files: number }) => void;
+    };
+    sharp.cache?.({ files: 0 });
+    return sharp;
+  } catch {
+    // A missing or unloadable native binary must fail this image, not the process.
+    throw new SemanticImageLimitError();
+  }
 }
 
 /**
