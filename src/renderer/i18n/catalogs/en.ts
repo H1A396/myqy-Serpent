@@ -1627,6 +1627,7 @@ export const en = {
     openAtLoginHint: "Open the installed Serpent after signing in to this computer.",
     openAtLoginUnsupported: "This system does not provide launch at login.",
     openAtLoginApproval: "The system has not yet allowed Serpent to open at login. Enable it under Login Items in System Settings.",
+    openAtLoginFailed: "Serpent could not apply the launch-at-login setting. Check Login Items or Startup Apps in system settings, then try again.",
     folderCardsWhenRecursive: "Show subfolders when expanding recursively",
     folderCardsWhenRecursiveHint:
       "When a folder includes its subfolders, those folders still appear at the top of the canvas. Turn this off to show only files.",

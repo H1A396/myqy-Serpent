@@ -148,13 +148,13 @@ import type {
 import {
   applyStartupLoginItem,
   readStartupPreferences,
+  startupPreferencesSnapshot as createStartupPreferencesSnapshot,
   startupPreferencesFilePath,
   writeStartupPreferences,
 } from './startup-preferences-store';
 import {
   shouldHandleSecondaryLaunch,
   shouldShowMainWindowOnReady,
-  startupPlatformSupported,
   type StartupPreferences,
   type StartupPreferencesSnapshot,
 } from '../shared/startup-preferences';
@@ -1490,32 +1490,32 @@ function startupPreferencesPath(): string {
   return startupPreferencesFilePath(app.getPath("userData"));
 }
 
-function startupPreferencesSnapshot(
-  preferences: StartupPreferences,
-  approvalRequired = false,
-): StartupPreferencesSnapshot {
+function getOSLoginItemState(): {
+  openAtLogin: boolean;
+  executableWillLaunchAtLogin?: boolean;
+  status?: string;
+} {
+  const state = app.getLoginItemSettings(
+    process.platform === "win32" ? { args: [] } : undefined,
+  );
   return {
-    openAtLogin: preferences.openAtLogin,
-    supported: startupPlatformSupported(process.platform),
-    approvalRequired,
+    openAtLogin: state.openAtLogin,
+    ...(process.platform === "win32"
+      ? { executableWillLaunchAtLogin: state.executableWillLaunchAtLogin }
+      : { status: state.status }),
   };
 }
 
 function readStartupPreferencesSnapshot(): StartupPreferencesSnapshot {
   const preferences = readStartupPreferences(startupPreferencesPath());
-  let approvalRequired = false;
-  if (
-    process.platform === "darwin"
-    && app.isPackaged
-    && process.env.SERPENT_E2E !== "1"
-  ) {
-    try {
-      approvalRequired = app.getLoginItemSettings().status === "requires-approval";
-    } catch (error) {
-      logger?.error("startup.login-item", error);
-    }
-  }
-  return startupPreferencesSnapshot(preferences, approvalRequired);
+  return createStartupPreferencesSnapshot({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    e2e: process.env.SERPENT_E2E === "1",
+    preferences,
+    getLoginItemState: getOSLoginItemState,
+    onReadError: (error) => logger?.error("startup.login-item", error),
+  });
 }
 
 function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
@@ -1527,8 +1527,7 @@ function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
     version: 1,
     openAtLogin: typeof record.openAtLogin === "boolean" ? record.openAtLogin : current.openAtLogin,
   };
-  writeStartupPreferences(startupPreferencesPath(), preferences);
-  return applyStartupLoginItem({
+  const snapshot = applyStartupLoginItem({
     platform: process.platform,
     packaged: app.isPackaged,
     e2e: process.env.SERPENT_E2E === "1",
@@ -1540,11 +1539,12 @@ function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
         ...(settings.enabled === undefined ? {} : { enabled: settings.enabled }),
       });
     },
-    getLoginItemStatus: () => {
-      if (process.platform !== "darwin") return undefined;
-      return app.getLoginItemSettings().status;
-    },
+    getLoginItemState: getOSLoginItemState,
   });
+  if (!snapshot.registrationFailed) {
+    writeStartupPreferences(startupPreferencesPath(), preferences);
+  }
+  return snapshot;
 }
 
 function handleSecondInstance(): void {
@@ -6058,7 +6058,7 @@ async function startApplication(): Promise<void> {
 
   ipcMain.handle(STARTUP_PREFERENCES_GET_CHANNEL, (event): StartupPreferencesSnapshot => {
     if (!mainWindow || event.sender !== mainWindow.webContents) {
-      return startupPreferencesSnapshot(readStartupPreferences(startupPreferencesPath()));
+      return readStartupPreferencesSnapshot();
     }
     return readStartupPreferencesSnapshot();
   });
@@ -6074,7 +6074,10 @@ async function startApplication(): Promise<void> {
       return storeStartupPreferences(input);
     } catch (error) {
       logger?.error("startup.login-item", error);
-      return readStartupPreferencesSnapshot();
+      return {
+        ...readStartupPreferencesSnapshot(),
+        registrationFailed: true,
+      };
     }
   });
 

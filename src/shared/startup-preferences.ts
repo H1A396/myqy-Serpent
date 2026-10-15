@@ -23,6 +23,8 @@ export type StartupPreferencesSnapshot = {
   readonly supported: boolean;
   /** macOS SMAppService returned requires-approval. */
   readonly approvalRequired: boolean;
+  /** The OS rejected or does not currently have the requested login item. */
+  readonly registrationFailed?: boolean;
 };
 
 export const DEFAULT_STARTUP_PREFERENCES_SNAPSHOT: StartupPreferencesSnapshot = {
@@ -35,6 +37,7 @@ const startupPreferencesSnapshotSchema = z.object({
   openAtLogin: z.boolean(),
   supported: z.boolean(),
   approvalRequired: z.boolean(),
+  registrationFailed: z.boolean().optional(),
 });
 
 export type LoginItemRegistration = {

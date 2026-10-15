@@ -155,6 +155,11 @@ export function GeneralSettingsPage({
               {startup.snapshot.approvalRequired ? (
                 <p className="app-settings-help-note">{t("settings.openAtLoginApproval")}</p>
               ) : null}
+              {startup.snapshot.registrationFailed ? (
+                <p className="app-settings-help-note" role="status">
+                  {t("settings.openAtLoginFailed")}
+                </p>
+              ) : null}
             </>
           ) : (
             <div className="app-settings-row-copy">

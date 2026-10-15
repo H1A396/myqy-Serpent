@@ -1608,6 +1608,7 @@ export const zhCN = {
     openAtLoginHint: "登录这台电脑后自动打开已安装的 Serpent。",
     openAtLoginUnsupported: "此系统不提供登录时启动。",
     openAtLoginApproval: "系统尚未允许登录时启动。请在系统设置的登录项中启用 Serpent。",
+    openAtLoginFailed: "Serpent 未能应用登录启动设置。请检查系统设置中的登录项或启动应用，然后重试。",
     folderCardsWhenRecursive: "递归展开时显示子文件夹",
     folderCardsWhenRecursiveHint:
       "打开「递归显示子文件夹内容」时，画布开头仍显示当前文件夹下的子文件夹。关闭后只显示文件。",

@@ -37,16 +37,89 @@ export function applyStartupLoginItem(input: {
   preferences: StartupPreferences;
   setLoginItemSettings: (settings: LoginItemRegistration) => void;
   getLoginItemStatus?: () => string | undefined;
+  getLoginItemState?: () => {
+    openAtLogin: boolean;
+    executableWillLaunchAtLogin?: boolean;
+    status?: string;
+  };
 }): StartupPreferencesSnapshot {
   const registration = loginItemRegistration(input);
   let approvalRequired = false;
+  let openAtLogin = input.preferences.openAtLogin;
+  let registrationFailed = false;
   if (registration !== undefined) {
     input.setLoginItemSettings(registration);
-    approvalRequired = input.getLoginItemStatus?.() === 'requires-approval';
+    const state = input.getLoginItemState?.();
+    if (state !== undefined) {
+      approvalRequired = input.platform === 'darwin' && state.status === 'requires-approval';
+      openAtLogin = approvalRequired
+        ? input.preferences.openAtLogin
+        : effectiveLoginItemState(input.platform, state);
+      registrationFailed = openAtLogin !== input.preferences.openAtLogin;
+    } else {
+      approvalRequired = input.getLoginItemStatus?.() === 'requires-approval';
+    }
   }
   return {
-    openAtLogin: input.preferences.openAtLogin,
+    openAtLogin,
     supported: startupPlatformSupported(input.platform),
     approvalRequired,
+    ...(registrationFailed ? { registrationFailed: true } : {}),
   };
+}
+
+export function startupPreferencesSnapshot(input: {
+  platform: string;
+  packaged: boolean;
+  e2e: boolean;
+  preferences: StartupPreferences;
+  getLoginItemState: () => {
+    openAtLogin: boolean;
+    executableWillLaunchAtLogin?: boolean;
+    status?: string;
+  };
+  onReadError?: (error: unknown) => void;
+}): StartupPreferencesSnapshot {
+  if (input.e2e || !input.packaged || !startupPlatformSupported(input.platform)) {
+    return {
+      openAtLogin: input.preferences.openAtLogin,
+      supported: startupPlatformSupported(input.platform),
+      approvalRequired: false,
+    };
+  }
+
+  try {
+    const state = input.getLoginItemState();
+    const approvalRequired = input.platform === 'darwin' && state.status === 'requires-approval';
+    const openAtLogin = approvalRequired
+      ? input.preferences.openAtLogin
+      : effectiveLoginItemState(input.platform, state);
+    return {
+      openAtLogin,
+      supported: true,
+      approvalRequired,
+      ...(input.preferences.openAtLogin && !openAtLogin && !approvalRequired
+        ? { registrationFailed: true }
+        : {}),
+    };
+  } catch (error) {
+    input.onReadError?.(error);
+    return {
+      openAtLogin: input.preferences.openAtLogin,
+      supported: true,
+      approvalRequired: false,
+      registrationFailed: true,
+    };
+  }
+}
+
+function effectiveLoginItemState(
+  platform: string,
+  state: { openAtLogin: boolean; executableWillLaunchAtLogin?: boolean; status?: string },
+): boolean {
+  if (platform === 'win32') {
+    return state.openAtLogin && state.executableWillLaunchAtLogin !== false;
+  }
+  if (state.status === undefined) return state.openAtLogin;
+  return state.status === 'enabled';
 }
