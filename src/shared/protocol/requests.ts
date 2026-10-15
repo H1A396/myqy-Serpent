@@ -16,6 +16,12 @@ import {
 import { performanceRequestEnvelopeSchema } from '../performance-contract';
 import { EMBEDDING_HTTP_ADAPTERS, isEmbeddingSelectionId } from '../embedding/http-service';
 import {
+  SEMANTIC_IMAGE_BYTES_MAX,
+  SEMANTIC_IMAGE_BYTES_MIN,
+  SEMANTIC_IMAGE_EDGE_MAX,
+  SEMANTIC_IMAGE_EDGE_MIN,
+} from '../embedding/image-limits';
+import {
   entityAppearanceSchema,
   entityAppearanceTargetSchema,
 } from '../entity-appearance';
@@ -1415,6 +1421,8 @@ export const rendererRequestSchema = z.discriminatedUnion('type', [
     apiKey: z.string().max(2048).optional(),
     modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4).optional(),
     dimensions: z.number().int().min(1).max(8192).nullable().optional(),
+    maxImageEdgePx: z.number().int().min(SEMANTIC_IMAGE_EDGE_MIN).max(SEMANTIC_IMAGE_EDGE_MAX).optional(),
+    maxImageBytes: z.number().int().min(SEMANTIC_IMAGE_BYTES_MIN).max(SEMANTIC_IMAGE_BYTES_MAX).optional(),
   }),
   z.strictObject({
     type: z.literal('embedding.services.delete.request'),

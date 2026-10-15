@@ -5339,6 +5339,14 @@ async function startApplication(): Promise<void> {
   // Forward thumbnail events to the renderer
   workerClient.onThumbnailEvent((event) => {
     if (
+      event.type === "asset.thumbnail.ready"
+      || (event.type === "asset.thumbnail.batch-ready" && event.ready.length > 0)
+    ) {
+      // Cover-only video semantics skips a clip until its poster exists.
+      // A ready cover is the cue to encode that clip; there is no frame-sampling fallback.
+      embeddingTestIndex?.catchUp(event.libraryId);
+    }
+    if (
       event.type === "asset.thumbnail.ready" ||
       event.type === "asset.thumbnail.failed"
     ) {

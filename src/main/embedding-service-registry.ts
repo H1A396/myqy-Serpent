@@ -13,6 +13,12 @@ import {
   type EmbeddingTextStatus,
 } from "../shared/embedding/http-service";
 import {
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+  normalizeSemanticImageBytes,
+  normalizeSemanticImageEdgePx,
+} from "../shared/embedding/image-limits";
+import {
   explicitEmbeddingModalities,
   normalizeEmbeddingModalities,
   type EmbeddingModality,
@@ -32,6 +38,10 @@ export type EmbeddingServiceRecord = {
   dimensions: number | null;
   grantedLibraryIds: string[];
   modalities: EmbeddingModality[];
+  /** Longest edge, in pixels, for semantic images and video covers. */
+  maxImageEdgePx: number;
+  /** Max semantic image payload, in bytes, after downscale and recompress. */
+  maxImageBytes: number;
 };
 
 export type EmbeddingServiceCatalog = {
@@ -87,6 +97,8 @@ export function summarizeEmbeddingServices(
         baseUrl: service.baseUrl,
         modelName: service.modelName,
         dimensions: service.dimensions,
+        maxImageEdgePx: service.maxImageEdgePx,
+        maxImageBytes: service.maxImageBytes,
       })
       : null,
   }));
@@ -106,6 +118,8 @@ export function saveEmbeddingService(
     apiKey?: string;
     modalities?: readonly EmbeddingModality[];
     dimensions?: number | null;
+    maxImageEdgePx?: number;
+    maxImageBytes?: number;
   },
 ): EmbeddingServiceCatalog {
   const modalities = input.modalities === undefined
@@ -120,6 +134,8 @@ export function saveEmbeddingService(
     ...input,
     ...(modalities ? { modalities } : { modalities: [] }),
     dimensions: input.dimensions === undefined ? null : dimensions,
+    ...(input.maxImageEdgePx !== undefined ? { maxImageEdgePx: input.maxImageEdgePx } : {}),
+    ...(input.maxImageBytes !== undefined ? { maxImageBytes: input.maxImageBytes } : {}),
   });
   const url = normalizeEmbeddingServiceUrl(input.baseUrl);
   if (issue || !url || !modalities || !isEmbeddingHttpAdapter(adapter)) {
@@ -129,6 +145,13 @@ export function saveEmbeddingService(
   const id = input.id ?? createEmbeddingServiceId();
   if (!SERVICE_ID.test(id)) throw new EmbeddingServiceRegistryError("invalid");
   const existing = catalog.services.find((service) => service.id === id);
+  const maxImageEdgePx = input.maxImageEdgePx === undefined
+    ? (existing?.maxImageEdgePx ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX)
+    : normalizeSemanticImageEdgePx(input.maxImageEdgePx);
+  const maxImageBytes = input.maxImageBytes === undefined
+    ? (existing?.maxImageBytes ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES)
+    : normalizeSemanticImageBytes(input.maxImageBytes);
+  if (maxImageEdgePx === null || maxImageBytes === null) throw new EmbeddingServiceRegistryError("invalid");
   const modelName = input.modelName.trim();
   const rawDescription = input.description === undefined
     ? (existing?.description ?? "")
@@ -158,6 +181,8 @@ export function saveEmbeddingService(
     dimensions: nextDimensions,
     grantedLibraryIds: sameTarget && existing ? [...existing.grantedLibraryIds] : [],
     modalities,
+    maxImageEdgePx,
+    maxImageBytes,
   };
   if (input.apiKey !== undefined) {
     const key = input.apiKey.trim();
@@ -268,5 +293,9 @@ function withServiceDefaults(record: EmbeddingServiceRecord): EmbeddingServiceRe
     adapter,
     probeFailure: record.textStatus === "failed" ? probeFailure : null,
     modalities: normalizeEmbeddingModalities(record.modalities),
+    maxImageEdgePx: normalizeSemanticImageEdgePx((record as { maxImageEdgePx?: unknown }).maxImageEdgePx)
+      ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+    maxImageBytes: normalizeSemanticImageBytes((record as { maxImageBytes?: unknown }).maxImageBytes)
+      ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
   };
 }

@@ -2200,6 +2200,8 @@ export const library: SerpentLibraryApi = Object.freeze({
     apiKey?: string;
     modalities?: Array<'image' | 'video' | 'audio' | 'text'>;
     dimensions?: number | null;
+    maxImageEdgePx?: number;
+    maxImageBytes?: number;
   }) {
     const result = await request({ type: 'embedding.services.save.request', ...input });
     if (!result.ok) return failure(result);

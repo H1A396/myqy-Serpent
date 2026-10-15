@@ -8,7 +8,7 @@ import {
   rankSimilarAssetIds,
   takeNextEmbeddingTarget,
 } from "../../src/main/embedding-test-index";
-import { embeddingInputModalitiesForAdapter, LOCAL_GEMMA_INPUT_MODALITIES } from "../../src/shared/embedding/modalities";
+import { embeddingInputModalitiesForAdapter, LOCAL_GEMMA_INPUT_MODALITIES, LOCAL_SEMANTIC_ENCODE_MODALITIES } from "../../src/shared/embedding/modalities";
 import { embeddingAudioRevision, embeddingSourceForModalities, isDamagedEmbeddingAsset } from "../../src/shared/embedding/profile";
 import { rendererResultSchema } from "../../src/shared/protocol/responses";
 
@@ -26,7 +26,7 @@ describe("find similar", () => {
     expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",
-    })).toBe(true);
+    })).toBe(false);
     expect(embeddingSourceForModalities({
       mediaType: "video",
       relativeFilePath: "clip.mp4",
@@ -39,6 +39,13 @@ describe("find similar", () => {
       thumbnailStatus: "ready",
       thumbnailArtifactId: "poster-1",
     }, ["image"])).toEqual({ kind: "image", revision: "rev-video\nthumb:poster-1" });
+    expect(embeddingSourceForModalities({
+      mediaType: "video",
+      relativeFilePath: "clip.mp4",
+      currentRevisionId: "rev-video",
+      thumbnailStatus: null,
+    }, LOCAL_SEMANTIC_ENCODE_MODALITIES)).toBeNull();
+    expect(LOCAL_SEMANTIC_ENCODE_MODALITIES).toEqual(["image", "audio", "text"]);
     expect(canFindSimilarForAsset({
       mediaType: "video",
       relativeFilePath: "clip.mov",

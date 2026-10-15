@@ -2,7 +2,19 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { fitSemanticImage } = vi.hoisted(() => ({
+  fitSemanticImage: vi.fn(async (input: { bytes: Buffer; mimeType: string }) => ({
+    bytes: input.bytes,
+    mimeType: input.mimeType,
+  })),
+}));
+
+vi.mock("../../src/main/embedding-image-fit", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("../../src/main/embedding-image-fit");
+  return { ...actual, fitSemanticImage };
+});
 import { rendererResultSchema } from "../../src/shared/protocol/responses";
 import type { WorkerCommand } from "../../src/shared/protocol/requests";
 import type { WorkerResult } from "../../src/shared/protocol/responses";
@@ -19,9 +31,49 @@ import {
   resolveContainedPath,
   scoreEmbeddings,
 } from "../../src/main/embedding-test-index";
+import { SemanticImageLimitError } from "../../src/main/embedding-image-fit";
+import {
+  GEMMA_SEMANTIC_IMAGE_MAX_BYTES,
+  GEMMA_SEMANTIC_IMAGE_MAX_EDGE_PX,
+  SEMANTIC_IMAGE_DECODE_MAX_BYTES,
+} from "../../src/shared/embedding/image-limits";
 import { EMBEDDING_GEMMA2_TIER_FILES } from "../../src/shared/embedding/profile";
 
 const temporaryRoots: string[] = [];
+
+beforeEach(() => {
+  fitSemanticImage.mockImplementation(async (input: { bytes: Buffer; mimeType: string }) => ({
+    bytes: input.bytes,
+    mimeType: input.mimeType,
+  }));
+});
+
+function compactLayout(prefix: string): { modelDirectory: string; runtimePath: string } {
+  const root = mkdtempSync(path.join(tmpdir(), prefix));
+  temporaryRoots.push(root);
+  const modelDirectory = path.join(root, "models");
+  mkdirSync(modelDirectory, { recursive: true });
+  const files = EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL;
+  writeFileSync(path.join(modelDirectory, files.coreFile), "synthetic core weights");
+  writeFileSync(path.join(modelDirectory, files.projectorFile), "synthetic projector weights");
+  const runtimePath = path.join(root, "llama-server");
+  writeFileSync(runtimePath, "synthetic runtime");
+  return { modelDirectory, runtimePath };
+}
+
+function sessionDouble() {
+  const vector = new Array(768).fill(0);
+  vector[0] = 1;
+  return {
+    embedText: vi.fn(async () => vector),
+    embedImage: vi.fn(async () => vector),
+    embedImagePayload: vi.fn(async () => vector),
+    embedVideoPayload: vi.fn(async () => vector),
+    embedAudio: vi.fn(async () => vector),
+    embedAudioPayload: vi.fn(async () => vector),
+    close: vi.fn(async () => undefined),
+  };
+}
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -171,27 +223,10 @@ describe("embedding test index", () => {
     }
   });
 
-  it("sends prepared video targets to the native video provider path", async () => {
-    const root = mkdtempSync(path.join(tmpdir(), "serpent-semantic-video-index-"));
-    temporaryRoots.push(root);
-    const modelDirectory = path.join(root, "models");
-    mkdirSync(modelDirectory, { recursive: true });
-    const files = EMBEDDING_GEMMA2_TIER_FILES.Q4_K_XL;
-    writeFileSync(path.join(modelDirectory, files.coreFile), "synthetic core weights");
-    writeFileSync(path.join(modelDirectory, files.projectorFile), "synthetic projector weights");
-    const runtimePath = path.join(root, "llama-server");
-    writeFileSync(runtimePath, "synthetic runtime");
-
-    const videoEmbedding = vi.fn(async () => [1, 0, 0]);
-    const session = {
-      embedText: vi.fn(async () => [1, 0, 0]),
-      embedImage: vi.fn(async () => [1, 0, 0]),
-      embedImagePayload: vi.fn(async () => [1, 0, 0]),
-      embedVideoPayload: videoEmbedding,
-      embedAudio: vi.fn(async () => [1, 0, 0]),
-      embedAudioPayload: vi.fn(async () => [1, 0, 0]),
-      close: vi.fn(async () => undefined),
-    };
+  it("embeds a video from its cover and does not sample frames", async () => {
+    const { modelDirectory, runtimePath } = compactLayout("serpent-semantic-video-cover-");
+    const poster = Buffer.from("synthetic-cover").toString("base64");
+    const session = sessionDouble();
     const commands: WorkerCommand[] = [];
     const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
       commands.push(command);
@@ -203,15 +238,20 @@ describe("embedding test index", () => {
       };
       if (command.type === "semantic.index.targets") return {
         ok: true, type: "semantic.index.targets", revisionSnapshot: 1, total: 1, nextOffset: null,
-        targets: [{ assetId: "video-asset", sourceRevision: "video-revision", kind: "video",
-          modality: "video", alreadyIndexed: false }],
+        targets: [{
+          assetId: "video-asset",
+          sourceRevision: "video-revision\nthumb:poster",
+          kind: "image",
+          modality: "image",
+          alreadyIndexed: false,
+        }],
       };
       if (command.type === "semantic.index.job" && command.action === "claim") return {
         ok: true, type: "semantic.index.job-updated", updated: true,
       };
       if (command.type === "semantic.index.prepare") return {
-        ok: true, type: "semantic.index.prepared", assetId: "video-asset", sourceRevision: "video-revision",
-        kind: "video", mimeType: "video/mp4", bytesBase64: Buffer.from("synthetic mp4 payload").toString("base64"),
+        ok: true, type: "semantic.index.prepared", assetId: "video-asset",
+        sourceRevision: "video-revision\nthumb:poster", kind: "image", mimeType: "image/jpeg", bytesBase64: poster,
       };
       if (command.type === "semantic.index.write") return {
         ok: true, type: "semantic.index.written", accepted: ["video-asset"], rejected: [],
@@ -227,20 +267,124 @@ describe("embedding test index", () => {
       resolveMediaBinaries: () => undefined,
     });
 
+    index.handleStatus({ libraryId: "library-cover", modelId: "embeddinggemma-2-compact", run: true, restart: false });
+    await vi.waitFor(() => {
+      expect(index.handleStatus({ libraryId: "library-cover", modelId: "embeddinggemma-2-compact", run: false, restart: false }))
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready", total: 1, failedCount: 0 });
+    });
+    expect(commands.find((command) => command.type === "semantic.index.begin")).toMatchObject({
+      modalities: ["image", "audio", "text"],
+      maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
+    });
+    expect(commands.find((command) => command.type === "semantic.index.targets")).toMatchObject({
+      modalities: ["image", "audio", "text"],
+    });
+    expect(fitSemanticImage).toHaveBeenCalledWith(expect.objectContaining({
+      mimeType: "image/jpeg",
+      maxEdgePx: GEMMA_SEMANTIC_IMAGE_MAX_EDGE_PX,
+      maxBytes: GEMMA_SEMANTIC_IMAGE_MAX_BYTES,
+    }));
+    expect(session.embedImagePayload).toHaveBeenCalledWith("image/jpeg", poster);
+    expect(session.embedVideoPayload).not.toHaveBeenCalled();
+    await index.close();
+  });
+
+  it("rejects a video payload instead of sampling frames", async () => {
+    const { modelDirectory, runtimePath } = compactLayout("serpent-semantic-video-disabled-");
+    const session = sessionDouble();
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      if (command.type === "semantic.index.begin") return {
+        ok: true, type: "semantic.index.started", profileId: "a".repeat(64), nativeCosineAvailable: false,
+      };
+      if (command.type === "semantic.index.import-legacy") return {
+        ok: true, type: "semantic.index.legacy-imported", attempted: true, acceptedRows: 0, rejectedRows: 0,
+      };
+      if (command.type === "semantic.index.targets") return {
+        ok: true, type: "semantic.index.targets", revisionSnapshot: 1, total: 1, nextOffset: null,
+        targets: [{ assetId: "video-asset", sourceRevision: "video-revision", kind: "video", modality: "video", alreadyIndexed: false }],
+      };
+      if (command.type === "semantic.index.job") return { ok: true, type: "semantic.index.job-updated", updated: true };
+      if (command.type === "semantic.index.prepare") return {
+        ok: true, type: "semantic.index.prepared", assetId: "video-asset", sourceRevision: "video-revision",
+        kind: "video", mimeType: "video/mp4", bytesBase64: Buffer.from("synthetic mp4").toString("base64"),
+      };
+      if (command.type === "semantic.index.close") return { ok: true, type: "semantic.index.closed" };
+      throw new Error(`Unexpected Worker command: ${command.type}`);
+    });
+    const index = new EmbeddingTestIndex({
+      configDirectories: [],
+      installedLayout: () => ({ modelDirectory, runtimePath }),
+      requestWorker,
+      startSession: vi.fn(async () => session),
+      resolveMediaBinaries: () => undefined,
+    });
     index.handleStatus({ libraryId: "library-video", modelId: "embeddinggemma-2-compact", run: true, restart: false });
     await vi.waitFor(() => {
       expect(index.handleStatus({ libraryId: "library-video", modelId: "embeddinggemma-2-compact", run: false, restart: false }))
-        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready", total: 1 });
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready", failedCount: 1 });
     });
-
-    expect(commands.find((command) => command.type === "semantic.index.targets")).toMatchObject({
-      type: "semantic.index.targets", modalities: ["image", "video", "audio", "text"],
-    });
-    expect(commands.find((command) => command.type === "semantic.index.prepare")).toMatchObject({
-      type: "semantic.index.prepare", kind: "video", sourceRevision: "video-revision",
-    });
-    expect(videoEmbedding).toHaveBeenCalledWith(Buffer.from("synthetic mp4 payload").toString("base64"));
+    expect(session.embedVideoPayload).not.toHaveBeenCalled();
     expect(session.embedImagePayload).not.toHaveBeenCalled();
+    const failed = requestWorker.mock.calls.map(([command]) => command).find((command) => (
+      command.type === "semantic.index.job" && command.action === "fail"
+    ));
+    expect(failed).toMatchObject({ errorCategory: "preparation" });
+    await index.close();
+  });
+
+  it("reports a picture that cannot be fitted as a semantic image limit", async () => {
+    const { modelDirectory, runtimePath } = compactLayout("serpent-semantic-image-limit-");
+    fitSemanticImage.mockRejectedValue(new SemanticImageLimitError());
+    const session = sessionDouble();
+    let similarCalls = 0;
+    const requestWorker = vi.fn(async (command: WorkerCommand): Promise<WorkerResult> => {
+      if (command.type === "semantic.index.begin") return {
+        ok: true, type: "semantic.index.started", profileId: "a".repeat(64), nativeCosineAvailable: false,
+      };
+      if (command.type === "semantic.index.import-legacy") return {
+        ok: true, type: "semantic.index.legacy-imported", attempted: true, acceptedRows: 0, rejectedRows: 0,
+      };
+      if (command.type === "semantic.index.targets") return {
+        ok: true, type: "semantic.index.targets", revisionSnapshot: 1, total: 1, nextOffset: null,
+        targets: [{ assetId: "still", sourceRevision: "rev-still", kind: "image", modality: "image", alreadyIndexed: false }],
+      };
+      if (command.type === "semantic.index.job") return { ok: true, type: "semantic.index.job-updated", updated: true };
+      if (command.type === "semantic.index.prepare") return {
+        ok: true, type: "semantic.index.prepared", assetId: "still", sourceRevision: "rev-still",
+        kind: "image", mimeType: "image/jpeg", bytesBase64: Buffer.from("too-big").toString("base64"),
+      };
+      if (command.type === "semantic.index.similar") {
+        similarCalls += 1;
+        return {
+          ok: true, type: "semantic.index.ranked", cancelled: false, candidateCount: 0,
+          sourceStatus: "failed", assetIds: [], scores: [],
+        };
+      }
+      if (command.type === "semantic.index.close" || command.type === "semantic.index.cancel-search") {
+        return { ok: true, type: "semantic.index.closed" };
+      }
+      throw new Error(`Unexpected Worker command: ${command.type}`);
+    });
+    const index = new EmbeddingTestIndex({
+      configDirectories: [],
+      installedLayout: () => ({ modelDirectory, runtimePath }),
+      requestWorker,
+      startSession: vi.fn(async () => session),
+      resolveMediaBinaries: () => undefined,
+    });
+    index.handleStatus({ libraryId: "library-limit", modelId: "embeddinggemma-2-compact", run: true, restart: false });
+    await vi.waitFor(() => {
+      expect(index.handleStatus({ libraryId: "library-limit", modelId: "embeddinggemma-2-compact", run: false, restart: false }))
+        .toMatchObject({ ok: true, type: "embedding.index.status", phase: "ready", failedCount: 1 });
+    });
+    const similar = await index.handleSimilar({
+      libraryId: "library-limit",
+      modelId: "embeddinggemma-2-compact",
+      assetId: "still",
+    });
+    expect(similar).toMatchObject({ ok: false, error: { code: "SEMANTIC_IMAGE_TOO_LARGE" } });
+    expect(session.embedImagePayload).not.toHaveBeenCalled();
+    expect(similarCalls).toBeGreaterThan(0);
     await index.close();
   });
 

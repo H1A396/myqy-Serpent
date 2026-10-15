@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 import { EMBEDDING_HTTP_ADAPTERS } from '../embedding/http-service';
+import {
+  SEMANTIC_IMAGE_BYTES_MAX,
+  SEMANTIC_IMAGE_BYTES_MIN,
+  SEMANTIC_IMAGE_EDGE_MAX,
+  SEMANTIC_IMAGE_EDGE_MIN,
+} from '../embedding/image-limits';
 
 import { aiSearchPlanSchema, assetMetadataResultSchema, extractedMetadataResultSchema, assetSummarySchema, browseLayoutEntrySchema, collectionSummarySchema, folderBrowseEntrySchema, gitignorePreviewSchema, ignoredPathSchema, linkedFolderDirectoryMutationSchema, linkedFolderRuleSchema, linkedFolderSummarySchema, managedFolderSummarySchema, portableRelativePathSchema, smartCollectionSummarySchema, tagCooccurrenceGraphSchema, tagSummarySchema, trashedFolderSummarySchema } from '../asset-types';
 import { entityAppearanceSchema, entityAppearanceTargetSchema } from '../entity-appearance';
@@ -2709,6 +2715,8 @@ const rendererSuccessResultSchema = z.discriminatedUnion('type', [
       probeFailure: z.enum(['network', 'auth', 'format', 'dimensions', 'https']).nullable(),
       dimensions: z.number().int().positive().max(8192).nullable(),
       modalities: z.array(z.enum(['image', 'video', 'audio', 'text'])).min(1).max(4),
+      maxImageEdgePx: z.number().int().min(SEMANTIC_IMAGE_EDGE_MIN).max(SEMANTIC_IMAGE_EDGE_MAX),
+      maxImageBytes: z.number().int().min(SEMANTIC_IMAGE_BYTES_MIN).max(SEMANTIC_IMAGE_BYTES_MAX),
       grantedLibraryIds: z.array(nonBlankString.max(255)).max(100),
       hasCredential: z.boolean(),
       profileKey: z.string().nullable(),

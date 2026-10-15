@@ -49,6 +49,8 @@ export interface EmbeddingHttpServiceSummary {
   probeFailure: EmbeddingProbeFailure | null;
   dimensions: number | null;
   modalities: EmbeddingModality[];
+  maxImageEdgePx: number;
+  maxImageBytes: number;
   grantedLibraryIds: string[];
   hasCredential: boolean;
   profileKey: string | null;
@@ -847,6 +849,8 @@ export interface SerpentLibraryApi {
     apiKey?: string;
     modalities?: EmbeddingModality[];
     dimensions?: number | null;
+    maxImageEdgePx?: number;
+    maxImageBytes?: number;
   }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingDeleteService(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
   embeddingProbeService(input: { id: string }): Promise<LibraryApiResult<{

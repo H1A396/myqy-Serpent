@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FilterClause, SearchScope } from "../shared/asset-types";
-import { EMBEDDING_HTTP_IMAGE_MAX_BYTES, postEmbeddingHttp } from "./embedding-http";
+import { postEmbeddingHttp } from "./embedding-http";
+import { fitSemanticImage, SemanticImageLimitError } from "./embedding-image-fit";
 import { DASHSCOPE_VISUAL_SEARCH_INSTRUCT } from "../shared/embedding/http-service";
 import { embeddingSkipKey } from "./embedding-test-index";
 import {
@@ -21,6 +22,13 @@ import {
 import type { WorkerCommand } from "../shared/protocol/requests";
 import type { RendererResult, WorkerResult } from "../shared/protocol/responses";
 import { createPublicError } from "../shared/protocol/errors";
+import {
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+  normalizeSemanticImageBytes,
+  normalizeSemanticImageEdgePx,
+  SEMANTIC_IMAGE_DECODE_MAX_BYTES,
+} from "../shared/embedding/image-limits";
 
 type JobState = EmbeddingIndexSnapshot & {
   generation: number;
@@ -50,12 +58,15 @@ export type EmbeddingHttpServiceView = {
   dimensions: number | null;
   grantedLibraryIds: readonly string[];
   modalities: readonly EmbeddingModality[];
+  maxImageEdgePx?: number;
+  maxImageBytes?: number;
 };
 
 export class EmbeddingHttpIndex {
   #generation = 0;
   #state: JobState | null = null;
   #skipped = new Set<string>();
+  #imageLimitAssets = new Set<string>();
   #runningGeneration: number | null = null;
   #activeQueryId: string | null = null;
   #activeQuerySessionGeneration: string | null = null;
@@ -283,14 +294,14 @@ export class EmbeddingHttpIndex {
               type: "semantic.index.prepare", libraryId: request.libraryId,
               sessionGeneration: state.sessionGeneration, assetId: target.assetId,
               sourceRevision: target.revisionId, kind: target.kind,
-              maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+              maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
             });
             if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
-            const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
-              ? [prepared.text ?? ""]
-              : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
             const checkedService = this.#currentService(state);
             if (!checkedService) throw new Error("Embedding service configuration changed.");
+            const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
+              ? [prepared.text ?? ""]
+              : [{ image: await semanticImageDataUrl(prepared.mimeType, prepared.bytesBase64, imageLimitsOf(checkedService)) }];
             const controller = this.#newRequestController();
             let vector: number[] | undefined;
             errorCategory = "provider";
@@ -319,7 +330,8 @@ export class EmbeddingHttpIndex {
             }
           }
         }
-      } catch {
+      } catch (caught) {
+        if (caught instanceof SemanticImageLimitError) this.#imageLimitAssets.add(request.assetId);
         if (claimedJob && preparingTarget && this.#state?.generation === state.generation) {
           await this.#setDurableJob(state.generation, preparingTarget.assetId, preparingTarget.revisionId,
             claimToken, "fail", errorCategory).catch(() => false);
@@ -342,6 +354,9 @@ export class EmbeddingHttpIndex {
       return { ok: false, error: createPublicError("INTERNAL_ERROR") };
     }
     if (ranked.cancelled) return { ok: true, type: "embedding.similar", ...this.#snapshot(), status: "preparing", sourceAssetId: request.assetId, assetIds: [] };
+    if (ranked.sourceStatus === "failed" && this.#imageLimitAssets.has(request.assetId)) {
+      return { ok: false, error: createPublicError("SEMANTIC_IMAGE_TOO_LARGE") };
+    }
     return {
       ok: true,
       type: "embedding.similar",
@@ -359,12 +374,7 @@ export class EmbeddingHttpIndex {
       ? [...encodeModalitiesForAdapter(service.adapter, service.modalities)].sort().join(",")
       : "";
     const profileKey = service?.dimensions
-      ? embeddingHttpProfileKey({
-        adapter: service.adapter,
-        baseUrl: service.baseUrl,
-        modelName: service.modelName,
-        dimensions: service.dimensions,
-      })
+      ? profileKeyForService(service)
       : "";
     if (current && current.libraryId === libraryId && current.serviceId === serviceId
       && current.profileKey === profileKey
@@ -372,6 +382,7 @@ export class EmbeddingHttpIndex {
     this.#abortRequests();
     this.#generation += 1;
     this.#skipped.clear();
+    this.#imageLimitAssets.clear();
     this.#state = {
       phase: "starting",
       done: 0,
@@ -424,7 +435,7 @@ export class EmbeddingHttpIndex {
         modelRevision: "http-embedding-v1",
         modality: "mixed",
         modalities: [...encodeModalitiesForAdapter(service.adapter, service.modalities)],
-        maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+        maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
       });
       if (!begun.ok || begun.type !== "semantic.index.started") throw new Error("Semantic index is unavailable.");
       const imported = await this.options.requestWorker({ type: "semantic.index.import-legacy", libraryId,
@@ -475,12 +486,12 @@ export class EmbeddingHttpIndex {
               assetId: target.assetId,
               sourceRevision: target.revisionId,
               kind: target.kind,
-              maxInputBytes: EMBEDDING_HTTP_IMAGE_MAX_BYTES,
+              maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
             });
             if (!prepared.ok || prepared.type !== "semantic.index.prepared") throw new Error("Semantic content is unavailable.");
             const inputs: EmbeddingHttpContent[] | string[] = target.kind === "text"
               ? [prepared.text ?? ""]
-              : [{ image: `data:${prepared.mimeType};base64,${prepared.bytesBase64 ?? ""}` }];
+              : [{ image: await semanticImageDataUrl(prepared.mimeType, prepared.bytesBase64, imageLimitsOf(checkedService)) }];
             const controller = this.#newRequestController();
             errorCategory = "provider";
             const [vector] = await postEmbeddingHttp({
@@ -506,8 +517,9 @@ export class EmbeddingHttpIndex {
               this.#skipped.add(embeddingSkipKey(target.assetId, target.revisionId));
               this.#write(generation, { failedCount: (this.#state?.failedCount ?? 0) + 1 });
             }
-          } catch {
+          } catch (caught) {
             if (this.#state?.generation !== generation) return;
+            if (caught instanceof SemanticImageLimitError) this.#imageLimitAssets.add(target.assetId);
             if (claimedJob) {
               await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", errorCategory).catch(() => false);
             }
@@ -621,12 +633,7 @@ export class EmbeddingHttpIndex {
   #currentService(state: JobState): EmbeddingHttpServiceView & { dimensions: number } | null {
     const service = this.options.loadService(state.serviceId);
     if (!httpServiceReady(service) || !this.#isLibraryEnabled(state.libraryId, state.serviceId)) return null;
-    const profileKey = embeddingHttpProfileKey({
-      adapter: service.adapter,
-      baseUrl: service.baseUrl,
-      modelName: service.modelName,
-      dimensions: service.dimensions,
-    });
+    const profileKey = profileKeyForService(service);
     const active = this.#state;
     return profileKey === state.profileKey && active?.generation === state.generation
       && [...encodeModalitiesForAdapter(service.adapter, service.modalities)].sort().join(",") === state.sourceModalitiesKey
@@ -682,6 +689,41 @@ function httpServiceReady(
     && service.dimensions
     && service.modalities.includes("text"),
   );
+}
+
+function profileKeyForService(service: EmbeddingHttpServiceView): string {
+  if (service.dimensions == null) return "";
+  const limits = imageLimitsOf(service);
+  return embeddingHttpProfileKey({
+    adapter: service.adapter,
+    baseUrl: service.baseUrl,
+    modelName: service.modelName,
+    dimensions: service.dimensions,
+    maxImageEdgePx: limits.maxEdgePx,
+    maxImageBytes: limits.maxBytes,
+  });
+}
+
+function imageLimitsOf(service: EmbeddingHttpServiceView): { maxEdgePx: number; maxBytes: number } {
+  return {
+    maxEdgePx: normalizeSemanticImageEdgePx(service.maxImageEdgePx) ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_EDGE_PX,
+    maxBytes: normalizeSemanticImageBytes(service.maxImageBytes) ?? CUSTOM_SEMANTIC_IMAGE_DEFAULT_BYTES,
+  };
+}
+
+async function semanticImageDataUrl(
+  mimeType: string | undefined,
+  bytesBase64: string | undefined,
+  limits: { maxEdgePx: number; maxBytes: number },
+): Promise<string> {
+  if (!mimeType || !bytesBase64) throw new Error("Semantic image payload is unavailable.");
+  const fitted = await fitSemanticImage({
+    bytes: Buffer.from(bytesBase64, "base64"),
+    mimeType,
+    maxEdgePx: limits.maxEdgePx,
+    maxBytes: limits.maxBytes,
+  });
+  return `data:${fitted.mimeType};base64,${fitted.bytes.toString("base64")}`;
 }
 
 /** Actual HTTP input channels; image-capable adapters may use a ready preview for video files. */

@@ -16,7 +16,13 @@ import {
 import type { WorkerCommand } from "../shared/protocol/requests";
 import type { RendererResult, WorkerResult } from "../shared/protocol/responses";
 import { createPublicError } from "../shared/protocol/errors";
-import { LOCAL_GEMMA_INPUT_MODALITIES } from "../shared/embedding/modalities";
+import { LOCAL_SEMANTIC_ENCODE_MODALITIES } from "../shared/embedding/modalities";
+import { fitSemanticImage, SemanticImageLimitError } from "./embedding-image-fit";
+import {
+  GEMMA_SEMANTIC_IMAGE_MAX_BYTES,
+  GEMMA_SEMANTIC_IMAGE_MAX_EDGE_PX,
+  SEMANTIC_IMAGE_DECODE_MAX_BYTES,
+} from "../shared/embedding/image-limits";
 import {
   localEmbeddingFilesReady,
   readLocalEmbeddingTestConfig,
@@ -152,6 +158,7 @@ export class EmbeddingTestIndex {
   #closing: Promise<void> | null = null;
   #queue: Promise<void> = Promise.resolve();
   #skipped = new Set<string>();
+  #imageLimitAssets = new Set<string>();
   #priorityAssetId: string | null = null;
   #catchUpRequested = false;
   #catchUpRunning = false;
@@ -382,6 +389,9 @@ export class EmbeddingTestIndex {
     if (ranked.cancelled) {
       return { ok: true, type: "embedding.similar", ...this.#snapshot(), status: "preparing", sourceAssetId: request.assetId, assetIds: [] };
     }
+    if (ranked.sourceStatus === "failed" && this.#imageLimitAssets.has(request.assetId)) {
+      return { ok: false, error: createPublicError("SEMANTIC_IMAGE_TOO_LARGE") };
+    }
     return {
       ok: true,
       type: "embedding.similar",
@@ -439,6 +449,7 @@ export class EmbeddingTestIndex {
     this.#generation += 1;
     this.#priorityAssetId = null;
     this.#skipped.clear();
+    this.#imageLimitAssets.clear();
     this.#catchUpRequested = false;
     const generation = this.#generation;
     this.#sessionStartController?.abort(new Error("Semantic runtime startup was superseded."));
@@ -506,8 +517,8 @@ export class EmbeddingTestIndex {
         dimensions: EMBEDDING_GEMMA2_DIMENSIONS,
         modelRevision: `${model.id}:${model.tier}`,
         modality: "mixed",
-        modalities: [...LOCAL_GEMMA_INPUT_MODALITIES],
-        maxInputBytes: 64 * 1024 * 1024,
+        modalities: [...LOCAL_SEMANTIC_ENCODE_MODALITIES],
+        maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
       });
       if (!begun.ok || begun.type !== "semantic.index.started") throw new Error("Semantic index is unavailable.");
       const imported = await this.options.requestWorker({ type: "semantic.index.import-legacy", libraryId,
@@ -666,7 +677,8 @@ export class EmbeddingTestIndex {
         }
       } catch (caught) {
         if (this.#state?.generation !== generation) return false;
-        const errorCategory = caught instanceof SemanticPreparationError
+        if (caught instanceof SemanticImageLimitError) this.#imageLimitAssets.add(target.assetId);
+        const errorCategory = caught instanceof SemanticPreparationError || caught instanceof SemanticImageLimitError
           ? "preparation"
           : caught instanceof SemanticProviderError ? "provider" : "storage";
         await this.#setDurableJob(generation, target.assetId, target.revisionId, claimToken, "fail", errorCategory).catch(() => false);
@@ -730,7 +742,7 @@ export class EmbeddingTestIndex {
         assetId: target.assetId,
         sourceRevision: target.revisionId,
         kind: target.kind,
-        maxInputBytes: 64 * 1024 * 1024,
+        maxInputBytes: SEMANTIC_IMAGE_DECODE_MAX_BYTES,
       });
     } catch {
       throw new SemanticPreparationError("Semantic asset preparation failed.");
@@ -782,13 +794,22 @@ export class EmbeddingTestIndex {
       return this.#embedWithProvider(() => session.embedText(text));
     }
     if (target.kind === "video") {
-      if (!prepared.bytesBase64) throw new SemanticPreparationError("Semantic video payload is unavailable.");
-      return this.#embedWithProvider(() => session.embedVideoPayload(prepared.bytesBase64!));
+      // Multi-frame / input_video semantic may return later. This release does not sample frames.
+      throw new SemanticPreparationError("Video semantic uses the cover image.");
     }
     if (!prepared.mimeType || !prepared.bytesBase64) {
       throw new SemanticPreparationError("Semantic image payload is unavailable.");
     }
-    return this.#embedWithProvider(() => session.embedImagePayload(prepared.mimeType!, prepared.bytesBase64!));
+    const fitted = await fitSemanticImage({
+      bytes: Buffer.from(prepared.bytesBase64, "base64"),
+      mimeType: prepared.mimeType,
+      maxEdgePx: GEMMA_SEMANTIC_IMAGE_MAX_EDGE_PX,
+      maxBytes: GEMMA_SEMANTIC_IMAGE_MAX_BYTES,
+    });
+    return this.#embedWithProvider(() => session.embedImagePayload(
+      fitted.mimeType,
+      fitted.bytes.toString("base64"),
+    ));
   }
 
   async #embedWithProvider(work: () => Promise<number[]>): Promise<number[]> {
@@ -810,7 +831,7 @@ export class EmbeddingTestIndex {
       type: "semantic.index.targets",
       libraryId,
       sessionGeneration: state.sessionGeneration,
-      modalities: [...LOCAL_GEMMA_INPUT_MODALITIES],
+      modalities: [...LOCAL_SEMANTIC_ENCODE_MODALITIES],
       offset,
       limit: 500,
       revisionSnapshot,

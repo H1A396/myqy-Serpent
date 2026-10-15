@@ -33,7 +33,7 @@ import { canFindSimilarForAsset } from "./find-similar";
 import { isSemanticSearchModelId } from "../shared/embedding/profile";
 import {
   embeddingInputModalitiesForAdapter,
-  LOCAL_GEMMA_INPUT_MODALITIES,
+  LOCAL_SEMANTIC_ENCODE_MODALITIES,
   type EmbeddingModality,
 } from "../shared/embedding/modalities";
 import type { EmbeddingHttpAdapter } from "../shared/embedding/http-service";
@@ -2069,7 +2069,7 @@ export function AssetContextMenu(props: AssetContextMenuProps) {
             const sourceModalities = !embeddingSelectionId
               ? []
               : isSemanticSearchModelId(embeddingSelectionId)
-                ? LOCAL_GEMMA_INPUT_MODALITIES
+                ? LOCAL_SEMANTIC_ENCODE_MODALITIES
                 : embeddingAdapter
                   ? embeddingInputModalitiesForAdapter(embeddingAdapter, embeddingModalities ?? ["text"])
                   : [];
