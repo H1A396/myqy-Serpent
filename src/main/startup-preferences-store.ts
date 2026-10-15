@@ -46,7 +46,6 @@ export function applyStartupLoginItem(input: {
   }
   return {
     openAtLogin: input.preferences.openAtLogin,
-    silentLaunch: input.preferences.silentLaunch,
     supported: startupPlatformSupported(input.platform),
     approvalRequired,
   };

@@ -14,7 +14,6 @@ export type SerpentStartupApi = {
   get(): Promise<StartupPreferencesSnapshot>;
   set(input: {
     openAtLogin: boolean;
-    silentLaunch: boolean;
   }): Promise<StartupPreferencesSnapshot>;
 };
 
@@ -29,7 +28,6 @@ export const startup: SerpentStartupApi = Object.freeze({
   async set(input) {
     return readSnapshot(await ipcRenderer.invoke(STARTUP_PREFERENCES_SET_CHANNEL, {
       openAtLogin: input.openAtLogin,
-      silentLaunch: input.silentLaunch,
     }));
   },
 });

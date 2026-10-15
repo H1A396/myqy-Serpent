@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -12,12 +12,10 @@ import {
 } from '../../src/main/startup-preferences-store';
 import {
   DEFAULT_STARTUP_PREFERENCES,
-  SILENT_LAUNCH_ARG,
   loginItemRegistration,
   parseStartupPreferences,
   shouldHandleSecondaryLaunch,
   shouldShowMainWindowOnReady,
-  shouldStartHidden,
 } from '../../src/shared/startup-preferences';
 
 const tempDirectories: string[] = [];
@@ -35,22 +33,35 @@ describe('startup preferences', () => {
     tempDirectories.push(root);
     const filePath = startupPreferencesFilePath(root);
     expect(readStartupPreferences(filePath)).toEqual(DEFAULT_STARTUP_PREFERENCES);
-    writeStartupPreferences(filePath, { version: 1, openAtLogin: true, silentLaunch: true });
+    writeStartupPreferences(filePath, { version: 1, openAtLogin: true });
     expect(JSON.parse(await readFile(filePath, 'utf8'))).toEqual({
       version: 1,
       openAtLogin: true,
-      silentLaunch: true,
     });
     expect(readStartupPreferences(filePath)).toEqual({
       version: 1,
       openAtLogin: true,
-      silentLaunch: true,
     });
     expect(parseStartupPreferences({ version: 2, openAtLogin: true })).toEqual(DEFAULT_STARTUP_PREFERENCES);
   });
 
+  it('ignores a leftover silent-launch field from an earlier preference file', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'serpent-startup-preferences-'));
+    tempDirectories.push(root);
+    const filePath = startupPreferencesFilePath(root);
+    await writeFile(filePath, `${JSON.stringify({
+      version: 1,
+      openAtLogin: true,
+      silentLaunch: true,
+    })}\n`);
+    expect(readStartupPreferences(filePath)).toEqual({
+      version: 1,
+      openAtLogin: true,
+    });
+  });
+
   it('registers login items only for packaged macOS and Windows apps', () => {
-    const preferences = { version: 1 as const, openAtLogin: true, silentLaunch: true };
+    const preferences = { version: 1 as const, openAtLogin: true };
     expect(loginItemRegistration({
       platform: 'darwin',
       packaged: true,
@@ -64,15 +75,19 @@ describe('startup preferences', () => {
       preferences,
     })).toEqual({
       openAtLogin: true,
-      args: [SILENT_LAUNCH_ARG],
+      args: [],
       enabled: true,
     });
     expect(loginItemRegistration({
       platform: 'win32',
       packaged: true,
       e2e: false,
-      preferences: { ...preferences, silentLaunch: false },
-    })?.args).toEqual([]);
+      preferences: { ...preferences, openAtLogin: false },
+    })).toEqual({
+      openAtLogin: false,
+      args: [],
+      enabled: false,
+    });
     expect(loginItemRegistration({
       platform: 'linux',
       packaged: true,
@@ -99,7 +114,7 @@ describe('startup preferences', () => {
       platform: 'darwin',
       packaged: true,
       e2e: false,
-      preferences: { version: 1, openAtLogin: true, silentLaunch: false },
+      preferences: { version: 1, openAtLogin: true },
       setLoginItemSettings: (settings) => {
         calls.push(settings);
       },
@@ -108,58 +123,25 @@ describe('startup preferences', () => {
     expect(calls).toEqual([{ openAtLogin: true }]);
     expect(snapshot).toEqual({
       openAtLogin: true,
-      silentLaunch: false,
       supported: true,
       approvalRequired: true,
     });
   });
 
-  it('hides the first window only for a silent login launch', () => {
-    const silent = { version: 1 as const, openAtLogin: true, silentLaunch: true };
-    const visible = { ...silent, silentLaunch: false };
-    expect(shouldStartHidden({
-      preferences: silent,
-      argv: [],
-      wasOpenedAtLogin: true,
-      wasOpenedAsHidden: false,
-    })).toBe(true);
-    expect(shouldStartHidden({
-      preferences: visible,
-      argv: [SILENT_LAUNCH_ARG],
-      wasOpenedAtLogin: false,
-      wasOpenedAsHidden: false,
-    })).toBe(true);
-    expect(shouldStartHidden({
-      preferences: silent,
-      argv: [],
-      wasOpenedAtLogin: false,
-      wasOpenedAsHidden: false,
-    })).toBe(false);
-    expect(shouldStartHidden({
-      preferences: visible,
-      argv: [],
-      wasOpenedAtLogin: true,
-      wasOpenedAsHidden: false,
-    })).toBe(false);
-  });
-
-  it('does not present a window during silent launch, update handoff, or quit', () => {
+  it('does not present a window during update handoff or quit', () => {
     expect(shouldShowMainWindowOnReady({
-      startHidden: false,
       updateHandoff: false,
       applicationQuitting: false,
       e2eHideWindow: false,
     })).toBe(true);
     expect(shouldShowMainWindowOnReady({
-      startHidden: true,
-      updateHandoff: false,
-      applicationQuitting: false,
-      e2eHideWindow: false,
-    })).toBe(false);
-    expect(shouldShowMainWindowOnReady({
-      startHidden: false,
       updateHandoff: true,
       applicationQuitting: false,
+      e2eHideWindow: false,
+    })).toBe(false);
+    expect(shouldShowMainWindowOnReady({
+      updateHandoff: false,
+      applicationQuitting: true,
       e2eHideWindow: false,
     })).toBe(false);
     expect(shouldHandleSecondaryLaunch({

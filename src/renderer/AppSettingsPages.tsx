@@ -155,14 +155,6 @@ export function GeneralSettingsPage({
               {startup.snapshot.approvalRequired ? (
                 <p className="app-settings-help-note">{t("settings.openAtLoginApproval")}</p>
               ) : null}
-              <SettingsToggleRow
-                checked={startup.snapshot.silentLaunch}
-                hint={t("settings.silentLaunchHint")}
-                label={t("settings.silentLaunch")}
-                onChange={() => {
-                  startup.setSilentLaunch(!startup.snapshot.silentLaunch);
-                }}
-              />
             </>
           ) : (
             <div className="app-settings-row-copy">

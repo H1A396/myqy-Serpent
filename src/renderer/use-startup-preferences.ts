@@ -9,7 +9,6 @@ type StartupApi = {
   get(): Promise<StartupPreferencesSnapshot>;
   set(input: {
     openAtLogin: boolean;
-    silentLaunch: boolean;
   }): Promise<StartupPreferencesSnapshot>;
 };
 
@@ -21,7 +20,6 @@ export function useStartupPreferences(): {
   available: boolean;
   snapshot: StartupPreferencesSnapshot;
   setOpenAtLogin: (openAtLogin: boolean) => void;
-  setSilentLaunch: (silentLaunch: boolean) => void;
 } {
   const available = startupApi() !== undefined;
   const [snapshot, setSnapshot] = useState<StartupPreferencesSnapshot>(
@@ -42,23 +40,16 @@ export function useStartupPreferences(): {
     };
   }, []);
 
-  function persist(next: { openAtLogin: boolean; silentLaunch: boolean }): void {
-    const api = startupApi();
-    setSnapshot((current) => ({ ...current, ...next }));
-    if (api === undefined) return;
-    void api.set(next).then(setSnapshot).catch(() => {
-      void api.get().then(setSnapshot);
-    });
-  }
-
   return {
     available,
     snapshot,
     setOpenAtLogin: (openAtLogin) => {
-      persist({ openAtLogin, silentLaunch: snapshot.silentLaunch });
-    },
-    setSilentLaunch: (silentLaunch) => {
-      persist({ openAtLogin: snapshot.openAtLogin, silentLaunch });
+      const api = startupApi();
+      setSnapshot((current) => ({ ...current, openAtLogin }));
+      if (api === undefined) return;
+      void api.set({ openAtLogin }).then(setSnapshot).catch(() => {
+        void api.get().then(setSnapshot);
+      });
     },
   };
 }

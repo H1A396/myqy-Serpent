@@ -153,7 +153,6 @@ import {
 import {
   shouldHandleSecondaryLaunch,
   shouldShowMainWindowOnReady,
-  shouldStartHidden,
   startupPlatformSupported,
   type StartupPreferences,
   type StartupPreferencesSnapshot,
@@ -760,7 +759,6 @@ let offscreenThumbnailRenderer: OffscreenThumbnailRenderer | undefined;
 let quitAfterShutdown = false;
 let applicationQuitting = false;
 let updateHandoff = false;
-let startHidden = false;
 let startupComplete = false;
 const UPDATE_HANDOFF_EXIT_MS = 8_000;
 let logger: AppLogger | undefined;
@@ -1462,6 +1460,7 @@ function beginUpdateHandoff(): void {
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.hide();
   }
+  if (process.platform === "darwin") app.hide();
   void releaseLoopbackListeners();
   const exitTimer = setTimeout(() => {
     app.exit(0);
@@ -1469,27 +1468,21 @@ function beginUpdateHandoff(): void {
   exitTimer.unref();
 }
 
-function startupPreferencesPath(): string {
-  return startupPreferencesFilePath(app.getPath("userData"));
+function suppressWindowDuringUpdateHandoff(window: BrowserWindow): void {
+  if (shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
+  if (!window.isDestroyed()) window.hide();
+  window.once("ready-to-show", () => {
+    if (
+      !window.isDestroyed()
+      && !shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })
+    ) {
+      window.hide();
+    }
+  });
 }
 
-function macLoginLaunchState(): {
-  wasOpenedAtLogin: boolean;
-  wasOpenedAsHidden: boolean;
-} {
-  if (process.platform !== "darwin" || process.env.SERPENT_E2E === "1") {
-    return { wasOpenedAtLogin: false, wasOpenedAsHidden: false };
-  }
-  try {
-    const settings = app.getLoginItemSettings();
-    return {
-      wasOpenedAtLogin: settings.wasOpenedAtLogin === true,
-      wasOpenedAsHidden: settings.wasOpenedAsHidden === true,
-    };
-  } catch (error) {
-    logger?.error("startup.login-item", error);
-    return { wasOpenedAtLogin: false, wasOpenedAsHidden: false };
-  }
+function startupPreferencesPath(): string {
+  return startupPreferencesFilePath(app.getPath("userData"));
 }
 
 function startupPreferencesSnapshot(
@@ -1498,7 +1491,6 @@ function startupPreferencesSnapshot(
 ): StartupPreferencesSnapshot {
   return {
     openAtLogin: preferences.openAtLogin,
-    silentLaunch: preferences.silentLaunch,
     supported: startupPlatformSupported(process.platform),
     approvalRequired,
   };
@@ -1525,12 +1517,10 @@ function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
   const current = readStartupPreferences(startupPreferencesPath());
   const record = typeof input === "object" && input !== null ? input as {
     openAtLogin?: unknown;
-    silentLaunch?: unknown;
   } : {};
   const preferences: StartupPreferences = {
     version: 1,
     openAtLogin: typeof record.openAtLogin === "boolean" ? record.openAtLogin : current.openAtLogin,
-    silentLaunch: typeof record.silentLaunch === "boolean" ? record.silentLaunch : current.silentLaunch,
   };
   writeStartupPreferences(startupPreferencesPath(), preferences);
   return applyStartupLoginItem({
@@ -1554,7 +1544,6 @@ function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
 
 function handleSecondInstance(): void {
   if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
-  startHidden = false;
   if (
     MAIN_WINDOW_VITE_DEV_SERVER_URL &&
     mainWindow &&
@@ -1570,6 +1559,7 @@ function handleSecondInstance(): void {
 }
 
 function focusSerpentWindow(windowId?: number): boolean {
+  if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return false;
   const target =
     windowId === undefined
       ? mainWindow
@@ -1780,10 +1770,9 @@ async function createMainWindow(): Promise<void> {
   attachRendererDiagnostics(window);
   window.on("ready-to-show", () => {
     // E2E can keep its renderer fully loaded and automatable without putting
-    // a test window over the user's desktop session. Silent login and an
-    // update handoff also stay hidden so a second launch cannot flash a window.
+    // a test window over the user's desktop session. An update handoff stays
+    // hidden so a second launch cannot flash a window.
     if (shouldShowMainWindowOnReady({
-      startHidden,
       updateHandoff,
       applicationQuitting,
       e2eHideWindow: process.env.SERPENT_E2E === "1"
@@ -6397,13 +6386,6 @@ async function startApplication(): Promise<void> {
   });
 
   const startupPreferences = readStartupPreferences(startupPreferencesPath());
-  const loginLaunch = macLoginLaunchState();
-  startHidden = shouldStartHidden({
-    preferences: startupPreferences,
-    argv: process.argv,
-    wasOpenedAtLogin: loginLaunch.wasOpenedAtLogin,
-    wasOpenedAsHidden: loginLaunch.wasOpenedAsHidden,
-  });
   if (startupPreferences.openAtLogin) {
     try {
       applyStartupLoginItem({
@@ -6473,6 +6455,10 @@ app.setName("Serpent");
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
+  app.on("browser-window-created", (_event, window) => {
+    suppressWindowDuringUpdateHandoff(window);
+  });
+
   app.on("second-instance", handleSecondInstance);
 
   app
@@ -6490,7 +6476,6 @@ if (!hasSingleInstanceLock) {
   app.on("activate", () => {
     if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
     if (!startupComplete) return;
-    startHidden = false;
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
     else focusMainWindow();
   });
