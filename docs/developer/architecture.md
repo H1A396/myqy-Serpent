@@ -79,7 +79,7 @@ docs/              # 文档（本目录、ADR、实施规格、QA）
 - Desktop Main 内嵌一个只读 HTTP 服务，只绑定 `127.0.0.1`（`src/main/web-share-server.ts`），由用户自选隧道（如 frp）映射到公网。
 - 查询经 Library Worker 只读命令；媒体字节复用 Main 的 Range 读取路径；不返回磁盘绝对路径。
 - 鉴权为分享密码（scrypt）+ HMAC 会话 Cookie，登录限流；改密码轮换签名密钥使旧会话失效。
-- Web 客户端是独立轻量 SPA（`src/web`，产物 `dist/web`，由 `npm run web:build` 构建），与 Electron Renderer 分离。见 [ADR-0034](https://github.com/dolag233/Serpent/blob/dev/docs/internal/adr/0034-read-only-web-share.md)。
+- Web 客户端是独立轻量 SPA（`src/web`，产物 `dist/web`，由 `npm run web:build` 构建），与 Electron Renderer 分离。见 [ADR-0035](https://github.com/dolag233/Serpent/blob/dev/docs/internal/adr/0035-read-only-web-share.md)。
 
 ## 关键设计决策
 
