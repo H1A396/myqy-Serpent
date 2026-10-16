@@ -18,6 +18,9 @@ export default tseslint.config(
       'node_modules/**',
       // Emscripten-generated glue (acquired by scripts/build-ufbx-wasm.mjs).
       'resources/ufbx/**',
+      // Fork: local clone of the upstream repo used for comparisons
+      // (see docs/myqy/git-rules.md §6); .gitignore does not cover ESLint.
+      '上游作者项目/**',
     ],
   },
   js.configs.recommended,
