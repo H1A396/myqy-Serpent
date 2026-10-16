@@ -141,7 +141,7 @@ test("cancelling a folder disk delete reports an info notice instead of an error
     await folderInput.fill("Alpha");
     await folderInput.press("Enter");
     const alphaRow = window.locator(
-      '.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="Alpha"]',
+      '.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="Alpha"]',
     );
     await expect(alphaRow).toBeVisible({ timeout: 10_000 });
 

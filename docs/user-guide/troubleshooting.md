@@ -4,6 +4,14 @@
 
 开发版可能未签名公证。确认安装包来源后，macOS 右键应用选择「打开」；Windows 选择「更多信息 → 仍要运行」。不要为未知来源的包绕过系统安全提示。
 
+## Linux AppImage 无法启动或没有视频预览
+
+- **权限**：`chmod +x` 后再运行。x86_64 文件名是 `Serpent-linux-x86-64-<版本>.AppImage`，aarch64 是 `Serpent-linux-arm64-<版本>.AppImage`。
+- **FUSE**：两条架构都需要 `libfuse2`；没有 FUSE 时使用 `./Serpent-….AppImage --appimage-extract-and-run`。
+- **视频预览**：发布用 AppImage 已内置 `ffmpeg` / `ffprobe` / `oiiotool`，不必先安装发行版的 `ffmpeg`。若仍没有视频预览，检查 `SERPENT_FFMPEG_PATH` 是否指到了不存在的文件，然后完全退出再启动。从源码运行且没有媒体包时，才需要安装发行版的 `ffmpeg`。
+- **3D 查看器黑屏（无 GPU）**：启动前设置 `SERPENT_SOFTWARE_GL=1`。
+- **关闭即退出**：Linux 没有系统托盘；关闭窗口会结束进程（与 Windows「关闭到托盘」不同）。
+
 ## 缩略图或预览失败
 
 Serpent 会为部分图像、RAW、视频、音频和 3D 格式生成预览。先确认源文件仍可读取、资源库目录有读写权限，然后完全退出并重新打开资源库，让后台任务重试。若错误持续，可打开「窗口 → 后台任务」或「主菜单 → 关于 → 查看诊断日志」查看提示与诊断日志。

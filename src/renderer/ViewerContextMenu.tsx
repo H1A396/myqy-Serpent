@@ -33,6 +33,15 @@ interface ViewerContextMenuProps {
   onRotateCounterClockwise: () => void;
   position: ViewerContextMenuPosition;
   transformable: boolean;
+  canTrash?: boolean;
+  canDiskDelete?: boolean;
+  diskDeleteLinked?: boolean;
+  canRemoveFromCollection?: boolean;
+  canPermanentDelete?: boolean;
+  onTrash?: () => void;
+  onDiskDelete?: () => void;
+  onRemoveFromCollection?: () => void;
+  onPermanentDelete?: () => void;
 }
 
 /**
@@ -56,6 +65,15 @@ export function ViewerContextMenu({
   onRotateCounterClockwise,
   position,
   transformable,
+  canTrash = false,
+  canDiskDelete = false,
+  diskDeleteLinked = false,
+  canRemoveFromCollection = false,
+  canPermanentDelete = false,
+  onTrash,
+  onDiskDelete,
+  onRemoveFromCollection,
+  onPermanentDelete,
 }: ViewerContextMenuProps) {
   const t = useT();
   const menuId = useId();
@@ -260,6 +278,76 @@ export function ViewerContextMenu({
           </span>
         </button>
       </div>
+      {canTrash || canDiskDelete || canRemoveFromCollection || canPermanentDelete ? (
+        <div className="context-menu-section" role="group">
+          {canTrash && onTrash ? (
+            <button
+              className="context-menu-item"
+              onClick={action(onTrash)}
+              tabIndex={VIEWER_CHROME_TAB_INDEX}
+              type="button"
+            >
+              <span className="context-menu-item-icon">
+                <Icon name="trash" size={14} />
+              </span>
+              <span className="context-menu-item-label">
+                {t("command.asset.moveToTrash")}
+              </span>
+              <span className="context-menu-item-shortcut">Delete</span>
+            </button>
+          ) : null}
+          {canRemoveFromCollection && onRemoveFromCollection ? (
+            <button
+              className="context-menu-item"
+              onClick={action(onRemoveFromCollection)}
+              tabIndex={VIEWER_CHROME_TAB_INDEX}
+              type="button"
+            >
+              <span className="context-menu-item-icon">
+                <Icon name="trash" size={14} />
+              </span>
+              <span className="context-menu-item-label">
+                {t("command.asset.removeFromCollection")}
+              </span>
+              <span className="context-menu-item-shortcut">Delete</span>
+            </button>
+          ) : null}
+          {canPermanentDelete && onPermanentDelete ? (
+            <button
+              className="context-menu-item"
+              onClick={action(onPermanentDelete)}
+              tabIndex={VIEWER_CHROME_TAB_INDEX}
+              type="button"
+            >
+              <span className="context-menu-item-icon">
+                <Icon name="trash" size={14} />
+              </span>
+              <span className="context-menu-item-label">
+                {t("command.asset.deletePermanent")}
+              </span>
+              <span className="context-menu-item-shortcut">Delete</span>
+            </button>
+          ) : null}
+          {canDiskDelete && onDiskDelete ? (
+            <button
+              className="context-menu-item"
+              onClick={action(onDiskDelete)}
+              tabIndex={VIEWER_CHROME_TAB_INDEX}
+              type="button"
+            >
+              <span className="context-menu-item-icon">
+                <Icon name="trash" size={14} />
+              </span>
+              <span className="context-menu-item-label">
+                {t(diskDeleteLinked
+                  ? "command.asset.forceDeleteFromDisk"
+                  : "command.asset.deleteFromDisk")}
+              </span>
+              <span className="context-menu-item-shortcut">Shift+Delete</span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </PopoverSurface>
   );
 }

@@ -42,7 +42,7 @@ const SAFE_ASSET_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/u;
 const SHA256_PATTERN = /\b([a-f0-9]{64})\b/iu;
 const INSTALLED_MARKER_NAME = '.serpent-installed';
 
-export type AppUpdatePlatform = 'darwin' | 'win32';
+export type AppUpdatePlatform = 'darwin' | 'win32' | 'linux';
 
 export type AppUpdateTarget = {
   platform: AppUpdatePlatform;
@@ -258,13 +258,26 @@ export function resolveAppUpdateTarget(input: {
   distribution: AppUpdateDistribution;
 }): AppUpdateTarget | undefined {
   if (input.distribution === 'development') return undefined;
-  if (input.platform !== 'darwin' && input.platform !== 'win32') return undefined;
+  if (input.platform !== 'darwin' && input.platform !== 'win32' && input.platform !== 'linux') {
+    return undefined;
+  }
   if (input.platform === 'darwin' && input.arch !== 'arm64') return undefined;
   if (input.platform === 'win32' && input.arch !== 'x64') return undefined;
-  const platform = input.platform === 'darwin' ? 'darwin' : 'win32';
+  if (input.platform === 'linux' && input.arch !== 'x64' && input.arch !== 'arm64') return undefined;
+  if (input.platform === 'darwin') {
+    return { platform: 'darwin', arch: 'arm64', distribution: input.distribution };
+  }
+  if (input.platform === 'linux') {
+    // AppImage is the only Linux release artifact (portable), for x64 and arm64.
+    return {
+      platform: 'linux',
+      arch: input.arch === 'arm64' ? 'arm64' : 'x64',
+      distribution: 'portable',
+    };
+  }
   return {
-    platform,
-    arch: platform === 'darwin' ? 'arm64' : 'x64',
+    platform: 'win32',
+    arch: 'x64',
     distribution: input.distribution,
   };
 }
@@ -283,6 +296,13 @@ export function updateAssetName(
           name: `Serpent-darwin-arm64-${version}-portable.zip`,
           assetKind: 'portable',
         };
+  }
+  if (target.platform === 'linux') {
+    const archLabel = target.arch === 'arm64' ? 'arm64' : 'x86-64';
+    return {
+      name: `Serpent-linux-${archLabel}-${version}.AppImage`,
+      assetKind: 'portable',
+    };
   }
   return target.distribution === 'installed'
     ? {
@@ -553,7 +573,11 @@ export class AppUpdateService {
       arch: this.#options.arch,
       distribution,
     });
-    if (this.#options.platform !== 'darwin' && this.#options.platform !== 'win32') {
+    if (
+      this.#options.platform !== 'darwin'
+      && this.#options.platform !== 'win32'
+      && this.#options.platform !== 'linux'
+    ) {
       return {
         ok: true,
         status: 'unsupported',
@@ -640,6 +664,10 @@ export class AppUpdateService {
     let downloadPath: string | undefined;
     let extractedInstallerDirectory: string | undefined;
     let keepDownloadedUpdate = false;
+    // A handed-off installer must stay on disk. Deleting a mounted DMG or the
+    // Windows setup executable while it is launching makes the OS reopen the
+    // installer and the single-instance handoff show another Serpent window.
+    let retainOpenedInstaller = false;
     try {
       const cached = this.#cachedUpdate;
       const checked = cached === undefined ? await this.checkForUpdates() : undefined;
@@ -776,6 +804,7 @@ export class AppUpdateService {
           return installResultError('open-failed');
         }
       }
+      retainOpenedInstaller = true;
       this.#options.logger?.info('app-update.install', 'Update installer opened.', {
         version: update.release.version,
         assetName: asset.name,
@@ -796,7 +825,8 @@ export class AppUpdateService {
       this.#options.logger?.error('app-update.install', error, { code: 'download-failed' });
       return installResultError('download-failed');
     } finally {
-      if (!keepDownloadedUpdate) {
+      const retainOpenedDownload = retainOpenedInstaller && extractedInstallerDirectory === undefined;
+      if (!keepDownloadedUpdate && !retainOpenedDownload) {
         try {
           await removeUpdateArtifact(downloadPath);
         } catch (error) {
@@ -805,12 +835,14 @@ export class AppUpdateService {
           });
         }
       }
-      try {
-        await removeUpdateArtifact(extractedInstallerDirectory);
-      } catch (error) {
-        this.#options.logger?.error('app-update.cleanup', error, {
-          artifactKind: 'extracted-installer',
-        });
+      if (!retainOpenedInstaller) {
+        try {
+          await removeUpdateArtifact(extractedInstallerDirectory);
+        } catch (error) {
+          this.#options.logger?.error('app-update.cleanup', error, {
+            artifactKind: 'extracted-installer',
+          });
+        }
       }
       this.#downloadAbort = undefined;
       this.#busy = false;

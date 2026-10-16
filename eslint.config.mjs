@@ -10,6 +10,7 @@ export default tseslint.config(
       '.claude/**',
       '.worktrees/**',
       '.media-build/**',
+      '.tmp-*/**',
       'artifacts/**',
       'dist/**',
       'out/**',

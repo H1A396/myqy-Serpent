@@ -46,6 +46,7 @@ import {
 } from "./folder-drag-drop";
 import {
   externalImportPayload,
+  shouldConsumeManagedAssetDrop,
   supportsExternalImportTransfer,
 } from "./external-import-transfer";
 import {
@@ -61,6 +62,7 @@ import type { InlineSmartCollectionEditState } from "./inline-smart-collection-e
 import { isLibraryRootFolderId } from "../shared/library-root-folder";
 import {
   buildUnifiedDirectoryNavEntries,
+  hideOfflineLinkedDirectoryEntries,
   filterCollapsedDirectoryEntries,
   filterCollectionTreeByName,
   filterDirectoryEntriesByName,
@@ -169,7 +171,6 @@ function NavRow({
   // provided (e.g. offline linked folder), append it after the name.
   const hoverTitle =
     title && title !== label ? `${label} — ${title}` : label;
-
   return (
     <div className="nav-tree-row" style={{ paddingLeft: depth * 14 }}>
       {disclosure ?? <span className="nav-disclosure-spacer" aria-hidden="true" />}
@@ -188,7 +189,7 @@ function NavRow({
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
         style={{ paddingLeft: 7 }}
-        title={hoverTitle}
+        data-hover-tip={hoverTitle}
         type="button"
       >
         <AppearanceGlyph
@@ -849,6 +850,7 @@ export interface NavigationSidebarProps {
   activeCollectionId: string | null;
   activeSmartCollectionId: string | null;
   showIgnoredItems: boolean;
+  showMissingLinkedFiles?: boolean;
   onToggleShowIgnoredItems: () => void;
   revealTarget?: {
     kind: "folder" | "collection";
@@ -866,7 +868,6 @@ export interface NavigationSidebarProps {
   collectionTree: Map<string | null, CollectionSummary[]>;
   smartCollections: SmartCollectionSummary[];
   linkedFolders: LinkedFolderSummary[];
-
   // --- Inline input state ---
   showCollectionInput: boolean;
   collectionInputValue: string;
@@ -912,6 +913,8 @@ export interface NavigationSidebarProps {
   folderTreeActionsRef?: MutableRefObject<FolderTreeExpandActions | null>;
   /** Resolve an Electron native file drop back to managed asset ids. */
   onResolveManagedAssetDrop?: (files: File[]) => Promise<string[]>;
+  /** True only while Serpent is completing a drag it started from an asset card. */
+  isInternalAssetDrag?: () => boolean;
 
   // --- Internal asset drag/drop (REQ-DND-001/002 + Serpent-aa3 copy mode) ---
   onAssetsDroppedOnFolder: (
@@ -1035,6 +1038,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     activeCollectionId,
     activeSmartCollectionId,
     showIgnoredItems,
+    showMissingLinkedFiles = true,
     onToggleShowIgnoredItems,
     revealTarget = null,
     allAssetCount,
@@ -1066,6 +1070,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     onOpenRootFolderContextMenu,
     folderTreeActionsRef,
     onResolveManagedAssetDrop,
+    isInternalAssetDrag,
     onAssetsDroppedOnFolder,
     onFoldersDroppedOnFolder,
     selectedFolderIds,
@@ -1228,7 +1233,12 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
     saveNavTreePreferences(next);
   }
 
-  const unifiedDirectoryEntries = buildUnifiedDirectoryNavEntries(folders, linkedFolders);
+  const unifiedDirectoryEntries = (() => {
+    const entries = buildUnifiedDirectoryNavEntries(folders, linkedFolders);
+    return showMissingLinkedFiles
+      ? entries
+      : hideOfflineLinkedDirectoryEntries(entries);
+  })();
 
   function applyFolderSubtree(folderId: string, collapse: boolean) {
     const rootId = isLibraryRootFolderId(folderId) || folderId === "root"
@@ -1478,12 +1488,23 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
           return;
         }
         const files = Array.from(event.dataTransfer.files);
-        if (files.length > 0 && onResolveManagedAssetDrop) {
+        const internalAssetDrag = isInternalAssetDrag?.() ?? false;
+        if (
+          files.length > 0 &&
+          internalAssetDrag &&
+          onResolveManagedAssetDrop
+        ) {
           event.preventDefault();
           event.stopPropagation();
           const payload = externalImportPayload(event.dataTransfer);
           void onResolveManagedAssetDrop(files).then((resolvedIds) => {
-            if (resolvedIds.length > 0) {
+            if (
+              shouldConsumeManagedAssetDrop(
+                internalAssetDrag,
+                files.length,
+                resolvedIds,
+              )
+            ) {
               onAssetsDroppedOnFolder(
                 folderId,
                 resolvedIds,
@@ -2029,12 +2050,23 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
               return;
             }
             const files = Array.from(event.dataTransfer.files);
-            if (files.length > 0 && onResolveManagedAssetDrop) {
+            const internalAssetDrag = isInternalAssetDrag?.() ?? false;
+            if (
+              files.length > 0 &&
+              internalAssetDrag &&
+              onResolveManagedAssetDrop
+            ) {
               event.preventDefault();
               setAssetDropTarget(null);
               const payload = externalImportPayload(event.dataTransfer);
               void onResolveManagedAssetDrop(files).then((resolvedIds) => {
-                if (resolvedIds.length > 0) {
+                if (
+                  shouldConsumeManagedAssetDrop(
+                    internalAssetDrag,
+                    files.length,
+                    resolvedIds,
+                  )
+                ) {
                   if (mode === "copy") {
                     void onCopyManagedToLinked(lf, resolvedIds);
                   } else {
@@ -2057,6 +2089,16 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
                   payload,
                 );
               });
+            } else if (files.length > 0) {
+              event.preventDefault();
+              setAssetDropTarget(null);
+              const payload = externalImportPayload(event.dataTransfer);
+              void onImportDroppedFiles(
+                payload.files,
+                lf.folderId,
+                undefined,
+                payload,
+              );
             }
           }}
         />
@@ -2175,6 +2217,7 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
             );
             return;
           }
+          const internalAssetDrag = isInternalAssetDrag?.() ?? false;
           if (draggedCollectionId) {
             if (!acceptsCollectionNestDrop(c.collectionId)) return;
             if (persistedCollapsedCollectionIds.has(c.collectionId)) {
@@ -2183,12 +2226,19 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
             void onNestCollection(draggedCollectionId, c.collectionId);
           } else if (
             event.dataTransfer.files.length > 0 &&
+            internalAssetDrag &&
             onResolveManagedAssetDrop
           ) {
             const files = Array.from(event.dataTransfer.files);
             const payload = externalImportPayload(event.dataTransfer);
             void onResolveManagedAssetDrop(files).then((resolvedIds) => {
-              if (resolvedIds.length > 0) {
+              if (
+                shouldConsumeManagedAssetDrop(
+                  internalAssetDrag,
+                  files.length,
+                  resolvedIds,
+                )
+              ) {
                 onAssetsDroppedOnCollection(
                   c.collectionId,
                   resolvedIds,
@@ -2439,11 +2489,22 @@ export function NavigationSidebar(props: NavigationSidebarProps) {
               return;
             }
             const files = Array.from(event.dataTransfer.files);
-            if (files.length > 0 && onResolveManagedAssetDrop) {
+            const internalAssetDrag = isInternalAssetDrag?.() ?? false;
+            if (files.length > 0) {
               event.preventDefault();
-              void onResolveManagedAssetDrop(files).then((resolvedIds) => {
-                if (resolvedIds.length > 0) onAssetsDroppedOnTrash(resolvedIds);
-              });
+              if (internalAssetDrag && onResolveManagedAssetDrop) {
+                void onResolveManagedAssetDrop(files).then((resolvedIds) => {
+                  if (
+                    shouldConsumeManagedAssetDrop(
+                      internalAssetDrag,
+                      files.length,
+                      resolvedIds,
+                    )
+                  ) {
+                    onAssetsDroppedOnTrash(resolvedIds);
+                  }
+                });
+              }
             }
           }}
         />

@@ -1,7 +1,7 @@
 # Serpent 领域模型
 
 > 状态：生效，持续演进
-> 日期：2026-07-11；最后校准：2026-08-12
+> 日期：2026-07-11；最后校准：2026-10-13
 
 ## 核心关系
 
@@ -422,3 +422,14 @@ LibraryConnectionRestored
 ## 明确后置的领域问题
 
 - 可见版本管理上线后，托管修订内容保留多久，以及如何计入回收站和空间清理。
+
+## 语义索引（2026-10-13 采用，实施中）
+
+Semantic Index 是每个资源库内可重建的派生数据，Library Worker 是唯一持久化所有者；核心资产、Revision 与 Artifact 仍是事实源。独立 SQLite 与核心数据库之间不存在跨库事务保证。
+
+- Embedding Profile 描述模型语义身份、维度、预处理和距离规则；本机服务 ID 或同名模型不足以证明两个 profile 等价，认证不随索引携带。
+- Asset Embedding 以 profile 与资产 ID 定位，绑定参与编码的 source revision；过期或已删除资产的向量不得进入当前查询结果。
+- Embedding Job 是有界、可恢复的派生计算任务；推理由 Main 的 provider 执行，Worker 提供有界输入并在写入前复核当前身份与版本。
+- Semantic Query Session 绑定查询、profile、筛选与目录版本，支持取消和全部结果的渐进浏览，不因结果页大小改变合法候选集合。
+
+普通搜索与资源库可用性不依赖语义索引健康。采用理由与未验证事项见 [ADR-0034](adr/0034-worker-owned-semantic-index.md)。

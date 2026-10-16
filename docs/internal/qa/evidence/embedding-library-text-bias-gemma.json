@@ -1,0 +1,3146 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-11T16:31:52.592Z",
+  "scope": "authorized-library-read-only-gemma-cache",
+  "profile": "Q4_K_XL",
+  "hashes": {
+    "core": "ea905fd08e8061db77a0031cbb5096d459d7cfd2bdd0ad2ba66e483f16719493",
+    "projector": "90e7b0238009e2954f856f2081dcf7f35af026b64c765e98f4777053e1754460"
+  },
+  "cacheProfileMatches": true,
+  "corpusCount": 156,
+  "documentCount": 7,
+  "documentChecks": [
+    {
+      "id": "asset-001",
+      "characters": 9055,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    },
+    {
+      "id": "asset-002",
+      "characters": 5735,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    },
+    {
+      "id": "asset-011",
+      "characters": 4943,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 0.9999999999999999
+    },
+    {
+      "id": "asset-131",
+      "characters": 7466,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    },
+    {
+      "id": "asset-132",
+      "characters": 7442,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    },
+    {
+      "id": "asset-133",
+      "characters": 8061,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    },
+    {
+      "id": "asset-134",
+      "characters": 14712,
+      "indexedCharacters": 2500,
+      "cachedVsFreshCosine": 1
+    }
+  ],
+  "background": {
+    "queries": 16,
+    "meanTextScore": 0.576725188439604,
+    "meanMediaScore": 0.5446105524847727
+  },
+  "evaluation": [
+    {
+      "query": "一辆红色汽车",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.654852607007047
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6353043324535325
+            },
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.6237867883666702
+            },
+            {
+              "id": "asset-011",
+              "kind": "text",
+              "score": 0.6164041547750874
+            },
+            {
+              "id": "asset-002",
+              "kind": "text",
+              "score": 0.6126158483095073
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6125568812079853
+            },
+            {
+              "id": "asset-113",
+              "kind": "media",
+              "score": 0.6059508423062797
+            },
+            {
+              "id": "asset-001",
+              "kind": "text",
+              "score": 0.6034222589632239
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.6026279855489706
+            },
+            {
+              "id": "asset-133",
+              "kind": "text",
+              "score": 0.6012979912665953
+            }
+          ],
+          "textInTop10": 4,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 8,
+              "score": 0.6034222589632239
+            },
+            {
+              "id": "asset-002",
+              "rank": 5,
+              "score": 0.6126158483095073
+            },
+            {
+              "id": "asset-011",
+              "rank": 4,
+              "score": 0.6164041547750874
+            },
+            {
+              "id": "asset-131",
+              "rank": 12,
+              "score": 0.6002399275462894
+            },
+            {
+              "id": "asset-132",
+              "rank": 22,
+              "score": 0.5884623199042996
+            },
+            {
+              "id": "asset-133",
+              "rank": 10,
+              "score": 0.6012979912665953
+            },
+            {
+              "id": "asset-134",
+              "rank": 15,
+              "score": 0.5966653227981508
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.654852607007047
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6353043324535325
+            },
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.6237867883666702
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6125568812079853
+            },
+            {
+              "id": "asset-113",
+              "kind": "media",
+              "score": 0.6059508423062797
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.6026279855489706
+            },
+            {
+              "id": "asset-145",
+              "kind": "media",
+              "score": 0.6009147288365301
+            },
+            {
+              "id": "asset-130",
+              "kind": "media",
+              "score": 0.5994970065259448
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.5972459758416541
+            },
+            {
+              "id": "asset-094",
+              "kind": "media",
+              "score": 0.5966336898982754
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 150,
+              "score": 0.4834222589632239
+            },
+            {
+              "id": "asset-002",
+              "rank": 145,
+              "score": 0.49261584830950733
+            },
+            {
+              "id": "asset-011",
+              "rank": 143,
+              "score": 0.49640415477508737
+            },
+            {
+              "id": "asset-131",
+              "rank": 152,
+              "score": 0.4802399275462894
+            },
+            {
+              "id": "asset-132",
+              "rank": 155,
+              "score": 0.46846231990429965
+            },
+            {
+              "id": "asset-133",
+              "rank": 151,
+              "score": 0.48129799126659534
+            },
+            {
+              "id": "asset-134",
+              "rank": 153,
+              "score": 0.47666532279815077
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.09151364701437614
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.07960093394517553
+            },
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.07081759193475978
+            },
+            {
+              "id": "asset-034",
+              "kind": "media",
+              "score": 0.05176321884724644
+            },
+            {
+              "id": "asset-002",
+              "kind": "text",
+              "score": 0.048105839488484126
+            },
+            {
+              "id": "asset-108",
+              "kind": "media",
+              "score": 0.04336924544962162
+            },
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.0424910523387948
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.04154561281575331
+            },
+            {
+              "id": "asset-149",
+              "kind": "media",
+              "score": 0.03920598282944998
+            },
+            {
+              "id": "asset-035",
+              "kind": "media",
+              "score": 0.03884179623647588
+            }
+          ],
+          "textInTop10": 1,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 40,
+              "score": 0.019384130713295367
+            },
+            {
+              "id": "asset-002",
+              "rank": 5,
+              "score": 0.048105839488484126
+            },
+            {
+              "id": "asset-011",
+              "rank": 14,
+              "score": 0.035587540323713585
+            },
+            {
+              "id": "asset-131",
+              "rank": 35,
+              "score": 0.021876479813169536
+            },
+            {
+              "id": "asset-132",
+              "rank": 50,
+              "score": 0.015974510478321213
+            },
+            {
+              "id": "asset-133",
+              "rank": 41,
+              "score": 0.019353972849979417
+            },
+            {
+              "id": "asset-134",
+              "rank": 36,
+              "score": 0.02174903081896329
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.08279774068488777
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.07489346552416254
+            },
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.06634825077858153
+            },
+            {
+              "id": "asset-034",
+              "kind": "media",
+              "score": 0.04537813258888457
+            },
+            {
+              "id": "asset-108",
+              "kind": "media",
+              "score": 0.040253759893082774
+            },
+            {
+              "id": "asset-002",
+              "kind": "text",
+              "score": 0.03891455348767492
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.037789146383158
+            },
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.03668585885344744
+            },
+            {
+              "id": "asset-149",
+              "kind": "media",
+              "score": 0.03321378614177395
+            },
+            {
+              "id": "asset-035",
+              "kind": "media",
+              "score": 0.030780610541576547
+            }
+          ],
+          "textInTop10": 1,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 62,
+              "score": 0.0034662843805101096
+            },
+            {
+              "id": "asset-002",
+              "rank": 6,
+              "score": 0.03891455348767492
+            },
+            {
+              "id": "asset-011",
+              "rank": 18,
+              "score": 0.024745117181096066
+            },
+            {
+              "id": "asset-131",
+              "rank": 45,
+              "score": 0.0109396224965429
+            },
+            {
+              "id": "asset-132",
+              "rank": 56,
+              "score": 0.005036114634826783
+            },
+            {
+              "id": "asset-133",
+              "rank": 47,
+              "score": 0.010595986783908162
+            },
+            {
+              "id": "asset-134",
+              "rank": 40,
+              "score": 0.012799867444473256
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "海面上的帆船",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.637820059295342
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.6111752834494512
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.6058871309101834
+            },
+            {
+              "id": "asset-134",
+              "kind": "text",
+              "score": 0.6054202696161395
+            },
+            {
+              "id": "asset-133",
+              "kind": "text",
+              "score": 0.6030282045659544
+            },
+            {
+              "id": "asset-099",
+              "kind": "media",
+              "score": 0.5977686961452856
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.595212738549519
+            },
+            {
+              "id": "asset-132",
+              "kind": "text",
+              "score": 0.5936659953895002
+            },
+            {
+              "id": "asset-001",
+              "kind": "text",
+              "score": 0.5931056860806694
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5931031762657463
+            }
+          ],
+          "textInTop10": 5,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 9,
+              "score": 0.5931056860806694
+            },
+            {
+              "id": "asset-002",
+              "rank": 40,
+              "score": 0.5633985190402848
+            },
+            {
+              "id": "asset-011",
+              "rank": 20,
+              "score": 0.5749743752709813
+            },
+            {
+              "id": "asset-131",
+              "rank": 3,
+              "score": 0.6058871309101834
+            },
+            {
+              "id": "asset-132",
+              "rank": 8,
+              "score": 0.5936659953895002
+            },
+            {
+              "id": "asset-133",
+              "rank": 5,
+              "score": 0.6030282045659544
+            },
+            {
+              "id": "asset-134",
+              "rank": 4,
+              "score": 0.6054202696161395
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.637820059295342
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.6111752834494512
+            },
+            {
+              "id": "asset-099",
+              "kind": "media",
+              "score": 0.5977686961452856
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.595212738549519
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5931031762657463
+            },
+            {
+              "id": "asset-086",
+              "kind": "media",
+              "score": 0.5911912084137985
+            },
+            {
+              "id": "asset-109",
+              "kind": "media",
+              "score": 0.5872309062144327
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.5836667844692979
+            },
+            {
+              "id": "asset-151",
+              "kind": "media",
+              "score": 0.5801221254713687
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.5797162589126315
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 151,
+              "score": 0.4731056860806694
+            },
+            {
+              "id": "asset-002",
+              "rank": 156,
+              "score": 0.4433985190402848
+            },
+            {
+              "id": "asset-011",
+              "rank": 155,
+              "score": 0.4549743752709813
+            },
+            {
+              "id": "asset-131",
+              "rank": 142,
+              "score": 0.48588713091018343
+            },
+            {
+              "id": "asset-132",
+              "rank": 149,
+              "score": 0.47366599538950016
+            },
+            {
+              "id": "asset-133",
+              "rank": 145,
+              "score": 0.4830282045659544
+            },
+            {
+              "id": "asset-134",
+              "rank": 143,
+              "score": 0.4854202696161395
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.0940293738561857
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.08092785072865649
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.05241616304028329
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.042147438800132386
+            },
+            {
+              "id": "asset-047",
+              "kind": "media",
+              "score": 0.031105782846833407
+            },
+            {
+              "id": "asset-134",
+              "kind": "text",
+              "score": 0.030503977636952007
+            },
+            {
+              "id": "asset-086",
+              "kind": "media",
+              "score": 0.029392288499097252
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.02752368317706355
+            },
+            {
+              "id": "asset-056",
+              "kind": "media",
+              "score": 0.026285280474247108
+            },
+            {
+              "id": "asset-109",
+              "kind": "media",
+              "score": 0.021236409862495975
+            }
+          ],
+          "textInTop10": 2,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 30,
+              "score": 0.009067557830740869
+            },
+            {
+              "id": "asset-002",
+              "rank": 52,
+              "score": -0.001111489780738384
+            },
+            {
+              "id": "asset-011",
+              "rank": 69,
+              "score": -0.0058422391803925056
+            },
+            {
+              "id": "asset-131",
+              "rank": 8,
+              "score": 0.02752368317706355
+            },
+            {
+              "id": "asset-132",
+              "rank": 11,
+              "score": 0.021178185963521723
+            },
+            {
+              "id": "asset-133",
+              "rank": 12,
+              "score": 0.02108418614933849
+            },
+            {
+              "id": "asset-134",
+              "rank": 6,
+              "score": 0.030503977636952007
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.08531346752669733
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.07252396883747525
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.04957019691103737
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.03766299985474997
+            },
+            {
+              "id": "asset-047",
+              "kind": "media",
+              "score": 0.028255422274117925
+            },
+            {
+              "id": "asset-056",
+              "kind": "media",
+              "score": 0.023367793829057015
+            },
+            {
+              "id": "asset-086",
+              "kind": "media",
+              "score": 0.021859129217220108
+            },
+            {
+              "id": "asset-134",
+              "kind": "text",
+              "score": 0.021554814262461974
+            },
+            {
+              "id": "asset-109",
+              "kind": "media",
+              "score": 0.016758095063549416
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.016586825860436916
+            }
+          ],
+          "textInTop10": 2,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 51,
+              "score": -0.006850288502044388
+            },
+            {
+              "id": "asset-002",
+              "rank": 62,
+              "score": -0.01030277578154759
+            },
+            {
+              "id": "asset-011",
+              "rank": 78,
+              "score": -0.016684662323010024
+            },
+            {
+              "id": "asset-131",
+              "rank": 10,
+              "score": 0.016586825860436916
+            },
+            {
+              "id": "asset-132",
+              "rank": 18,
+              "score": 0.010239790120027292
+            },
+            {
+              "id": "asset-133",
+              "rank": 15,
+              "score": 0.012326200083267236
+            },
+            {
+              "id": "asset-134",
+              "rank": 8,
+              "score": 0.021554814262461974
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "一座积雪的高山",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-018",
+              "kind": "media",
+              "score": 0.6062758347388106
+            },
+            {
+              "id": "asset-129",
+              "kind": "media",
+              "score": 0.6062758347388106
+            },
+            {
+              "id": "asset-011",
+              "kind": "text",
+              "score": 0.606218427729191
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.603771721619948
+            },
+            {
+              "id": "asset-094",
+              "kind": "media",
+              "score": 0.6004900263393346
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.5995293602877954
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.5989868369822827
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5976728641636034
+            },
+            {
+              "id": "asset-001",
+              "kind": "text",
+              "score": 0.5951612009620599
+            },
+            {
+              "id": "asset-143",
+              "kind": "media",
+              "score": 0.5911157977156961
+            }
+          ],
+          "textInTop10": 2,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 9,
+              "score": 0.5951612009620599
+            },
+            {
+              "id": "asset-002",
+              "rank": 63,
+              "score": 0.560159338713364
+            },
+            {
+              "id": "asset-011",
+              "rank": 3,
+              "score": 0.606218427729191
+            },
+            {
+              "id": "asset-131",
+              "rank": 16,
+              "score": 0.5833897769415011
+            },
+            {
+              "id": "asset-132",
+              "rank": 25,
+              "score": 0.5792345263479084
+            },
+            {
+              "id": "asset-133",
+              "rank": 33,
+              "score": 0.5745415411845731
+            },
+            {
+              "id": "asset-134",
+              "rank": 32,
+              "score": 0.5749351025410725
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-018",
+              "kind": "media",
+              "score": 0.6062758347388106
+            },
+            {
+              "id": "asset-129",
+              "kind": "media",
+              "score": 0.6062758347388106
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.603771721619948
+            },
+            {
+              "id": "asset-094",
+              "kind": "media",
+              "score": 0.6004900263393346
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.5995293602877954
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.5989868369822827
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5976728641636034
+            },
+            {
+              "id": "asset-143",
+              "kind": "media",
+              "score": 0.5911157977156961
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.5889805873347944
+            },
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.58849286525818
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 151,
+              "score": 0.47516120096205994
+            },
+            {
+              "id": "asset-002",
+              "rank": 156,
+              "score": 0.440159338713364
+            },
+            {
+              "id": "asset-011",
+              "rank": 146,
+              "score": 0.486218427729191
+            },
+            {
+              "id": "asset-131",
+              "rank": 152,
+              "score": 0.4633897769415011
+            },
+            {
+              "id": "asset-132",
+              "rank": 153,
+              "score": 0.4592345263479084
+            },
+            {
+              "id": "asset-133",
+              "rank": 155,
+              "score": 0.45454154118457313
+            },
+            {
+              "id": "asset-134",
+              "rank": 154,
+              "score": 0.4549351025410725
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.06623341221805779
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.05998103618079165
+            },
+            {
+              "id": "asset-078",
+              "kind": "media",
+              "score": 0.05453443548619086
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.051342321802389956
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.04904558023515737
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.04746124166562893
+            },
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.044379742770631836
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.043286473956381966
+            },
+            {
+              "id": "asset-081",
+              "kind": "media",
+              "score": 0.0422589736190383
+            },
+            {
+              "id": "asset-092",
+              "kind": "media",
+              "score": 0.03883344401172484
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 50,
+              "score": 0.011123072712131421
+            },
+            {
+              "id": "asset-002",
+              "rank": 102,
+              "score": -0.004350670107659216
+            },
+            {
+              "id": "asset-011",
+              "rank": 22,
+              "score": 0.02540181327781721
+            },
+            {
+              "id": "asset-131",
+              "rank": 77,
+              "score": 0.005026329208381197
+            },
+            {
+              "id": "asset-132",
+              "rank": 70,
+              "score": 0.006746716921929963
+            },
+            {
+              "id": "asset-133",
+              "rank": 109,
+              "score": -0.007402477232042792
+            },
+            {
+              "id": "asset-134",
+              "rank": 93,
+              "score": 0.00001881056188501873
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.060428218732710426
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.05126512985130327
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.046776224067489935
+            },
+            {
+              "id": "asset-078",
+              "kind": "media",
+              "score": 0.043445608761052745
+            },
+            {
+              "id": "asset-097",
+              "kind": "media",
+              "score": 0.04297680272024651
+            },
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.04064169834397613
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.03953000752378666
+            },
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.035774611857559924
+            },
+            {
+              "id": "asset-092",
+              "kind": "media",
+              "score": 0.033771909040714365
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.03250503045979369
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 89,
+              "score": -0.004794773620653836
+            },
+            {
+              "id": "asset-002",
+              "rank": 115,
+              "score": -0.013541956108468423
+            },
+            {
+              "id": "asset-011",
+              "rank": 29,
+              "score": 0.01455939013519969
+            },
+            {
+              "id": "asset-131",
+              "rank": 93,
+              "score": -0.005910528108245439
+            },
+            {
+              "id": "asset-132",
+              "rank": 87,
+              "score": -0.004191678921564468
+            },
+            {
+              "id": "asset-133",
+              "rank": 121,
+              "score": -0.016160463298114047
+            },
+            {
+              "id": "asset-134",
+              "rank": 97,
+              "score": -0.008930352812605014
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "一条橙色的鱼",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6286380889384331
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.6284604429445569
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6238754619480776
+            },
+            {
+              "id": "asset-133",
+              "kind": "text",
+              "score": 0.6200357631798503
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.6178103185621414
+            },
+            {
+              "id": "asset-134",
+              "kind": "text",
+              "score": 0.6143778586152991
+            },
+            {
+              "id": "asset-001",
+              "kind": "text",
+              "score": 0.6136594527342011
+            },
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.6113223853837937
+            },
+            {
+              "id": "asset-132",
+              "kind": "text",
+              "score": 0.6106218226578729
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6091175976764132
+            }
+          ],
+          "textInTop10": 5,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 7,
+              "score": 0.6136594527342011
+            },
+            {
+              "id": "asset-002",
+              "rank": 21,
+              "score": 0.5917432734012084
+            },
+            {
+              "id": "asset-011",
+              "rank": 13,
+              "score": 0.6050861711655547
+            },
+            {
+              "id": "asset-131",
+              "rank": 2,
+              "score": 0.6284604429445569
+            },
+            {
+              "id": "asset-132",
+              "rank": 9,
+              "score": 0.6106218226578729
+            },
+            {
+              "id": "asset-133",
+              "rank": 4,
+              "score": 0.6200357631798503
+            },
+            {
+              "id": "asset-134",
+              "rank": 6,
+              "score": 0.6143778586152991
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6286380889384331
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6238754619480776
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.6178103185621414
+            },
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.6113223853837937
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6091175976764132
+            },
+            {
+              "id": "asset-127",
+              "kind": "media",
+              "score": 0.6091175976764132
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.6051003436666378
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.604441708800194
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.6027427390968046
+            },
+            {
+              "id": "asset-049",
+              "kind": "media",
+              "score": 0.6018304069457613
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 151,
+              "score": 0.4936594527342011
+            },
+            {
+              "id": "asset-002",
+              "rank": 155,
+              "score": 0.47174327340120836
+            },
+            {
+              "id": "asset-011",
+              "rank": 154,
+              "score": 0.48508617116555475
+            },
+            {
+              "id": "asset-131",
+              "rank": 141,
+              "score": 0.508460442944557
+            },
+            {
+              "id": "asset-132",
+              "rank": 152,
+              "score": 0.4906218226578729
+            },
+            {
+              "id": "asset-133",
+              "rank": 146,
+              "score": 0.5000357631798503
+            },
+            {
+              "id": "asset-134",
+              "rank": 150,
+              "score": 0.49437785861529915
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.08008477650892132
+            },
+            {
+              "id": "asset-022",
+              "kind": "media",
+              "score": 0.05876129182191203
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.05785394755540263
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.05691021480597336
+            },
+            {
+              "id": "asset-057",
+              "kind": "media",
+              "score": 0.05647871041571517
+            },
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.05569301183556108
+            },
+            {
+              "id": "asset-049",
+              "kind": "media",
+              "score": 0.05438115740174809
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.05009699521143707
+            },
+            {
+              "id": "asset-019",
+              "kind": "media",
+              "score": 0.04502591501972253
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.04255864550027
+            }
+          ],
+          "textInTop10": 1,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 31,
+              "score": 0.02962132448427257
+            },
+            {
+              "id": "asset-002",
+              "rank": 37,
+              "score": 0.027233264580185157
+            },
+            {
+              "id": "asset-011",
+              "rank": 42,
+              "score": 0.024269556714180962
+            },
+            {
+              "id": "asset-131",
+              "rank": 8,
+              "score": 0.05009699521143707
+            },
+            {
+              "id": "asset-132",
+              "rank": 18,
+              "score": 0.03813401323189447
+            },
+            {
+              "id": "asset-133",
+              "rank": 19,
+              "score": 0.0380917447632344
+            },
+            {
+              "id": "asset-134",
+              "rank": 15,
+              "score": 0.03946156663611167
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.07136887017943294
+            },
+            {
+              "id": "asset-022",
+              "kind": "media",
+              "score": 0.05427963413983272
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.05398223431278415
+            },
+            {
+              "id": "asset-057",
+              "kind": "media",
+              "score": 0.05161453476918709
+            },
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.05008162197148558
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.05002832592356332
+            },
+            {
+              "id": "asset-049",
+              "kind": "media",
+              "score": 0.04826939056705981
+            },
+            {
+              "id": "asset-019",
+              "kind": "media",
+              "score": 0.041482432157793125
+            },
+            {
+              "id": "asset-131",
+              "kind": "text",
+              "score": 0.03916013789481043
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.03803745930984159
+            }
+          ],
+          "textInTop10": 1,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 51,
+              "score": 0.013703478151487314
+            },
+            {
+              "id": "asset-002",
+              "rank": 42,
+              "score": 0.01804197857937595
+            },
+            {
+              "id": "asset-011",
+              "rank": 52,
+              "score": 0.013427133571563443
+            },
+            {
+              "id": "asset-131",
+              "rank": 9,
+              "score": 0.03916013789481043
+            },
+            {
+              "id": "asset-132",
+              "rank": 24,
+              "score": 0.02719561738840004
+            },
+            {
+              "id": "asset-133",
+              "rank": 22,
+              "score": 0.029333758697163148
+            },
+            {
+              "id": "asset-134",
+              "rank": 20,
+              "score": 0.030512403261621635
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "a red car",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.6230420483808979
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.6069109979684404
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.6061455503450647
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6024279976571402
+            },
+            {
+              "id": "asset-145",
+              "kind": "media",
+              "score": 0.5970600248677596
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.592037254544959
+            },
+            {
+              "id": "asset-147",
+              "kind": "media",
+              "score": 0.589086054928579
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5877759264690923
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5877759264690923
+            },
+            {
+              "id": "asset-122",
+              "kind": "media",
+              "score": 0.5861757794058359
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 55,
+              "score": 0.5544643314955493
+            },
+            {
+              "id": "asset-002",
+              "rank": 17,
+              "score": 0.5761075975568404
+            },
+            {
+              "id": "asset-011",
+              "rank": 30,
+              "score": 0.5649522145431991
+            },
+            {
+              "id": "asset-131",
+              "rank": 87,
+              "score": 0.5372079420697965
+            },
+            {
+              "id": "asset-132",
+              "rank": 93,
+              "score": 0.5331684407697955
+            },
+            {
+              "id": "asset-133",
+              "rank": 67,
+              "score": 0.546803004620986
+            },
+            {
+              "id": "asset-134",
+              "rank": 80,
+              "score": 0.5415789980975261
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.6230420483808979
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.6069109979684404
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.6061455503450647
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6024279976571402
+            },
+            {
+              "id": "asset-145",
+              "kind": "media",
+              "score": 0.5970600248677596
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.592037254544959
+            },
+            {
+              "id": "asset-147",
+              "kind": "media",
+              "score": 0.589086054928579
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5877759264690923
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5877759264690923
+            },
+            {
+              "id": "asset-122",
+              "kind": "media",
+              "score": 0.5861757794058359
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 152,
+              "score": 0.4344643314955493
+            },
+            {
+              "id": "asset-002",
+              "rank": 150,
+              "score": 0.4561075975568404
+            },
+            {
+              "id": "asset-011",
+              "rank": 151,
+              "score": 0.4449522145431991
+            },
+            {
+              "id": "asset-131",
+              "rank": 155,
+              "score": 0.4172079420697965
+            },
+            {
+              "id": "asset-132",
+              "rank": 156,
+              "score": 0.41316844076979553
+            },
+            {
+              "id": "asset-133",
+              "rank": 153,
+              "score": 0.42680300462098597
+            },
+            {
+              "id": "asset-134",
+              "rank": 154,
+              "score": 0.4215789980975261
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.07007285194898749
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.05863731221798385
+            },
+            {
+              "id": "asset-149",
+              "kind": "media",
+              "score": 0.04480850600562669
+            },
+            {
+              "id": "asset-108",
+              "kind": "media",
+              "score": 0.04241684685235858
+            },
+            {
+              "id": "asset-043",
+              "kind": "media",
+              "score": 0.04161795996589457
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.03686160002405925
+            },
+            {
+              "id": "asset-072",
+              "kind": "media",
+              "score": 0.03320599671742852
+            },
+            {
+              "id": "asset-145",
+              "kind": "media",
+              "score": 0.03312534404282175
+            },
+            {
+              "id": "asset-077",
+              "kind": "media",
+              "score": 0.033119450508865556
+            },
+            {
+              "id": "asset-074",
+              "kind": "media",
+              "score": 0.03198050870881397
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 128,
+              "score": -0.02957379675437921
+            },
+            {
+              "id": "asset-002",
+              "rank": 41,
+              "score": 0.011597588735817177
+            },
+            {
+              "id": "asset-011",
+              "rank": 98,
+              "score": -0.015864399908174676
+            },
+            {
+              "id": "asset-131",
+              "rank": 145,
+              "score": -0.04115550566332338
+            },
+            {
+              "id": "asset-132",
+              "rank": 144,
+              "score": -0.03931936865618291
+            },
+            {
+              "id": "asset-133",
+              "rank": 137,
+              "score": -0.03514101379562995
+            },
+            {
+              "id": "asset-134",
+              "rank": 133,
+              "score": -0.0333372938816614
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-048",
+              "kind": "media",
+              "score": 0.06560351079280924
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.049921405888495474
+            },
+            {
+              "id": "asset-108",
+              "kind": "media",
+              "score": 0.03930136129581974
+            },
+            {
+              "id": "asset-149",
+              "kind": "media",
+              "score": 0.03881630931795066
+            },
+            {
+              "id": "asset-043",
+              "kind": "media",
+              "score": 0.03875365787992946
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.02878347109070767
+            },
+            {
+              "id": "asset-072",
+              "kind": "media",
+              "score": 0.027834280325650163
+            },
+            {
+              "id": "asset-077",
+              "kind": "media",
+              "score": 0.027822156880095483
+            },
+            {
+              "id": "asset-156",
+              "kind": "media",
+              "score": 0.02695185648555598
+            },
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.02452012024651462
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 144,
+              "score": -0.04549164308716447
+            },
+            {
+              "id": "asset-002",
+              "rank": 49,
+              "score": 0.00240630273500797
+            },
+            {
+              "id": "asset-011",
+              "rank": 107,
+              "score": -0.026706823050792194
+            },
+            {
+              "id": "asset-131",
+              "rank": 149,
+              "score": -0.05209236297995001
+            },
+            {
+              "id": "asset-132",
+              "rank": 148,
+              "score": -0.05025776449967734
+            },
+            {
+              "id": "asset-133",
+              "rank": 141,
+              "score": -0.043898999861701204
+            },
+            {
+              "id": "asset-134",
+              "rank": 138,
+              "score": -0.04228645725615143
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "a sailboat on the sea",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-142",
+              "kind": "media",
+              "score": 0.6119402706249164
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6036966121183214
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6028408731605464
+            },
+            {
+              "id": "asset-127",
+              "kind": "media",
+              "score": 0.6028408731605464
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6006727679884332
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5998581506496886
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5998581506496886
+            },
+            {
+              "id": "asset-045",
+              "kind": "media",
+              "score": 0.59934717154876
+            },
+            {
+              "id": "asset-017",
+              "kind": "media",
+              "score": 0.5952005136127723
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.5947719026005126
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 42,
+              "score": 0.5644962067451645
+            },
+            {
+              "id": "asset-002",
+              "rank": 57,
+              "score": 0.554803839710336
+            },
+            {
+              "id": "asset-011",
+              "rank": 62,
+              "score": 0.5503058890285941
+            },
+            {
+              "id": "asset-131",
+              "rank": 39,
+              "score": 0.5656514693403834
+            },
+            {
+              "id": "asset-132",
+              "rank": 48,
+              "score": 0.5608616343110103
+            },
+            {
+              "id": "asset-133",
+              "rank": 32,
+              "score": 0.5671980667924743
+            },
+            {
+              "id": "asset-134",
+              "rank": 33,
+              "score": 0.56656823642953
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-142",
+              "kind": "media",
+              "score": 0.6119402706249164
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.6036966121183214
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6028408731605464
+            },
+            {
+              "id": "asset-127",
+              "kind": "media",
+              "score": 0.6028408731605464
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6006727679884332
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5998581506496886
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5998581506496886
+            },
+            {
+              "id": "asset-045",
+              "kind": "media",
+              "score": 0.59934717154876
+            },
+            {
+              "id": "asset-017",
+              "kind": "media",
+              "score": 0.5952005136127723
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.5947719026005126
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 153,
+              "score": 0.44449620674516455
+            },
+            {
+              "id": "asset-002",
+              "rank": 155,
+              "score": 0.434803839710336
+            },
+            {
+              "id": "asset-011",
+              "rank": 156,
+              "score": 0.4303058890285941
+            },
+            {
+              "id": "asset-131",
+              "rank": 152,
+              "score": 0.44565146934038335
+            },
+            {
+              "id": "asset-132",
+              "rank": 154,
+              "score": 0.44086163431101033
+            },
+            {
+              "id": "asset-133",
+              "rank": 150,
+              "score": 0.4471980667924743
+            },
+            {
+              "id": "asset-134",
+              "rank": 151,
+              "score": 0.44656823642953003
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.061728278350322685
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.059905926679165056
+            },
+            {
+              "id": "asset-063",
+              "kind": "media",
+              "score": 0.04177512536602945
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.04069560615763901
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.03789996668604745
+            },
+            {
+              "id": "asset-056",
+              "kind": "media",
+              "score": 0.0376658187467081
+            },
+            {
+              "id": "asset-142",
+              "kind": "media",
+              "score": 0.03757236866102687
+            },
+            {
+              "id": "asset-137",
+              "kind": "media",
+              "score": 0.036881405085694485
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.03593034714166299
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.032339299634200014
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 119,
+              "score": -0.01954192150476397
+            },
+            {
+              "id": "asset-002",
+              "rank": 92,
+              "score": -0.009706169110687224
+            },
+            {
+              "id": "asset-011",
+              "rank": 147,
+              "score": -0.03051072542277966
+            },
+            {
+              "id": "asset-131",
+              "rank": 103,
+              "score": -0.012711978392736523
+            },
+            {
+              "id": "asset-132",
+              "rank": 96,
+              "score": -0.011626175114968107
+            },
+            {
+              "id": "asset-133",
+              "rank": 109,
+              "score": -0.014745951624141607
+            },
+            {
+              "id": "asset-134",
+              "rank": 88,
+              "score": -0.008348055549657452
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-023",
+              "kind": "media",
+              "score": 0.05332439645914144
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.05119002034967668
+            },
+            {
+              "id": "asset-096",
+              "kind": "media",
+              "score": 0.03784964002839308
+            },
+            {
+              "id": "asset-063",
+              "kind": "media",
+              "score": 0.03643068673539762
+            },
+            {
+              "id": "asset-056",
+              "kind": "media",
+              "score": 0.03474833210151801
+            },
+            {
+              "id": "asset-024",
+              "kind": "media",
+              "score": 0.03414350025345214
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.03108601377310516
+            },
+            {
+              "id": "asset-142",
+              "kind": "media",
+              "score": 0.02911734087328255
+            },
+            {
+              "id": "asset-137",
+              "kind": "media",
+              "score": 0.02808902174590333
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.027248758466981493
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 142,
+              "score": -0.03545976783754923
+            },
+            {
+              "id": "asset-002",
+              "rank": 100,
+              "score": -0.01889745511149643
+            },
+            {
+              "id": "asset-011",
+              "rank": 146,
+              "score": -0.04135314856539718
+            },
+            {
+              "id": "asset-131",
+              "rank": 115,
+              "score": -0.02364883570936316
+            },
+            {
+              "id": "asset-132",
+              "rank": 110,
+              "score": -0.022564570958462538
+            },
+            {
+              "id": "asset-133",
+              "rank": 113,
+              "score": -0.02350393769021286
+            },
+            {
+              "id": "asset-134",
+              "rank": 94,
+              "score": -0.017297218924147484
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "a snowy mountain",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.6025840421357525
+            },
+            {
+              "id": "asset-140",
+              "kind": "media",
+              "score": 0.5967814293500959
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5967338388546796
+            },
+            {
+              "id": "asset-017",
+              "kind": "media",
+              "score": 0.5954730981437273
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.5911170279129151
+            },
+            {
+              "id": "asset-155",
+              "kind": "media",
+              "score": 0.5898670868663646
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.5870433317806462
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5864816847225166
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5864816847225166
+            },
+            {
+              "id": "asset-033",
+              "kind": "media",
+              "score": 0.5854958193899898
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 69,
+              "score": 0.5477439080771146
+            },
+            {
+              "id": "asset-002",
+              "rank": 115,
+              "score": 0.5310899165527563
+            },
+            {
+              "id": "asset-011",
+              "rank": 24,
+              "score": 0.5732358885539708
+            },
+            {
+              "id": "asset-131",
+              "rank": 88,
+              "score": 0.5405214710142628
+            },
+            {
+              "id": "asset-132",
+              "rank": 107,
+              "score": 0.5342084140450112
+            },
+            {
+              "id": "asset-133",
+              "rank": 94,
+              "score": 0.5385906713771709
+            },
+            {
+              "id": "asset-134",
+              "rank": 110,
+              "score": 0.533764266864344
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.6025840421357525
+            },
+            {
+              "id": "asset-140",
+              "kind": "media",
+              "score": 0.5967814293500959
+            },
+            {
+              "id": "asset-091",
+              "kind": "media",
+              "score": 0.5967338388546796
+            },
+            {
+              "id": "asset-017",
+              "kind": "media",
+              "score": 0.5954730981437273
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.5911170279129151
+            },
+            {
+              "id": "asset-155",
+              "kind": "media",
+              "score": 0.5898670868663646
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.5870433317806462
+            },
+            {
+              "id": "asset-139",
+              "kind": "media",
+              "score": 0.5864816847225166
+            },
+            {
+              "id": "asset-144",
+              "kind": "media",
+              "score": 0.5864816847225166
+            },
+            {
+              "id": "asset-033",
+              "kind": "media",
+              "score": 0.5854958193899898
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 151,
+              "score": 0.4277439080771146
+            },
+            {
+              "id": "asset-002",
+              "rank": 156,
+              "score": 0.4110899165527563
+            },
+            {
+              "id": "asset-011",
+              "rank": 150,
+              "score": 0.4532358885539708
+            },
+            {
+              "id": "asset-131",
+              "rank": 152,
+              "score": 0.42052147101426285
+            },
+            {
+              "id": "asset-132",
+              "rank": 154,
+              "score": 0.4142084140450112
+            },
+            {
+              "id": "asset-133",
+              "rank": 153,
+              "score": 0.4185906713771709
+            },
+            {
+              "id": "asset-134",
+              "rank": 155,
+              "score": 0.413764266864344
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.05847091964820428
+            },
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.041757962134758686
+            },
+            {
+              "id": "asset-081",
+              "kind": "media",
+              "score": 0.03570776534917841
+            },
+            {
+              "id": "asset-140",
+              "kind": "media",
+              "score": 0.032431412894107225
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.03174820905402986
+            },
+            {
+              "id": "asset-080",
+              "kind": "media",
+              "score": 0.031074090154375678
+            },
+            {
+              "id": "asset-124",
+              "kind": "media",
+              "score": 0.02825052890348212
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.028201776321796546
+            },
+            {
+              "id": "asset-089",
+              "kind": "media",
+              "score": 0.0281606034577232
+            },
+            {
+              "id": "asset-155",
+              "kind": "media",
+              "score": 0.027856813588020946
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 152,
+              "score": -0.03629422017281392
+            },
+            {
+              "id": "asset-002",
+              "rank": 150,
+              "score": -0.03342009226826692
+            },
+            {
+              "id": "asset-011",
+              "rank": 104,
+              "score": -0.007580725897402996
+            },
+            {
+              "id": "asset-131",
+              "rank": 153,
+              "score": -0.03784197671885703
+            },
+            {
+              "id": "asset-132",
+              "rank": 154,
+              "score": -0.03827939538096725
+            },
+            {
+              "id": "asset-133",
+              "rank": 156,
+              "score": -0.043353347039445045
+            },
+            {
+              "id": "asset-134",
+              "rank": 155,
+              "score": -0.041152025114843505
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-087",
+              "kind": "media",
+              "score": 0.049865788735132366
+            },
+            {
+              "id": "asset-076",
+              "kind": "media",
+              "score": 0.035952768649411326
+            },
+            {
+              "id": "asset-140",
+              "kind": "media",
+              "score": 0.03053378191073186
+            },
+            {
+              "id": "asset-090",
+              "kind": "media",
+              "score": 0.027182111319129842
+            },
+            {
+              "id": "asset-136",
+              "kind": "media",
+              "score": 0.026057182769071874
+            },
+            {
+              "id": "asset-081",
+              "kind": "media",
+              "score": 0.024519050803256448
+            },
+            {
+              "id": "asset-155",
+              "kind": "media",
+              "score": 0.024508264887043163
+            },
+            {
+              "id": "asset-080",
+              "kind": "media",
+              "score": 0.024451945225716254
+            },
+            {
+              "id": "asset-148",
+              "kind": "media",
+              "score": 0.023357442953238716
+            },
+            {
+              "id": "asset-065",
+              "kind": "media",
+              "score": 0.023167891657570494
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 156,
+              "score": -0.052212066505599175
+            },
+            {
+              "id": "asset-002",
+              "rank": 149,
+              "score": -0.04261137826907613
+            },
+            {
+              "id": "asset-011",
+              "rank": 111,
+              "score": -0.018423149040020514
+            },
+            {
+              "id": "asset-131",
+              "rank": 151,
+              "score": -0.048778834035483665
+            },
+            {
+              "id": "asset-132",
+              "rank": 152,
+              "score": -0.04921779122446168
+            },
+            {
+              "id": "asset-133",
+              "rank": 155,
+              "score": -0.0521113331055163
+            },
+            {
+              "id": "asset-134",
+              "rank": 153,
+              "score": -0.05010118848933354
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query": "an orange fish",
+      "strategies": {
+        "raw": {
+          "top10": [
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.6205340826478314
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6131390656676683
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6111871982338325
+            },
+            {
+              "id": "asset-127",
+              "kind": "media",
+              "score": 0.6111871982338325
+            },
+            {
+              "id": "asset-154",
+              "kind": "media",
+              "score": 0.6045064493768136
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.6034544543363546
+            },
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.5963967788757134
+            },
+            {
+              "id": "asset-026",
+              "kind": "media",
+              "score": 0.5952209482504135
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.5922775647793308
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.5899027136027206
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 57,
+              "score": 0.5578983295374935
+            },
+            {
+              "id": "asset-002",
+              "rank": 51,
+              "score": 0.5610744030515391
+            },
+            {
+              "id": "asset-011",
+              "rank": 64,
+              "score": 0.5533758511870326
+            },
+            {
+              "id": "asset-131",
+              "rank": 31,
+              "score": 0.5705731087703652
+            },
+            {
+              "id": "asset-132",
+              "rank": 52,
+              "score": 0.5609555729239435
+            },
+            {
+              "id": "asset-133",
+              "rank": 29,
+              "score": 0.5715823145379929
+            },
+            {
+              "id": "asset-134",
+              "rank": 45,
+              "score": 0.5633538804788566
+            }
+          ]
+        },
+        "textPenalty": {
+          "top10": [
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.6205340826478314
+            },
+            {
+              "id": "asset-003",
+              "kind": "media",
+              "score": 0.6131390656676683
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.6111871982338325
+            },
+            {
+              "id": "asset-127",
+              "kind": "media",
+              "score": 0.6111871982338325
+            },
+            {
+              "id": "asset-154",
+              "kind": "media",
+              "score": 0.6045064493768136
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.6034544543363546
+            },
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.5963967788757134
+            },
+            {
+              "id": "asset-026",
+              "kind": "media",
+              "score": 0.5952209482504135
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.5922775647793308
+            },
+            {
+              "id": "asset-138",
+              "kind": "media",
+              "score": 0.5899027136027206
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 155,
+              "score": 0.4378983295374935
+            },
+            {
+              "id": "asset-002",
+              "rank": 153,
+              "score": 0.4410744030515391
+            },
+            {
+              "id": "asset-011",
+              "rank": 156,
+              "score": 0.4333758511870326
+            },
+            {
+              "id": "asset-131",
+              "rank": 151,
+              "score": 0.45057310877036516
+            },
+            {
+              "id": "asset-132",
+              "rank": 154,
+              "score": 0.4409555729239435
+            },
+            {
+              "id": "asset-133",
+              "rank": 150,
+              "score": 0.4515823145379929
+            },
+            {
+              "id": "asset-134",
+              "rank": 152,
+              "score": 0.4433538804788566
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "top10": [
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.06708866959073023
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.057621930045523295
+            },
+            {
+              "id": "asset-026",
+              "kind": "media",
+              "score": 0.05451960295193092
+            },
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.04980521175595631
+            },
+            {
+              "id": "asset-114",
+              "kind": "media",
+              "score": 0.048496028572928895
+            },
+            {
+              "id": "asset-022",
+              "kind": "media",
+              "score": 0.04803715833451505
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.04568980353453944
+            },
+            {
+              "id": "asset-154",
+              "kind": "media",
+              "score": 0.04349013131253432
+            },
+            {
+              "id": "asset-082",
+              "kind": "media",
+              "score": 0.041268954852213824
+            },
+            {
+              "id": "asset-015",
+              "kind": "media",
+              "score": 0.04068562470748616
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 145,
+              "score": -0.026139798712434992
+            },
+            {
+              "id": "asset-002",
+              "rank": 82,
+              "score": -0.003435605769484096
+            },
+            {
+              "id": "asset-011",
+              "rank": 146,
+              "score": -0.027440763264341195
+            },
+            {
+              "id": "asset-131",
+              "rank": 94,
+              "score": -0.007790338962754717
+            },
+            {
+              "id": "asset-132",
+              "rank": 107,
+              "score": -0.011532236502034943
+            },
+            {
+              "id": "asset-133",
+              "rank": 102,
+              "score": -0.010361703878623008
+            },
+            {
+              "id": "asset-134",
+              "rank": 108,
+              "score": -0.011562411500330882
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "top10": [
+            {
+              "id": "asset-121",
+              "kind": "media",
+              "score": 0.06147727972665473
+            },
+            {
+              "id": "asset-095",
+              "kind": "media",
+              "score": 0.05469394955233409
+            },
+            {
+              "id": "asset-026",
+              "kind": "media",
+              "score": 0.04547818793596692
+            },
+            {
+              "id": "asset-022",
+              "kind": "media",
+              "score": 0.04355550065243574
+            },
+            {
+              "id": "asset-114",
+              "kind": "media",
+              "score": 0.042790863693202175
+            },
+            {
+              "id": "asset-010",
+              "kind": "media",
+              "score": 0.042781172718051375
+            },
+            {
+              "id": "asset-154",
+              "kind": "media",
+              "score": 0.0386535944441313
+            },
+            {
+              "id": "asset-027",
+              "kind": "media",
+              "score": 0.037864181902700134
+            },
+            {
+              "id": "asset-119",
+              "kind": "media",
+              "score": 0.036060375815513024
+            },
+            {
+              "id": "asset-019",
+              "kind": "media",
+              "score": 0.03589271847572373
+            }
+          ],
+          "textInTop10": 0,
+          "documents": [
+            {
+              "id": "asset-001",
+              "rank": 153,
+              "score": -0.04205764504522025
+            },
+            {
+              "id": "asset-002",
+              "rank": 90,
+              "score": -0.012626891770293303
+            },
+            {
+              "id": "asset-011",
+              "rank": 151,
+              "score": -0.038283186406958714
+            },
+            {
+              "id": "asset-131",
+              "rank": 103,
+              "score": -0.018727196279381353
+            },
+            {
+              "id": "asset-132",
+              "rank": 119,
+              "score": -0.022470632345529373
+            },
+            {
+              "id": "asset-133",
+              "rank": 104,
+              "score": -0.019119689944694263
+            },
+            {
+              "id": "asset-134",
+              "rank": 112,
+              "score": -0.020511574874820915
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "documentControls": [
+    {
+      "source": "asset-001",
+      "ownRanks": {
+        "raw": 1,
+        "textPenalty": 1,
+        "backgroundCentered": 1,
+        "querybankInvertedSoftmax": 1
+      }
+    },
+    {
+      "source": "asset-002",
+      "ownRanks": {
+        "raw": 1,
+        "textPenalty": 2,
+        "backgroundCentered": 1,
+        "querybankInvertedSoftmax": 1
+      }
+    },
+    {
+      "source": "asset-011",
+      "ownRanks": {
+        "raw": 1,
+        "textPenalty": 1,
+        "backgroundCentered": 1,
+        "querybankInvertedSoftmax": 1
+      }
+    },
+    {
+      "source": "asset-131",
+      "ownRanks": {
+        "raw": 3,
+        "textPenalty": 3,
+        "backgroundCentered": 3,
+        "querybankInvertedSoftmax": 3
+      }
+    },
+    {
+      "source": "asset-132",
+      "ownRanks": {
+        "raw": 1,
+        "textPenalty": 1,
+        "backgroundCentered": 1,
+        "querybankInvertedSoftmax": 1
+      }
+    },
+    {
+      "source": "asset-133",
+      "ownRanks": {
+        "raw": 1,
+        "textPenalty": 1,
+        "backgroundCentered": 1,
+        "querybankInvertedSoftmax": 1
+      }
+    },
+    {
+      "source": "asset-134",
+      "ownRanks": {
+        "raw": 2,
+        "textPenalty": 2,
+        "backgroundCentered": 2,
+        "querybankInvertedSoftmax": 2
+      }
+    }
+  ],
+  "aggregates": {
+    "raw": {
+      "meanTextInTop10": 2,
+      "queriesWithTextInTop10": 4,
+      "meanDocumentRank": 37.25,
+      "meanOwnDocumentControlRank": 1.4285714285714286
+    },
+    "textPenalty": {
+      "meanTextInTop10": 0,
+      "queriesWithTextInTop10": 0,
+      "meanDocumentRank": 151.60714285714286,
+      "meanOwnDocumentControlRank": 1.5714285714285714
+    },
+    "backgroundCentered": {
+      "meanTextInTop10": 0.5,
+      "queriesWithTextInTop10": 3,
+      "meanDocumentRank": 80.17857142857143,
+      "meanOwnDocumentControlRank": 1.4285714285714286
+    },
+    "querybankInvertedSoftmax": {
+      "meanTextInTop10": 0.5,
+      "queriesWithTextInTop10": 3,
+      "meanDocumentRank": 87.89285714285714,
+      "meanOwnDocumentControlRank": 1.4285714285714286
+    }
+  },
+  "limitations": [
+    "Uses the existing local Gemma index of an authorized library; the active UI provider is separately tested and is not interchangeable.",
+    "Visual queries are broad diagnostic probes without a manually labeled full corpus. No nDCG or Recall quality claim.",
+    "Document controls derive from private leading content and are local only; they are not independent positive relevance labels.",
+    "Private content, titles, paths, original asset IDs, vectors, and derived private queries are omitted from the report.",
+    "Cached media were not re-encoded; current document vectors are checked against fresh encoding. Background correction is experimental."
+  ]
+}

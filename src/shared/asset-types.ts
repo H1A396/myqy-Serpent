@@ -63,6 +63,19 @@ export const folderBrowseEntrySchema = z.strictObject({
   childFolderCount: z.number().int().nonnegative(),
   /** Up to 4 ready thumbnail/poster artifact ids for the folder cover deck / collage (Serpent-9021d1). */
   coverArtifactIds: z.array(nonBlankString).max(4),
+  /** User-chosen image stored with the library. Wins over the automatic cover. */
+  hasCustomCover: z.boolean().optional(),
+  /** Changes when the stored cover file is replaced, so the card does not keep the previous image. */
+  customCoverToken: z.string().min(1).max(64).optional(),
+  /** Library asset chosen as the cover. The asset id is the durable reference. */
+  customCoverAssetId: nonBlankString.max(255).optional(),
+  /** Ready thumbnail for customCoverAssetId, when one exists. */
+  customCoverArtifactId: nonBlankString.max(255).optional(),
+  /** Original image for customCoverAssetId when no thumbnail is ready yet. */
+  customCoverSourcePreview: z.strictObject({
+    assetId: nonBlankString,
+    revisionId: nonBlankString,
+  }).optional(),
   /**
    * Sequence frames that are shown from the original file have no thumbnail
    * artifact. One of these still paints the folder cover.

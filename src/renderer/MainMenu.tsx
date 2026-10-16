@@ -49,6 +49,7 @@ function MenuItemButton({
   const hasSubmenu = Boolean(item.submenu?.length);
   return (
     <button
+      aria-checked={item.checked}
       aria-disabled={item.disabled || undefined}
       aria-expanded={hasSubmenu ? active : undefined}
       aria-haspopup={hasSubmenu ? "menu" : undefined}
@@ -73,6 +74,11 @@ function MenuItemButton({
       tabIndex={-1}
       type="button"
     >
+      {item.checked === undefined ? null : (
+        <span aria-hidden="true" className="main-menu-item-check">
+          {item.checked ? <Icon name="check" size={14} /> : null}
+        </span>
+      )}
       <span className="main-menu-item-label">{item.label}</span>
       {item.shortcut ? (
         <span aria-hidden="true" className="main-menu-item-shortcut">

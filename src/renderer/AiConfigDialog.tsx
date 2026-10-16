@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createShellPortal } from "./ui/ShellStyleScope";
 
 import {
   AI_OUTPUT_STYLES,
@@ -150,6 +150,7 @@ export function AiConfigDialog({
     top: number;
     left: number;
     width: number;
+    inModal: boolean;
   } | null>(null);
   const modelsFetchInFlightRef = useRef(false);
   const modelPickerWrapRef = useRef<HTMLDivElement>(null);
@@ -232,7 +233,7 @@ export function AiConfigDialog({
       Math.max(8, rect.left),
       window.innerWidth - width - 8,
     );
-    setModelPickerMenuBox({ top, left, width });
+    setModelPickerMenuBox({ top, left, width, inModal: trigger.closest('[role="dialog"]') !== null });
   }
 
   async function toggleModelPicker() {
@@ -349,7 +350,7 @@ export function AiConfigDialog({
                   {connectionReason ? (
                     <span
                       className="ai-connection-reason"
-                      title={connectionReason}
+                      data-hover-tip={connectionReason}
                     >
                       {connectionReason}
                     </span>
@@ -474,7 +475,7 @@ export function AiConfigDialog({
                   disabled={!canUseKey}
                   onClick={() => void toggleModelPicker()}
                   ref={modelPickerTriggerRef}
-                  title={
+                  data-hover-tip={
                     !canUseKey
                       ? t("aiConfig.modelPickEmpty")
                       : t("aiConfig.modelPick")
@@ -487,10 +488,11 @@ export function AiConfigDialog({
                   <Icon name="chevron" size={12} />
                 </button>
                 {modelPickerOpen && modelPickerMenuBox
-                  ? createPortal(
+                  ? createShellPortal(
                       <ul
                         aria-label={t("aiConfig.modelPick")}
-                        className="ai-config-model-picker-menu is-portaled"
+                        className="ui-menu-surface ai-config-model-picker-menu is-portaled"
+                        data-modal-popover={modelPickerMenuBox.inModal || undefined}
                         ref={modelPickerMenuRef}
                         role="listbox"
                         style={{

@@ -1,6 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 
 import { AppSettingsNavigation } from "./AppSettingsNavigation";
+import { useAppearanceAdjusting } from "./use-appearance-adjusting";
 import {
   AiSettingsPage,
   AssetsSettingsPage,
@@ -12,6 +13,8 @@ import { McpSettingsPage } from "./McpSettingsPage";
 import { WebShareSettingsPage } from "./WebShareSettingsPage";
 import { PluginSettingsPage } from "./PluginSettingsPage";
 import { PluginCommunityPage } from "./PluginCommunityPage";
+import { SemanticSearchSettings } from "./SemanticSearchSettings";
+import type { EmbeddingCatalogApi } from "./SemanticSearchSettings";
 import { SyncSettingsPage, type SyncServerSettingsCallbacks } from "./SyncSettingsPage";
 import {
   PluginSettingsDetailPage,
@@ -61,8 +64,15 @@ export interface AppSettingsDialogProps {
   mcpApi?: SerpentMcpSettingsApi;
   webShareApi?: SerpentWebShareSettingsApi;
   syncServerCallbacks: SyncServerSettingsCallbacks;
+  embeddingServicesApi?: EmbeddingCatalogApi;
   showCardSyncStatus: boolean;
   onShowCardSyncStatusChange: (checked: boolean) => void;
+  showMissingLinkedFiles: boolean;
+  onToggleShowMissingLinkedFiles: () => void;
+  navArrowsOnApproach: boolean;
+  onToggleNavArrowsOnApproach: () => void;
+  videoTransportOnApproach: boolean;
+  onToggleVideoTransportOnApproach: () => void;
 }
 
 /**
@@ -97,11 +107,18 @@ export function AppSettingsDialog({
   pluginApi,
   pluginContributionRefreshKey,
   libraryId,
+  embeddingServicesApi,
   mcpApi,
   webShareApi,
   syncServerCallbacks,
   showCardSyncStatus,
   onShowCardSyncStatusChange,
+  showMissingLinkedFiles,
+  onToggleShowMissingLinkedFiles,
+  navArrowsOnApproach,
+  onToggleNavArrowsOnApproach,
+  videoTransportOnApproach,
+  onToggleVideoTransportOnApproach,
 }: AppSettingsDialogProps): ReactNode {
   const t = useT();
   const [pluginSettingsPluginId, setPluginSettingsPluginId] = useState<string | null>(null);
@@ -123,6 +140,10 @@ export function AppSettingsDialog({
     (category) => category.id === activeCategory,
   )!;
   const showingPluginSettings = pluginSettingsPluginId !== null;
+  // Appearance-type pages preview live on the app (theme, radius, shadow, background).
+  const [appearanceAdjusting, appearanceAdjustHandlers] = useAppearanceAdjusting(
+    open && !showingPluginSettings && activeCategory === "appearance",
+  );
 
   function handleClose() {
     onClose();
@@ -155,8 +176,11 @@ export function AppSettingsDialog({
 
   return (
     <div
-      className="dialog-backdrop"
+      // While an appearance control is being adjusted, the backdrop fades
+      // its dim + blur out so the live result on the app is visible (a93).
+      className={`dialog-backdrop app-settings-backdrop${appearanceAdjusting ? " is-adjusting" : ""}`}
       role="presentation"
+      {...appearanceAdjustHandlers}
     >
       <DialogShell
         className="create-dialog app-settings-dialog"
@@ -266,7 +290,13 @@ export function AppSettingsDialog({
                 onToggleHoverAudioPlay={onToggleHoverAudioPlay}
                 onToggleHoverVideoSound={onToggleHoverVideoSound}
                 audioPreviewPrefersCover={audioPreviewPrefersCover}
+                navArrowsOnApproach={navArrowsOnApproach}
                 onAudioPreviewPrefersCoverChange={onAudioPreviewPrefersCoverChange}
+                onToggleNavArrowsOnApproach={onToggleNavArrowsOnApproach}
+                onToggleShowMissingLinkedFiles={onToggleShowMissingLinkedFiles}
+                onToggleVideoTransportOnApproach={onToggleVideoTransportOnApproach}
+                showMissingLinkedFiles={showMissingLinkedFiles}
+                videoTransportOnApproach={videoTransportOnApproach}
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "ai" ? (
@@ -274,6 +304,12 @@ export function AppSettingsDialog({
                 aiUiPrefs={aiUiPrefs}
                 aiConfigPanel={aiConfigPanel}
                 onToggleShowAiBadges={onToggleShowAiBadges}
+              />
+            ) : null}
+            {!showingPluginSettings && activeCategory === "semantic-search" ? (
+              <SemanticSearchSettings
+                libraryId={libraryId}
+                servicesApi={embeddingServicesApi}
               />
             ) : null}
             {!showingPluginSettings && activeCategory === "mcp" ? <McpSettingsPage api={mcpApi} onOpenAppLog={onOpenAppLog} /> : null}

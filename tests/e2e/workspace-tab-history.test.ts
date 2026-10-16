@@ -70,7 +70,7 @@ async function createFolderViaApi(window: Page, name: string) {
 function folderRow(window: Page, name: string) {
   const escaped = name.replace(/"/g, '\\"');
   return window.locator(
-    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][title="${escaped}"]`,
+    `.navigation-pane button.nav-row[data-nav-folder-kind="managed"][data-hover-tip="${escaped}"]`,
   );
 }
 

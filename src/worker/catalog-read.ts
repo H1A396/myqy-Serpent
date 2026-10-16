@@ -430,6 +430,8 @@ export function buildCatalogExplicitIgnoreSql(input: {
 export function buildCatalogAssetVisibilityPredicates(input: {
   scopeKind?: 'all' | 'root' | 'trash';
   showIgnored?: boolean;
+  /** Default true. False omits linked-folder rows whose source file is missing. */
+  showMissingLinked?: boolean;
   explicitIgnoreSql: string;
   hasLinkedIgnoredAssets: boolean;
   hasSequenceFrames: boolean;
@@ -439,6 +441,9 @@ export function buildCatalogAssetVisibilityPredicates(input: {
     : 'a.deleted_at IS NULL'];
   if (input.scopeKind === 'root') {
     predicates.push("a.location_kind = 'managed' AND a.managed_folder_id IS NULL");
+  }
+  if (input.showMissingLinked === false) {
+    predicates.push("NOT (a.location_kind = 'linked' AND a.availability = 'missing')");
   }
   if (input.hasLinkedIgnoredAssets) {
     predicates.push('NOT EXISTS (SELECT 1 FROM linked_ignored_assets ignored WHERE ignored.asset_id = a.asset_id)');
@@ -460,6 +465,7 @@ export function countCatalogNavigationAssets(
   input: {
     scope: 'all' | 'root' | 'trash';
     showIgnored: boolean;
+    showMissingLinked?: boolean;
     explicitIgnoreSql: string;
     hasLinkedIgnoredAssets: boolean;
     hasSequenceFrames: boolean;
@@ -468,6 +474,7 @@ export function countCatalogNavigationAssets(
   const predicates = buildCatalogAssetVisibilityPredicates({
     scopeKind: input.scope,
     showIgnored: input.showIgnored,
+    showMissingLinked: input.showMissingLinked,
     explicitIgnoreSql: input.explicitIgnoreSql,
     hasLinkedIgnoredAssets: input.hasLinkedIgnoredAssets,
     hasSequenceFrames: input.hasSequenceFrames,

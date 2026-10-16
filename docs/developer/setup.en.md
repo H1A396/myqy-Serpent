@@ -4,7 +4,7 @@
 
 - Node.js **24.15.0** (locked in `.nvmrc`; use `nvm use`)
 - npm
-- Native development targets: macOS arm64, Windows x64
+- Native development targets: macOS arm64, Windows x64, Linux x64
 - **Do not build or run from an SMB/NAS-mounted path** — Electron fails to start on mounted volumes (`icudtl.dat not found`) and packaged apps cannot run from them either
 
 ### macOS
@@ -21,6 +21,13 @@
   - Official installer: Install official Inno Setup 6 and set environment variable `SERPENT_INNO_TOOLS` to the directory containing `ISCC.exe` (or add it to system `PATH`);
   - Not needed if only running dev mode (`npm start`) or creating portable builds (`npm run package`).
 - Media component builds (only when rebuilding underlying binaries): `scripts/media-build/win32-x64.ps1` (vcpkg)
+
+### Linux
+
+- Compiler toolchain and Python (`better-sqlite3`): on Debian/Ubuntu, `sudo apt install build-essential python3`
+- **Media tools**: the linux-x64 pinned bundle is ready in `bundle-lock.json`. linux-arm64 uses the same acquire/verify path, but its lock entry is still `build-required` (no promoted zip yet). `npm ci` does not install the media bundle. Until `media:ensure` or `release:media` has run, `npm start` still uses `ffmpeg` / `ffprobe` from `PATH`, with optional `openimageio-tools` (`oiiotool`) for EXR/RAW/PSD. The release AppImage packs that bundle in.
+- AppImage release builds should use Docker (`npm run make:appimage:docker` targets Ubuntu 22.04 / glibc 2.35 and follows the host architecture, the same baseline for x86_64 and aarch64); without Docker use host `npm run make:appimage`. FUSE and X11/Wayland limits are the same on both architectures.
+- Useful env vars: `SERPENT_SOFTWARE_GL=1` (software WebGL without a GPU), `SERPENT_LINUX_ROUNDED_CORNERS=0|1` (force square/rounded corners), `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` (override PATH lookup)
 
 ## First build
 
@@ -47,6 +54,12 @@ npm start
 ```powershell
 # Windows
 $env:SERPENT_FFMPEG_PATH = 'C:\tools\ffmpeg\ffmpeg.exe'
+npm start
+```
+
+```bash
+# Linux (or rely on distro ffmpeg already on PATH)
+export SERPENT_FFMPEG_PATH=/usr/bin/ffmpeg
 npm start
 ```
 

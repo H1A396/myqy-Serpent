@@ -26,6 +26,10 @@ export const APP_UPDATE_INSTALL_CHANNEL = 'serpent:app-update:install' as const;
 export const APP_UPDATE_CANCEL_CHANNEL = 'serpent:app-update:cancel' as const;
 /** Main → Renderer: update download/install progress for the About dialog. */
 export const APP_UPDATE_PROGRESS_CHANNEL = 'serpent:app-update:progress' as const;
+/** Renderer → Main: read launch-at-login preferences. */
+export const STARTUP_PREFERENCES_GET_CHANNEL = 'serpent:startup-preferences:get' as const;
+/** Renderer → Main: persist launch-at-login preferences. */
+export const STARTUP_PREFERENCES_SET_CHANNEL = 'serpent:startup-preferences:set' as const;
 /** Main → Renderer: script/MCP/plugin user-visible toast or blocking dialog. */
 export const SHELL_NOTIFY_CHANNEL = 'serpent:shell:notify' as const;
 /**
@@ -40,6 +44,12 @@ export const SHOW_EDIT_CONTEXT_MENU_CHANNEL =
   'serpent:shell:show-edit-context-menu' as const;
 export const SHELL_SWIPE_CHANNEL = 'serpent:shell:swipe' as const;
 export const WINDOW_CONTROL_CHANNEL = 'serpent:shell:window-control' as const;
+/** Renderer → Main: begin frameless edge resize (Linux). */
+export const WINDOW_EDGE_RESIZE_CHANNEL = 'serpent:shell:window-edge-resize' as const;
+/** Renderer → Main: setBounds fallback while dragging a resize edge. */
+export const WINDOW_SET_BOUNDS_CHANNEL = 'serpent:shell:window-set-bounds' as const;
+/** Renderer → Main: read current window bounds (Linux edge-resize fallback). */
+export const WINDOW_GET_BOUNDS_CHANNEL = 'serpent:shell:window-get-bounds' as const;
 /** Main → Renderer: trigger invert selection (macOS Edit menu, Serpent-te8p). */
 export const INVERT_SELECTION_CHANNEL = 'serpent:shell:invert-selection' as const;
 /** Main → Renderer: Edit Copy (⌘C) — file copy when assets selected (Serpent-166q). */
@@ -50,6 +60,9 @@ export const APPLICATION_MENU_COMMAND_CHANNEL =
 /** Renderer → Main: sync a native menu item's enabled state (Serpent-q0b1). */
 export const APPLICATION_MENU_ITEM_STATE_CHANNEL =
   'serpent:shell:application-menu-item-state' as const;
+/** Renderer → Main: whether linked-folder browse includes missing source files. */
+export const LINKED_MISSING_VISIBILITY_CHANNEL =
+  'serpent:shell:linked-missing-visibility' as const;
 /** Renderer → Main: fall back to Chromium text copy when no asset file copy. */
 export const NATIVE_EDIT_COPY_CHANNEL = 'serpent:shell:native-edit-copy' as const;
 export const WINDOW_MAXIMIZED_CHANNEL =
@@ -99,6 +112,8 @@ export const CRITICAL_CONFIRMATION_RESPOND_CHANNEL = 'serpent:critical-confirmat
 export const PLUGIN_MANAGER_CHANNEL = 'serpent:plugin-manager:request' as const;
 /** Main → Renderer: progress and terminal state for a GitHub plugin install. */
 export const PLUGIN_INSTALL_PROGRESS_CHANNEL = 'serpent:plugin:install-progress' as const;
+/** Main → Renderer: semantic model / runtime download progress. */
+export const EMBEDDING_INSTALL_PROGRESS_CHANNEL = 'serpent:embedding:install-progress' as const;
 /** Main → Renderer: plugin contributions changed after install/enable/refresh. */
 export const PLUGIN_CONTRIBUTIONS_CHANGED_CHANNEL =
   'serpent:plugin:contributions-changed' as const;

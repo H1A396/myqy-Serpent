@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildUnifiedDirectoryNavEntries,
+  hideOfflineLinkedDirectoryEntries,
   filterCollapsedDirectoryEntries,
   folderIdsInSubtree,
   managedFolderIdsWithChildren,
@@ -772,6 +773,39 @@ describe("folderIdsInSubtree", () => {
       "a-1",
       "a-1-1",
       "b",
+    ]);
+  });
+});
+
+describe("hideOfflineLinkedDirectoryEntries", () => {
+  it("drops an offline linked folder and rows nested under it", () => {
+    const entries = buildUnifiedDirectoryNavEntries(
+      [managed({ folderId: "kept", name: "Kept", relativePath: "kept" })],
+      [
+        linked({
+          folderId: "linked-root",
+          displayName: "Gone",
+          status: "offline",
+          relativePath: "",
+        }),
+        linked({
+          folderId: "linked-child",
+          displayName: "Child",
+          status: "available",
+          parentFolderId: "linked-root",
+          relativePath: "child",
+        }),
+        linked({
+          folderId: "linked-live",
+          displayName: "Live",
+          status: "available",
+          relativePath: "",
+        }),
+      ],
+    );
+    expect(hideOfflineLinkedDirectoryEntries(entries).map((entry) => entry.folderId)).toEqual([
+      "kept",
+      "linked-live",
     ]);
   });
 });

@@ -85,7 +85,10 @@ test('imports files and a directory hierarchy, then reconciles external changes'
     await expect(sidebarFolderRow(window, '项目')).toBeVisible();
     await sidebarFolderRow(window, '项目').click();
 
-    await window.getByRole('button', { name: '添加文件夹' }).click();
+    // Section 「+」 creates at the library root. The nested 角色 folder comes
+    // from the parent row's context menu so the imported tree stays under 项目.
+    await sidebarFolderRow(window, '项目').click({ button: 'right' });
+    await window.getByRole('menuitem', { name: '新建子文件夹', exact: true }).click();
     await window.getByLabel("新文件夹名称").fill('角色');
     await window.keyboard.press("Enter");
     await expect(sidebarFolderRow(window, '角色')).toBeVisible();

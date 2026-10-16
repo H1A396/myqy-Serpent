@@ -177,6 +177,14 @@ async function acquire({ platform, root, lockPath }) {
 async function ensure({ platform, root, lockPath }) {
   try {
     const { manifestPath } = verifyBundle({ root, platform });
+    if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
+      console.warn(
+        'Skipping release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
+          'This is only valid for local build trials, not production release.',
+      );
+      console.log(`Verified media bundle: ${manifestPath}`);
+      return;
+    }
     verifyReleaseProvenance({ root, platform, lockPath });
     console.log(`Verified media bundle: ${manifestPath}`);
     return;
@@ -201,7 +209,10 @@ async function main() {
     throw new Error('Usage: media-binaries.mjs <acquire|manifest|verify|ensure> [--platform key] [--root path]');
   }
   const options = argumentsMap(rawOptions);
-  const platform = option(options, 'platform', currentPlatformKey());
+  // Resolve the host platform only when --platform is omitted. Evaluating
+  // currentPlatformKey() as a default argument throws on Linux before the
+  // explicit fixture platform is read.
+  const platform = option(options, 'platform', undefined) ?? currentPlatformKey();
   assertPlatform(platform);
   const root = path.resolve(option(options, 'root', 'resources'));
   const lockPath = path.resolve(

@@ -19,6 +19,11 @@ function skipDragOnWindows(): void {
   );
 }
 
+/** DPR and subpixel layout can shift a painted edge by a fraction of a pixel. */
+function expectWithinOnePixel(actual: number, expected: number) {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+}
+
 /**
  * Use distinct text payloads for selection-only E2E fixtures. The tests cover
  * geometry and keyboard selection, not media decoding, so a plain text asset
@@ -85,15 +90,15 @@ async function createAndImport(
   await window.getByRole("button", { name: "创建资源库" }).click();
   await window.getByRole("textbox", { name: "名称" }).fill(libraryName);
   await window.getByRole("button", { name: "创建", exact: true }).click();
-  // Library creation commits through Main/Worker asynchronously. Waiting for
-  // the empty browse surface makes the following import click observe the
-  // same ready state as a user, instead of racing the initial library.opened
-  // refresh (which otherwise intermittently leaves the button absent).
-  await expect(window.getByRole("heading", { name: "导入资产以开始整理" })).toBeVisible();
-  await window
-    .getByRole("button", { name: "导入文件", exact: true })
-    .first()
-    .click();
+  // The empty heading paints while library open is still inside the transition
+  // lock. Import writes are rejected until that lock drops, and the empty-state
+  // button stays disabled for the same interval (libraryLoading). Wait for the
+  // enabled control instead of clicking the first matching button early.
+  const importButton = window
+    .locator(".empty-actions")
+    .getByRole("button", { name: "导入文件", exact: true });
+  await expect(importButton).toBeEnabled({ timeout: 30_000 });
+  await importButton.click();
   await expect(window.locator(".asset-card")).toHaveCount(expectedCardCount, {
     timeout: 30_000,
   });
@@ -358,10 +363,10 @@ test("marquee keeps its viewport range aligned after the canvas is scrolled", as
     await expect(marquee).toBeVisible();
     const marqueeBox = await marquee.boundingBox();
     expect(marqueeBox).not.toBeNull();
-    expect(marqueeBox!.x).toBeCloseTo(geometry.start.x, 0);
-    expect(marqueeBox!.y).toBeCloseTo(geometry.start.y, 0);
-    expect(marqueeBox!.width).toBeCloseTo(geometry.end.x - geometry.start.x, 0);
-    expect(marqueeBox!.height).toBeCloseTo(geometry.end.y - geometry.start.y, 0);
+    expectWithinOnePixel(marqueeBox!.x, geometry.start.x);
+    expectWithinOnePixel(marqueeBox!.y, geometry.start.y);
+    expectWithinOnePixel(marqueeBox!.width, geometry.end.x - geometry.start.x);
+    expectWithinOnePixel(marqueeBox!.height, geometry.end.y - geometry.start.y);
 
     await window.mouse.up();
     const selectedIds = await window.evaluate(() =>
@@ -446,7 +451,7 @@ test("marquee keeps its anchor attached while auto-scroll moves the canvas", asy
     // The drag anchor is content-local. Once scrolling moves it above the
     // viewport, the visible marquee must be clipped to the canvas top rather
     // than remaining at the anchor's old clientY.
-    expect(marqueeBox!.y).toBeCloseTo(geometry.canvas.top, 0);
+    expectWithinOnePixel(marqueeBox!.y, geometry.canvas.top);
 
     await window.mouse.up();
   } finally {
@@ -508,8 +513,13 @@ test("marquee refreshes its visible range when the canvas scrolls during a drag"
     expect(scrollDelta).toBeGreaterThan(0);
 
     await expect
-      .poll(async () => (await marquee.boundingBox())?.y ?? null)
-      .toBeCloseTo(beforeScrollBox!.y - scrollDelta, 0);
+      .poll(async () => {
+        const y = (await marquee.boundingBox())?.y;
+        return y == null
+          ? Number.POSITIVE_INFINITY
+          : Math.abs(y - (beforeScrollBox!.y - scrollDelta));
+      })
+      .toBeLessThanOrEqual(1);
 
     await window.mouse.up();
   } finally {

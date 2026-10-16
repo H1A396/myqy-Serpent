@@ -201,6 +201,11 @@ export function formatFilterHasUnknownToken(
 }
 
 /** Count lines the same way a textarea displays them (\\n, \\r\\n, and lone \\r). */
+export function isMarkdownTextName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".markdown");
+}
+
 export function countTextLines(content: string): number {
   if (content.length === 0) return 1;
   const normalized = content

@@ -7,7 +7,7 @@
 > 浏览器扩展仓库（Serpent-Extension）的 CI/Release workflow 保留（发布通道，
 > 工作正常）。
 
-## 本地验证流水线（Windows / macOS 各自平台执行）
+## 本地验证流水线（Windows / macOS / Linux 各自平台执行）
 
 开发提交前至少跑：
 
@@ -37,6 +37,7 @@ npm run release:local                    # verify → media → package → e2e 
 # 或分步：release:verify / release:media / release:package /
 #        release:e2e:packaged / release:make / release:checksums
 # Windows 安装器在 release:make 阶段自动串联 make:inno（ISCC）
+# Linux AppImage 在 release:make 阶段跑 make:appimage:docker（无 docker 则 make:appimage）
 ```
 
 **注意事项**：
@@ -47,26 +48,29 @@ npm run release:local                    # verify → media → package → e2e 
 - **打包后必须恢复 dev native 模块**：`npm run package / make` 会更新
   `node_modules/electron`，跑完执行 `npm run rebuild:native`（否则
   `npm run test` 报 better_sqlite3 NODE_MODULE_VERSION 不匹配）。
-- **平台职责**：Windows 产物在 Windows 验证，macOS 产物在 macOS 验证
-  （平台门禁 `nativeMediaPlatform` 拒绝交叉打包）；发布前双平台各自
-  跑一遍 `release:local`。
+- **平台职责**：Windows 产物在 Windows 验证，macOS 产物在 macOS 验证，
+  Linux AppImage 在同架构 Linux 上验证（平台门禁拒绝交叉打包）。linux-x64 使用已晋升的
+  pinned media bundle；linux-arm64 走同一门禁，zip 晋升前 `release:media` 会阻断。
+  发布前各目标平台各自跑一遍 `release:local`。
 
-## 双平台发布分工（无 GA 后）
+## 平台发布分工（无 GA 后）
 
 | 平台 | 执行者 | 命令 |
 |---|---|---|
 | Windows | 任一 Windows 开发者 | `npm run release:local` |
 | macOS | 任一 macOS 开发者 | `npm run release:local` |
+| Linux | 任一 Linux 开发者（建议有 docker） | `npm run release:local` |
 
 产物：`out/Serpent-<platform>-<arch>/`、`out/make/`（dmg / zip /
-SerpentSetup.exe）、`SHA256SUMS-<platform>.txt`。
+SerpentSetup.exe / AppImage）、`SHA256SUMS-<platform>.txt`。
 
 ## 发布步骤（主仓库，无 GA 后）
 
 1. `npm version patch|minor|major`（版本提升 + git tag）
 2. 各平台跑 `npm run release:local`（产物在 `out/make/`）
 3. 在 GitHub 手动创建 Release（tag 对应）并上传产物：
-   `out/make/` 下的 dmg / zip / SerpentSetup.exe + `SHA256SUMS-<platform>.txt`
+   `out/make/` 下的 dmg / zip / SerpentSetup.exe / AppImage（规范名见发布手册）
+   + 各自 `.sha256` + `SHA256SUMS-<platform>.txt`
    （参照 Serpent-Build 的 media 上传先例 `scripts/release/publish-media-bundle.mjs`）
 
 ## 与 Serpent-Extension 的关系

@@ -94,10 +94,9 @@ export async function launchBenchmarkApp(options: {
   });
   const window = await application.firstWindow();
   await window.waitForLoadState("domcontentloaded");
-  // A busy library raises a native confirm when switching away; Playwright does
-  // not answer native modals, so an unanswered dialog looks exactly like a hang.
-  window.on("dialog", (dialog) => {
-    void dialog.accept();
+  // Keep the busy-switch benchmark moving through the shared renderer decision.
+  await window.addLocatorHandler(window.locator('#local-confirmation-dialog'), async () => {
+    await window.locator('#local-confirmation-dialog .ui-button--primary').click();
   });
   return { application, window };
 }

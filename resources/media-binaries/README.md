@@ -3,8 +3,8 @@
 This directory contains only trust metadata. Large executables are never copied
 from a developer's `PATH` and are intentionally ignored by Git.
 
-Supported release bundle keys are `darwin-arm64` and `win32-x64`. A prepared
-resource tree has this shape:
+Supported release bundle keys are `darwin-arm64`, `win32-x64`, `linux-x64`, and `linux-arm64`.
+A prepared resource tree has this shape:
 
 ```text
 resources/
@@ -22,8 +22,10 @@ resources/
 
 ## Release flow
 
-1. Run `scripts/media-build/darwin-arm64.sh` on native macOS arm64 or
-   `scripts/media-build/win32-x64.ps1` on Windows x64. A clean runner clones the
+1. Run `scripts/media-build/darwin-arm64.sh` on native macOS arm64,
+   `scripts/media-build/win32-x64.ps1` on Windows x64,
+   `scripts/media-build/linux-x64.sh` on Linux x86_64, or
+   `scripts/media-build/linux-arm64.sh` on Linux aarch64. A clean runner clones the
    vcpkg registry at the commit in `source-lock.json`, bootstraps that checkout,
    and builds the exact manifest under `vcpkg/` with custom static triplets.
    Remote binary caches are disabled; sources are verified by the SHA-512 values
@@ -33,7 +35,8 @@ resources/
    checkout remains pinned and is checked before applying the deterministic
    overlay transformation.
 3. Staging locates only the three required tools, rejects non-system dynamic
-   dependencies (`otool -L` on macOS, PE import parsing on Windows), aggregates
+   dependencies (`otool -L` on macOS, `ldd` on Linux, PE import parsing on
+   Windows), aggregates
    every target-package copyright plus its installed version into the dependency
    notice, then runs the manifest and verification gates.
 4. The scripts create a ZIP, its SHA-256, and the generated manifest SHA-256
@@ -80,6 +83,18 @@ Chocolatey, `ffmpeg-static`, or an unverified binary download.
   rejects every imported DLL that is neither an API-set DLL nor present in
   Windows System32. Windows is not considered verified until this workflow runs
   successfully and the packaged application is exercised on Windows.
+- Linux x64: build natively with `scripts/media-build/linux-x64.sh` (static
+  triplet `serpent-x64-linux-static`). `ldd` rejects every dependency outside
+  the glibc/libstdc++ system set. The release asset name is
+  `serpent-media-linux-x64.zip`. That zip is promoted when `bundle-lock.json`
+  marks `linux-x64` as `ready` (it is ready now). If the entry is not `ready`,
+  `media:ensure` stays fail-closed. A local trial can build the tree and run
+  `SERPENT_MEDIA_SKIP_PROVENANCE=1 npm run media:ensure`.
+- Linux arm64: build natively with `scripts/media-build/linux-arm64.sh` (static
+  triplet `serpent-arm64-linux-static`) on aarch64. The asset name is
+  `serpent-media-linux-arm64.zip`. `bundle-lock.json` currently marks
+  `linux-arm64` as `build-required` because no promoted zip exists.
+  `media:ensure` stays fail-closed until that entry is `ready`.
 
 The vcpkg commit, port source SHA-512 values, triplets and overlay transform are
 locked, but deterministic inputs do not imply bit-for-bit reproducible C/C++

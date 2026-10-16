@@ -252,7 +252,7 @@ hsl/hsla、`transparent` 或 `currentColor`），每个模式最多 32 个。
 iframe 收到的主题消息类型是 `plugin-ui.theme-changed`，带有 `theme`、`contrast`、单调 `revision` 和 token map；插件应按 revision
 更新自身样式，并忽略旧 revision。主题变化包括用户切换亮/暗/系统主题以及强调色变化。
 
-Host 当前提供的外观预设包括 `vscode-dark`、`serpent-dark`、`serpent-light` 和 `soft-light`。插件不需要识别预设 ID，
+Host 外观包含多套内置主题和用户自建主题，以及背景图片、背景不透明度和面板不透明度。「设置 → 外观」可在全新 UI 与旧版布局之间切换。插件不需要识别主题 ID 或这个开关，
 只需使用 iframe 收到的 `--ui-*` 只读语义 token 和 `plugin-ui.theme-changed` 消息即可。用户在 Host 中设置的背景颜色或背景图片
 不会暴露给插件，也不能通过插件主题贡献修改。
 
@@ -454,6 +454,10 @@ Hook 在 Manifest 中声明 `id`、`event`、`blocking`。当前实现首发事�
 Provider 支持 `preview`、`thumbnail`、`metadata`、`import`、`export`、`ai`、`derived-field`、`search`。Manifest 必须声明适配扩展名
 或 MIME；derived-field 必须有 `fieldId` 和 `fieldType`。返回值受严格大小限制，不能返回路径、secret、token 或大对象；搜索应优先
 物化字段，不能在 Renderer 中逐资产同步调用插件。
+
+`thumbnail` 提供器声明的扩展名会进入缩略图队列。导入、扫描或插件激活之后，Serpent 自动调用它生成卡片图，用户不必逐个打开文件。内置格式仍由 Serpent 自己生成；提供器只补充尚未支持的扩展名，失败或超时时卡片保持通用图标。
+
+`preview` 提供器在打开查看器时被调用。它返回一张图时，查看器按图片显示这张图。没有提供器、或提供器没有返回图时，仍是不支持内置预览。
 
 Input Capture 有 `view`、`viewer`、`application` 三种 scope，需对应 `input.capture.*` 权限；会话失焦、停用、崩溃、关库或视图关闭时自动
 释放。它不是系统全局键鼠 Hook。

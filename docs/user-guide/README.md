@@ -2,9 +2,9 @@
 
 面向最终用户的 Serpent 使用指南。英文版请切换站点语言；仓库内见同目录 `README.en.md`。
 
-- [安装](installation.md)——macOS / Windows 安装、升级
-- [基本使用](basics.md)——资源库、导入、工作区多标签页、文件夹/合集自定义外观、浏览排版、标签合集与查看器
-- [搜索与过滤](search-and-filters.md)——高级搜索语法、过滤维度和 Shift 多选
+- [安装](installation.md)——macOS / Windows / Linux 安装、升级
+- [基本使用](basics.md)——资源库、导入、工作区多标签页、文件夹封面、全新 UI、登录时启动、浏览排版、标签合集与查看器
+- [搜索与过滤](search-and-filters.md)——高级搜索语法、过滤维度、实验性语义搜索和 Shift 多选
 - [WebDAV 云同步](sync.md)——服务器配置、资源库绑定、自动同步与打开远端同步库
 - [AI 分析](ai.md)——支持的资产、自动/手动分析、任务进度和隐私提示
 - [浏览器扩展](browser-extension.md)——Chrome / Edge / Firefox 保存网页图片视频
@@ -24,7 +24,7 @@
 
 ## 界面速览
 
-典型工作区由左侧资源库导航、中部资产画布和右侧 Inspector 组成。Windows 使用左上角「主菜单」承载文件、编辑、资源库、窗口、关于和设置（可在「关于」中查看诊断日志与检查更新）；macOS 提供同等功能的系统菜单。导入、搜索、过滤和排序集中在顶部工具栏。
+典型工作区由左侧资源库导航、中部资产画布和右侧 Inspector 组成。Windows 与 Linux 使用左上角「主菜单」承载文件、编辑、资源库、窗口、关于和设置（可在「关于」中查看诊断日志与检查更新）；macOS 提供同等功能的系统菜单。导入、搜索、过滤和排序集中在顶部工具栏。
 
 ![Serpent 资源库总览](../assets/ui/Serpent-Preview.png)
 

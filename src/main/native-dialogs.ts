@@ -5,6 +5,7 @@
  * path injection keyed by dialog id (not English title strings).
  */
 
+import { statSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -13,6 +14,11 @@ import {
   type OpenDialogOptions,
   type SaveDialogOptions,
 } from "electron";
+
+import {
+  rememberDialogSelection,
+  resolveDialogDefaultPath,
+} from "./dialog-directory-memory";
 
 import {
   pluginLocalInstallDialogSpec,
@@ -60,7 +66,7 @@ function saveOptionsFor(
   return {
     title: copy.title,
     buttonLabel: copy.buttonLabel,
-    defaultPath: extras.defaultPath,
+    defaultPath: resolveDialogDefaultPath(extras.defaultPath),
     ...(extras.filters
       ? {
           filters: extras.filters.map((filter) => ({
@@ -72,15 +78,40 @@ function saveOptionsFor(
   };
 }
 
+function selectionKind(
+  selectedPath: string,
+  properties: OpenDialogOptions["properties"],
+): "directory" | "file" {
+  const flags = properties ?? [];
+  const opensDirectory = flags.includes("openDirectory");
+  const opensFile = flags.includes("openFile");
+  if (opensDirectory && !opensFile) return "directory";
+  if (opensFile && !opensDirectory) return "file";
+  try {
+    return statSync(selectedPath).isDirectory() ? "directory" : "file";
+  } catch {
+    return "file";
+  }
+}
+
 async function showOpen(
   host: NativeDialogHost,
   options: OpenDialogOptions,
 ): Promise<Electron.OpenDialogReturnValue> {
   const mainWindow = host.getMainWindow();
+  const dialogOptions: OpenDialogOptions = {
+    ...options,
+    defaultPath: resolveDialogDefaultPath(options.defaultPath),
+  };
   try {
-    return mainWindow
-      ? await dialog.showOpenDialog(mainWindow, options)
-      : await dialog.showOpenDialog(options);
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, dialogOptions)
+      : await dialog.showOpenDialog(dialogOptions);
+    const selected = result.filePaths[0];
+    if (!result.canceled && selected) {
+      rememberDialogSelection(selected, selectionKind(selected, options.properties));
+    }
+    return result;
   } finally {
     ensureRendererKeyboardFocus(mainWindow, {
       reattachHwnd: true,
@@ -242,5 +273,8 @@ export async function selectSavePath(
     host,
     saveOptionsFor(host.getLocale(), dialogId, extras),
   );
+  if (!result.canceled && result.filePath) {
+    rememberDialogSelection(result.filePath, "file");
+  }
   return result.canceled ? undefined : result.filePath;
 }

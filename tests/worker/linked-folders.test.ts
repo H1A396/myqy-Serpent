@@ -451,6 +451,23 @@ describe('Linked folder import', () => {
     );
   });
 
+  it('keeps a NAS linked folder available when files are added inside the same directory', () => {
+    const root = temporaryRoot();
+    const sourceRoot = path.join(root, 'stable-assets');
+    mkdirSync(sourceRoot);
+    writeFileSync(path.join(sourceRoot, 'a.png'), 'aaa');
+
+    const service = newService({ storageKindOverrideForTests: 'network' });
+    const created = service.createLibrary({ displayName: 'NasLinked', selectedParentPath: root });
+    service.importFolderAsLinked({ libraryId: created.libraryId, sourceRootPath: sourceRoot });
+    service.closeAll();
+
+    writeFileSync(path.join(sourceRoot, 'b.png'), 'bbb');
+
+    expect(() => service.openLibrary(created.libraryPath)).not.toThrow();
+    service.closeAll();
+  });
+
   it('rejects a replacement directory at the same NAS path', () => {
     const root = temporaryRoot();
     const sourceRoot = path.join(root, 'replaceable-assets');

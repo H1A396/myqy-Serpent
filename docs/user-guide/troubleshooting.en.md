@@ -4,6 +4,14 @@
 
 Development builds may be unsigned. Verify the package source first, then choose **Open** on macOS or **More info → Run anyway** on Windows. Do not bypass security prompts for an unknown package.
 
+## Linux AppImage will not start or has no video previews
+
+- **Permissions**: run `chmod +x` before launching. The x86_64 file is `Serpent-linux-x86-64-<version>.AppImage`; aarch64 is `Serpent-linux-arm64-<version>.AppImage`.
+- **FUSE**: both architectures need `libfuse2`; without FUSE use `./Serpent-….AppImage --appimage-extract-and-run`.
+- **Video previews**: The release AppImage already includes `ffmpeg` / `ffprobe` / `oiiotool`. You do not need the distro `ffmpeg` package first. If video previews are still missing, check that `SERPENT_FFMPEG_PATH` does not point at a missing file, then fully quit and relaunch. A source run without the media bundle is the case that needs the distro `ffmpeg` package.
+- **3D viewer blank (no GPU)**: set `SERPENT_SOFTWARE_GL=1` before launch.
+- **Close quits**: Linux has no system tray; closing the window ends the process (unlike Windows close-to-tray).
+
 ## Thumbnails or previews fail
 
 Serpent generates previews for many image, RAW, video, audio, and 3D formats. Confirm that the source is readable and the library directory is writable, then fully quit and reopen the library so background jobs can retry. If the problem continues, open **Window → Background jobs** or **Main Menu → About → View Diagnostic Logs** to check messages and diagnostic logs.

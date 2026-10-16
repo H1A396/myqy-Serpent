@@ -83,4 +83,21 @@ describe('locale preferences', () => {
     expect(readSystemLocale(['en-US', 'en'])).toBe('en');
     expect(readSystemLocale(['zh-Hans-CN', 'en'])).toBe('zh-CN');
   });
+
+  it('prefers the E2E locale pin over navigator languages', () => {
+    const host = globalThis as { __SERPENT_E2E_LOCALE__?: string };
+    const previous = host.__SERPENT_E2E_LOCALE__;
+    try {
+      host.__SERPENT_E2E_LOCALE__ = 'zh-CN';
+      expect(readSystemLocale(['en-US', 'en'])).toBe('zh-CN');
+      host.__SERPENT_E2E_LOCALE__ = 'en';
+      expect(readSystemLocale(['zh-CN', 'zh'])).toBe('en');
+    } finally {
+      if (previous === undefined) {
+        delete host.__SERPENT_E2E_LOCALE__;
+      } else {
+        host.__SERPENT_E2E_LOCALE__ = previous;
+      }
+    }
+  });
 });

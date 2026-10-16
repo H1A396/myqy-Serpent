@@ -175,6 +175,7 @@ describe("macOS product menu mirror (Serpent-q0b1)", () => {
       "library.import",
       "library.export",
       "library.settings",
+      "library.show-missing-linked",
       "window.background-jobs",
       "window.diagnostics",
       "about.serpent",

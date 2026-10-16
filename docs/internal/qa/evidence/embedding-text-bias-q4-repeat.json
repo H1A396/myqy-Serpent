@@ -1,0 +1,4295 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-11T16:14:06.478Z",
+  "scope": "synthetic-full",
+  "fixtureVersion": 1,
+  "profile": "Q4_K_XL",
+  "modelRevision": "412430755667d84b1ac64fe1fe2693aa6219f1d9",
+  "hashes": {
+    "core": "ea905fd08e8061db77a0031cbb5096d459d7cfd2bdd0ad2ba66e483f16719493",
+    "projector": "90e7b0238009e2954f856f2081dcf7f35af026b64c765e98f4777053e1754460"
+  },
+  "runtimeVersion": "version: 0.6.0-dev (build 11457, commit 5ad1c5da0)",
+  "gpuLayers": 99,
+  "dimensions": 768,
+  "pooling": "mean",
+  "cjkFont": "Hiragino Sans GB",
+  "corpusCount": 56,
+  "evaluationQueries": 16,
+  "independentBackgroundQueries": 16,
+  "querybankTemperature": 0.05,
+  "calibration": "Background bank has no positive subjects and is disjoint from evaluation query text; no parameter tuning on evaluation queries.",
+  "limitations": [
+    "Synthetic flat illustrations only; no user assets, photos, document screenshots or video.",
+    "No official reference implementation, other quantizations, Windows or packaged app tested.",
+    "Calibration results are diagnostic candidates, not a validated production fix."
+  ],
+  "controls": {
+    "repeatCosine": 1,
+    "distinctCosine": 0.8205754191009507,
+    "textControlCosine": 0.5813551719421715,
+    "imageCanaryPassed": true
+  },
+  "thresholds": {
+    "pairedPositiveShare": 0.65,
+    "pairedMedianDelta": 0.01,
+    "irrelevantDocumentOutrankingQueryShare": 0.5,
+    "note": "Predeclared diagnostic thresholds, not release quality gates."
+  },
+  "verdict": {
+    "unrelatedImageTextBiasDetected": true,
+    "unrelatedDocumentBiasDetected": false,
+    "status": "bias-detected"
+  },
+  "aggregates": {
+    "raw": {
+      "ndcg5": 1,
+      "ndcg10": 1,
+      "recall10": 1,
+      "top1Relevant": 1,
+      "cleanRank": 3.5625,
+      "unrelatedDocumentsBeforeClean": 0
+    },
+    "textPenalty": {
+      "ndcg5": 1,
+      "ndcg10": 0.9982975547636661,
+      "recall10": 1,
+      "top1Relevant": 1,
+      "cleanRank": 2.5625,
+      "unrelatedDocumentsBeforeClean": 0
+    },
+    "backgroundCentered": {
+      "ndcg5": 1,
+      "ndcg10": 1,
+      "recall10": 1,
+      "top1Relevant": 1,
+      "cleanRank": 3,
+      "unrelatedDocumentsBeforeClean": 0
+    },
+    "querybankInvertedSoftmax": {
+      "ndcg5": 1,
+      "ndcg10": 1,
+      "recall10": 1,
+      "top1Relevant": 1,
+      "cleanRank": 2.9375,
+      "unrelatedDocumentsBeforeClean": 0
+    },
+    "channelRrf": {
+      "ndcg5": 0.8108439889317889,
+      "ndcg10": 0.9381750402147797,
+      "recall10": 1,
+      "top1Relevant": 1,
+      "cleanRank": 4.375,
+      "unrelatedDocumentsBeforeClean": 0.125
+    }
+  },
+  "pairDeltas": {
+    "unrelated-en": {
+      "count": 112,
+      "mean": -0.006384731020838536,
+      "median": -0.005688176356641428,
+      "positiveShare": 0.25,
+      "min": -0.03950354575679671,
+      "max": 0.023130259650757545
+    },
+    "unrelated-zh": {
+      "count": 112,
+      "mean": 0.034246575451421575,
+      "median": 0.03139384036673332,
+      "positiveShare": 0.9196428571428571,
+      "min": -0.009491135849352905,
+      "max": 0.08041912166815202
+    },
+    "random": {
+      "count": 112,
+      "mean": 0.004714828157144753,
+      "median": 0.00378287899840124,
+      "positiveShare": 0.6160714285714286,
+      "min": -0.01885989982333236,
+      "max": 0.0339205910670497
+    },
+    "related": {
+      "count": 112,
+      "mean": 0.01736321748676912,
+      "median": 0.017784704602289314,
+      "positiveShare": 0.9375,
+      "min": -0.004967859119441864,
+      "max": 0.03534915024072571
+    }
+  },
+  "calibratedPairDeltas": {
+    "backgroundCentered": {
+      "unrelated-en": {
+        "count": 112,
+        "mean": -0.012677213125904668,
+        "median": -0.012714941377196476,
+        "positiveShare": 0.10714285714285714,
+        "min": -0.040036968951022045,
+        "max": 0.008656280131357996
+      },
+      "unrelated-zh": {
+        "count": 112,
+        "mean": -0.011443698747276992,
+        "median": -0.015192395531756497,
+        "positiveShare": 0.4375,
+        "min": -0.051720044988635805,
+        "max": 0.0382388783780484
+      },
+      "random": {
+        "count": 112,
+        "mean": -0.01712178070707644,
+        "median": -0.017429978623159592,
+        "positiveShare": 0.044642857142857144,
+        "min": -0.03888755467900051,
+        "max": 0.014346111274779694
+      },
+      "related": {
+        "count": 112,
+        "mean": 0.006886555553322259,
+        "median": 0.006949068265352354,
+        "positiveShare": 0.7767857142857143,
+        "min": -0.015948058238002383,
+        "max": 0.027649262040978284
+      }
+    },
+    "querybankInvertedSoftmax": {
+      "unrelated-en": {
+        "count": 112,
+        "mean": -0.010257614262987626,
+        "median": -0.00994824945080336,
+        "positiveShare": 0.14285714285714285,
+        "min": -0.03706903019570151,
+        "max": 0.010678462001808331
+      },
+      "unrelated-zh": {
+        "count": 112,
+        "mean": -0.01185791334693922,
+        "median": -0.014198283642761322,
+        "positiveShare": 0.4375,
+        "min": -0.052618156328513965,
+        "max": 0.038515698763746165
+      },
+      "random": {
+        "count": 112,
+        "mean": -0.019084858753789728,
+        "median": -0.020275503126129357,
+        "positiveShare": 0.017857142857142856,
+        "min": -0.041154650089252454,
+        "max": 0.007695214077975687
+      },
+      "related": {
+        "count": 112,
+        "mean": 0.007096619737049802,
+        "median": 0.007332808009639369,
+        "positiveShare": 0.7946428571428571,
+        "min": -0.01581365763211262,
+        "max": 0.025724940413369257
+      }
+    }
+  },
+  "pairDeltasByQueryLanguage": {
+    "en": {
+      "unrelated-en": {
+        "count": 56,
+        "mean": -0.005395253503880597,
+        "median": -0.005606217549197268,
+        "positiveShare": 0.26785714285714285,
+        "min": -0.03430132802666597,
+        "max": 0.023130259650757545
+      },
+      "unrelated-zh": {
+        "count": 56,
+        "mean": 0.009935257184660635,
+        "median": 0.008207139783378281,
+        "positiveShare": 0.8392857142857143,
+        "min": -0.009491135849352905,
+        "max": 0.031594242435371234
+      },
+      "random": {
+        "count": 56,
+        "mean": 0.0027260147624676573,
+        "median": 0.0024768228015925597,
+        "positiveShare": 0.5357142857142857,
+        "min": -0.01885989982333236,
+        "max": 0.0339205910670497
+      },
+      "related": {
+        "count": 56,
+        "mean": 0.015219221170140495,
+        "median": 0.01585423584741741,
+        "positiveShare": 0.9285714285714286,
+        "min": -0.004967859119441864,
+        "max": 0.03206123996994714
+      }
+    },
+    "zh": {
+      "unrelated-en": {
+        "count": 56,
+        "mean": -0.007374208537796475,
+        "median": -0.0059051162203048735,
+        "positiveShare": 0.23214285714285715,
+        "min": -0.03950354575679671,
+        "max": 0.0114585532552971
+      },
+      "unrelated-zh": {
+        "count": 56,
+        "mean": 0.05855789371818248,
+        "median": 0.05834333646841172,
+        "positiveShare": 1,
+        "min": 0.02774486040811197,
+        "max": 0.08041912166815202
+      },
+      "random": {
+        "count": 56,
+        "mean": 0.006703641551821848,
+        "median": 0.0054044995673755425,
+        "positiveShare": 0.6964285714285714,
+        "min": -0.014147696465778403,
+        "max": 0.03188599327589703
+      },
+      "related": {
+        "count": 56,
+        "mean": 0.01950721380339774,
+        "median": 0.02097725370599063,
+        "positiveShare": 0.9464285714285714,
+        "min": -0.002156567874041504,
+        "max": 0.03534915024072571
+      }
+    }
+  },
+  "largestUnrelatedTextBoosts": [
+    {
+      "query": "mountain-zh",
+      "asset": "cup-unrelated-zh",
+      "cleanScore": 0.5460524104106633,
+      "textScore": 0.6264715320788153,
+      "delta": 0.08041912166815202
+    },
+    {
+      "query": "fish-zh",
+      "asset": "mountain-unrelated-zh",
+      "cleanScore": 0.542003071115432,
+      "textScore": 0.6213057098475634,
+      "delta": 0.07930263873213139
+    },
+    {
+      "query": "car-zh",
+      "asset": "mountain-unrelated-zh",
+      "cleanScore": 0.537959235463577,
+      "textScore": 0.6169633214694729,
+      "delta": 0.07900408600589581
+    },
+    {
+      "query": "boat-zh",
+      "asset": "cup-unrelated-zh",
+      "cleanScore": 0.5148668736789449,
+      "textScore": 0.5923784711250852,
+      "delta": 0.07751159744614033
+    },
+    {
+      "query": "mountain-zh",
+      "asset": "fish-unrelated-zh",
+      "cleanScore": 0.537607684154829,
+      "textScore": 0.6149163718657708,
+      "delta": 0.07730868771094179
+    }
+  ],
+  "backgroundByVariant": {
+    "clean": {
+      "count": 8,
+      "mean": 0.5455726724245091,
+      "median": 0.5451200974964969,
+      "positiveShare": 1,
+      "min": 0.5351443938950441,
+      "max": 0.5564242759037213
+    },
+    "unrelated-en": {
+      "count": 8,
+      "mean": 0.5518651545295752,
+      "median": 0.5496045240735689,
+      "positiveShare": 1,
+      "min": 0.5438887727983128,
+      "max": 0.5614089925069338
+    },
+    "unrelated-zh": {
+      "count": 8,
+      "mean": 0.5912629466232077,
+      "median": 0.5912055589053222,
+      "positiveShare": 1,
+      "min": 0.585024680246497,
+      "max": 0.5989881778169355
+    },
+    "random": {
+      "count": 8,
+      "mean": 0.5674092812887302,
+      "median": 0.5651600996553964,
+      "positiveShare": 1,
+      "min": 0.5630188965576478,
+      "max": 0.576992666769755
+    },
+    "related": {
+      "count": 8,
+      "mean": 0.5560493343579559,
+      "median": 0.5560964958497173,
+      "positiveShare": 1,
+      "min": 0.5460014611136852,
+      "max": 0.5674044750222819
+    },
+    "related-document": {
+      "count": 8,
+      "mean": 0.5708490130267184,
+      "median": 0.5681419651914668,
+      "positiveShare": 1,
+      "min": 0.5587477940519279,
+      "max": 0.593353669835107
+    },
+    "unrelated-document": {
+      "count": 8,
+      "mean": 0.5658401921211743,
+      "median": 0.5694471667785752,
+      "positiveShare": 1,
+      "min": 0.5364095007181107,
+      "max": 0.5853532118113014
+    }
+  },
+  "backgroundHubCounts": [
+    {
+      "id": "fish-document",
+      "score": 11
+    },
+    {
+      "id": "moon-unrelated-zh",
+      "score": 11
+    },
+    {
+      "id": "boat-unrelated-zh",
+      "score": 10
+    },
+    {
+      "id": "fish-unrelated-zh",
+      "score": 10
+    },
+    {
+      "id": "mountain-unrelated-zh",
+      "score": 10
+    },
+    {
+      "id": "tree-unrelated-zh",
+      "score": 9
+    },
+    {
+      "id": "car-unrelated-zh",
+      "score": 8
+    },
+    {
+      "id": "house-unrelated-zh",
+      "score": 8
+    },
+    {
+      "id": "unrelated-document-8",
+      "score": 8
+    },
+    {
+      "id": "cup-unrelated-zh",
+      "score": 7
+    },
+    {
+      "id": "boat-random",
+      "score": 6
+    },
+    {
+      "id": "boat-document",
+      "score": 5
+    },
+    {
+      "id": "unrelated-document-1",
+      "score": 5
+    },
+    {
+      "id": "unrelated-document-2",
+      "score": 5
+    },
+    {
+      "id": "boat-related",
+      "score": 4
+    },
+    {
+      "id": "moon-document",
+      "score": 4
+    },
+    {
+      "id": "moon-random",
+      "score": 3
+    },
+    {
+      "id": "moon-related",
+      "score": 3
+    },
+    {
+      "id": "tree-document",
+      "score": 3
+    },
+    {
+      "id": "unrelated-document-4",
+      "score": 3
+    },
+    {
+      "id": "unrelated-document-7",
+      "score": 3
+    },
+    {
+      "id": "car-random",
+      "score": 2
+    },
+    {
+      "id": "cup-document",
+      "score": 2
+    },
+    {
+      "id": "cup-random",
+      "score": 2
+    },
+    {
+      "id": "house-random",
+      "score": 2
+    },
+    {
+      "id": "moon-clean",
+      "score": 2
+    },
+    {
+      "id": "mountain-random",
+      "score": 2
+    },
+    {
+      "id": "car-document",
+      "score": 1
+    },
+    {
+      "id": "fish-random",
+      "score": 1
+    },
+    {
+      "id": "house-clean",
+      "score": 1
+    },
+    {
+      "id": "house-document",
+      "score": 1
+    },
+    {
+      "id": "house-related",
+      "score": 1
+    },
+    {
+      "id": "moon-unrelated-en",
+      "score": 1
+    },
+    {
+      "id": "mountain-related",
+      "score": 1
+    },
+    {
+      "id": "mountain-unrelated-en",
+      "score": 1
+    },
+    {
+      "id": "tree-random",
+      "score": 1
+    },
+    {
+      "id": "unrelated-document-3",
+      "score": 1
+    },
+    {
+      "id": "unrelated-document-5",
+      "score": 1
+    },
+    {
+      "id": "unrelated-document-6",
+      "score": 1
+    },
+    {
+      "id": "boat-clean",
+      "score": 0
+    },
+    {
+      "id": "boat-unrelated-en",
+      "score": 0
+    },
+    {
+      "id": "car-clean",
+      "score": 0
+    },
+    {
+      "id": "car-related",
+      "score": 0
+    },
+    {
+      "id": "car-unrelated-en",
+      "score": 0
+    },
+    {
+      "id": "cup-clean",
+      "score": 0
+    },
+    {
+      "id": "cup-related",
+      "score": 0
+    },
+    {
+      "id": "cup-unrelated-en",
+      "score": 0
+    },
+    {
+      "id": "fish-clean",
+      "score": 0
+    },
+    {
+      "id": "fish-related",
+      "score": 0
+    },
+    {
+      "id": "fish-unrelated-en",
+      "score": 0
+    },
+    {
+      "id": "house-unrelated-en",
+      "score": 0
+    },
+    {
+      "id": "mountain-clean",
+      "score": 0
+    },
+    {
+      "id": "mountain-document",
+      "score": 0
+    },
+    {
+      "id": "tree-clean",
+      "score": 0
+    },
+    {
+      "id": "tree-related",
+      "score": 0
+    },
+    {
+      "id": "tree-unrelated-en",
+      "score": 0
+    }
+  ],
+  "queries": [
+    {
+      "id": "car-en",
+      "subject": "car",
+      "text": "a red car",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.81362832081636
+            },
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.8020605523193535
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.7815479494242842
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.7726614584393894
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.7585738393826924
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.8020605523193535
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.7815479494242842
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.7726614584393894
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.7585738393826924
+            },
+            {
+              "id": "car-unrelated-en",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-en",
+              "score": 0.7484236444914524
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.24556375448795686
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.2455573178232915
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.23723441725297012
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.20931955480283837
+            },
+            {
+              "id": "car-unrelated-en",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-en",
+              "score": 0.20357668912591298
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.23820519440852062
+            },
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.2375199295973277
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.22973701135351488
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.19935077983215466
+            },
+            {
+              "id": "car-unrelated-en",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-en",
+              "score": 0.19904722198177827
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9502262648327979,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "car-zh",
+      "subject": "car",
+      "text": "一辆红色汽车",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.7957653737582822
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.7947303402811878
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.7801969545394496
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.7584837397343549
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.746999248785575
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 0.9930783166417602,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.7957653737582822
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.7801969545394496
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.7584837397343549
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.746999248785575
+            },
+            {
+              "id": "car-unrelated-en",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-en",
+              "score": 0.7190799811820731
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.23926857592688555
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.22665933728811927
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.21417020756304084
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.19365451322885263
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.183657345149024
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.2312247510362564
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.2193072138733484
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.2066728016635856
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.18525899598951923
+            },
+            {
+              "id": "car-random",
+              "kind": "image",
+              "subject": "car",
+              "variant": "random",
+              "score": 0.17368857017834027
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9502262648327979,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-related",
+              "kind": "image",
+              "subject": "car",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-unrelated-zh",
+              "kind": "image",
+              "subject": "car",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "car-clean",
+              "kind": "image",
+              "subject": "car",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "tree-en",
+      "subject": "tree",
+      "text": "a green tree",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.8258386014740355
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.7934223033332738
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.7510191003123324
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.7370377321955751
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.7171952895606232
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.7934223033332738
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.7510191003123324
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.7370377321955751
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.7171952895606232
+            },
+            {
+              "id": "tree-unrelated-en",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-en",
+              "score": 0.7076573297496791
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.2576256740841706
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.23653830105969165
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.20509243749065276
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.17268505430293113
+            },
+            {
+              "id": "tree-unrelated-en",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-en",
+              "score": 0.15935840701319692
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.24547674206612258
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.22937178203847153
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.19866933351871985
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.1653077011396643
+            },
+            {
+              "id": "tree-unrelated-en",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-en",
+              "score": 0.1549075550721084
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.6992148198508501,
+          "ndcg10": 0.9145683473035053,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "tree-zh",
+      "subject": "tree",
+      "text": "一棵绿色的大树",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.7849784682533602
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.7582423017286329
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.7320524882805817
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.7117808638781952
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.6994676940264699
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.7582423017286329
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.7320524882805817
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.7117808638781952
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.6994676940264699
+            },
+            {
+              "id": "tree-unrelated-en",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-en",
+              "score": 0.671701177533907
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.2167655408634952
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.2013582994550508
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.1658542010565155
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.14331222483179318
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.13511501613382593
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.2046166088454472
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.19419178043383067
+            },
+            {
+              "id": "tree-clean",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "clean",
+              "score": 0.15943109708458258
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.13685409015203587
+            },
+            {
+              "id": "tree-random",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "random",
+              "score": 0.1277376629705591
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.6992148198508501,
+          "ndcg10": 0.9145683473035053,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 6,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "tree-document",
+              "kind": "text",
+              "subject": "tree",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "tree-related",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "tree-unrelated-zh",
+              "kind": "image",
+              "subject": "tree",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fish-en",
+      "subject": "fish",
+      "text": "an orange fish",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.8217843012283286
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.8175269695325458
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.7919588109203863
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.7643168521602598
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.7553199924246271
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.8217843012283286
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.7919588109203863
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.7643168521602598
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.7553199924246271
+            },
+            {
+              "id": "fish-unrelated-en",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-en",
+              "score": 0.747233541175414
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.26608810736029054
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.24502379793285212
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.22417329969743882
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.19649166470751067
+            },
+            {
+              "id": "fish-unrelated-en",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-en",
+              "score": 0.1858245486684802
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.2604926234231748
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.23928653147634682
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.2196988339347451
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.188746289301587
+            },
+            {
+              "id": "fish-unrelated-en",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-en",
+              "score": 0.18210946408242523
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.7227265726449519,
+          "ndcg10": 0.9391664772645913,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fish-zh",
+      "subject": "fish",
+      "text": "一条橙色的鱼",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.788139112227879
+            },
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.7851209727720164
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.7685333420872421
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.7484628138697853
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.723049095806668
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.7851209727720164
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.7685333420872421
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.7484628138697853
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.723049095806668
+            },
+            {
+              "id": "fish-unrelated-en",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-en",
+              "score": 0.7023437415974472
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.2294247789039784
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.20152780088225108
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.19478544239277207
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.17464960929649265
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.15522390835391886
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.22382929496686266
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.1957905344257458
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.19031097663007834
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.1677359026937978
+            },
+            {
+              "id": "fish-random",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "random",
+              "score": 0.14747853294799518
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.830419897363192,
+          "ndcg10": 0.9274624750390077,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "fish-related",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "fish-unrelated-zh",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "fish-clean",
+              "kind": "image",
+              "subject": "fish",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "house-en",
+      "subject": "house",
+      "text": "a house with a red roof",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.8576161350025049
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.8209317601207069
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.7666991748710423
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.7474954663196234
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.7358843588505588
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.8209317601207069
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.7666991748710423
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.7474954663196234
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.7376161350025049
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.7358843588505588
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.29596995847408536
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.2685143462040043
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.22489561568537442
+            },
+            {
+              "id": "house-unrelated-en",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-en",
+              "score": 0.18616528068817406
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.18447656976197557
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.28270073519045
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.2592346616082133
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.21273267603150003
+            },
+            {
+              "id": "house-unrelated-en",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-en",
+              "score": 0.1785976456560736
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.17290848605346953
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.830419897363192,
+          "ndcg10": 0.9274624750390077,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "house-zh",
+      "subject": "house",
+      "text": "一座红屋顶的房子",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.8237828844087949
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.7990579700132626
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.7507646266621324
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.7409812361742342
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.7231058637001139
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.7990579700132626
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.7507646266621324
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.7409812361742342
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.7231058637001139
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.7037828844087949
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.26213670788037535
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.24664055609656
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.19917767698856625
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.16146608270875118
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.16008696714246606
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.24886748459674002
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.237360871500769
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.18701473733469187
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.1521894781727453
+            },
+            {
+              "id": "house-random",
+              "kind": "image",
+              "subject": "house",
+              "variant": "random",
+              "score": 0.14851888343396003
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.830419897363192,
+          "ndcg10": 0.9238417859169578,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "house-related",
+              "kind": "image",
+              "subject": "house",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "car-document",
+              "kind": "text",
+              "subject": "car",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-unrelated-zh",
+              "kind": "image",
+              "subject": "house",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-clean",
+              "kind": "image",
+              "subject": "house",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "boat-en",
+      "subject": "boat",
+      "text": "a sailboat on the sea",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.8202422293893329
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.8061429021430904
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.758883436695042
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.7452743935737077
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.7418544776739582
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.8061429021430904
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.758883436695042
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.7452743935737077
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.7418544776739582
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.7357401195508663
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.23903647852030396
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.2387384271208085
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.20245916079132065
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.1789771425627663
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.1682817268039527
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.23262561611333954
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.23238344552283896
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.19596977858746134
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.17546102183788326
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.16067667536821084
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9538469539548478,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "boat-zh",
+      "subject": "boat",
+      "text": "海面上的帆船",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.7806109508398316
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.749886424476442
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.739072934554513
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.7057675899765348
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.7034594572937738
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.749886424476442
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.739072934554513
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.7057675899765348
+            },
+            {
+              "id": "boat-random",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "random",
+              "score": 0.7034594572937738
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.688744629380338
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.19940519997080264
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.18248194945416019
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.14934331407281343
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.1459603606972497
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.13198165239223802
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.19299433756383821
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.17612696785619064
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.14285393186895412
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.13974779887908817
+            },
+            {
+              "id": "boat-unrelated-en",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-en",
+              "score": 0.12846553166735497
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9538469539548478,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-related",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-unrelated-zh",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "fish-document",
+              "kind": "text",
+              "subject": "fish",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "boat-clean",
+              "kind": "image",
+              "subject": "boat",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mountain-en",
+      "subject": "mountain",
+      "text": "a snowy mountain",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.8124203976063328
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.7915661537775501
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.7113762257435172
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.7081143202857738
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.6925411776243015
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.7915661537775501
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.7113762257435172
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.7081143202857738
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.6925411776243015
+            },
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.6924203976063328
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.2536726035544049
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.24125377215091237
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.1687637323166269
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.12657365620615268
+            },
+            {
+              "id": "mountain-unrelated-en",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-en",
+              "score": 0.1259032776172877
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.2503386677556525
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.23557221204836976
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.1650064938416933
+            },
+            {
+              "id": "mountain-unrelated-en",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-en",
+              "score": 0.12267900960746192
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.12054932232096716
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.6992148198508501,
+          "ndcg10": 0.923596074502359,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mountain-zh",
+      "subject": "mountain",
+      "text": "一座积雪的高山",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.7429465468434496
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.7279534658796236
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.7152832224220242
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.6627485726867735
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.6583429715603575
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 0.9796825595768971,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.7279534658796236
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.7152832224220242
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.6627485726867735
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.6583429715603575
+            },
+            {
+              "id": "mountain-unrelated-en",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-en",
+              "score": 0.6411180849944692
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.18419875279152176
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.17764108425298586
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.11629504460508877
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.11573047813346715
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.09678105126862468
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.18086481699276935
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.17195952415044324
+            },
+            {
+              "id": "mountain-clean",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "clean",
+              "score": 0.11197323965853356
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.10975631437753042
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.09075671738343916
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.830419897363192,
+          "ndcg10": 0.9292488239937617,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 7,
+          "unrelatedDocumentsBeforeClean": 1,
+          "top5": [
+            {
+              "id": "mountain-document",
+              "kind": "text",
+              "subject": "mountain",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "mountain-related",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "boat-document",
+              "kind": "text",
+              "subject": "boat",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "mountain-unrelated-zh",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "mountain-random",
+              "kind": "image",
+              "subject": "mountain",
+              "variant": "random",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "moon-en",
+      "subject": "moon",
+      "text": "a crescent moon at night",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.8165373940629183
+            },
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.8127041944303137
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.7444734696228726
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.7375177908440398
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.7260981817320051
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.8127041944303137
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.7444734696228726
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.7375177908440398
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.7260981817320051
+            },
+            {
+              "id": "moon-unrelated-en",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-en",
+              "score": 0.7200795842099041
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.2495222452189907
+            },
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.24595312480773945
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.1930520206186519
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.1622819776702622
+            },
+            {
+              "id": "moon-unrelated-en",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-en",
+              "score": 0.15929647810033332
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.24494034253447416
+            },
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.23794943526845935
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.1882912030992019
+            },
+            {
+              "id": "moon-unrelated-en",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-en",
+              "score": 0.15655796480334638
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.15087026295400818
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.944819226755994,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "unrelated-document-2",
+              "kind": "text",
+              "subject": null,
+              "variant": "unrelated-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "moon-zh",
+      "subject": "moon",
+      "text": "夜空中的一弯月亮",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.7425238177405632
+            },
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.7327229397440084
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.7266057086353214
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.6817476278081094
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.6746787313758374
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.7327229397440084
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.7266057086353214
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.6817476278081094
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.6746787313758374
+            },
+            {
+              "id": "moon-unrelated-en",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-en",
+              "score": 0.6607450195355066
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.1719395484853844
+            },
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.16954099053268534
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.13209254907387236
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.13032617880388864
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.11086252731409452
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.16495908784816882
+            },
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.1639358589461043
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.12668126000965274
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.12556536128443863
+            },
+            {
+              "id": "moon-random",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "random",
+              "score": 0.0994508125978405
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9538469539548478,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 1,
+          "top5": [
+            {
+              "id": "moon-document",
+              "kind": "text",
+              "subject": "moon",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "moon-related",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "moon-unrelated-zh",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "unrelated-document-2",
+              "kind": "text",
+              "subject": null,
+              "variant": "unrelated-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "moon-clean",
+              "kind": "image",
+              "subject": "moon",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cup-en",
+      "subject": "cup",
+      "text": "a blue coffee cup",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.8545337431501806
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.8257844375708628
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.7795109803393057
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.7672738437086671
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.7529548785575592
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 2,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.8257844375708628
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.7795109803393057
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.7672738437086671
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.7529548785575592
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.7435240301701802
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.28956322985902905
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.27978297645717765
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.24436658644426157
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.20493349423655227
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.1933146511880638
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.2845555562081613
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.2733068682563219
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.23633416212381153
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.19917164737450221
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.18445013559945844
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9538469539548478,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cup-zh",
+      "subject": "cup",
+      "text": "一个蓝色的咖啡杯",
+      "strategies": {
+        "raw": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 4,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.8222165114197257
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.7916157697541354
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.7614894455542625
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.7440678600552504
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.7325288037634655
+            }
+          ]
+        },
+        "textPenalty": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.7916157697541354
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.7614894455542625
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.7440678600552504
+            },
+            {
+              "id": "cup-random",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "random",
+              "score": 0.7325288037634655
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.7096994779791532
+            }
+          ]
+        },
+        "backgroundCentered": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.2572459981285742
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.2456143086404502
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.2089234661602063
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.17646476530776545
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.16167809365814634
+            }
+          ]
+        },
+        "querybankInvertedSoftmax": {
+          "ndcg5": 1,
+          "ndcg10": 1,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 3,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.25223832447770644
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.23913820043959444
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.20089104183975626
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.16749701417773788
+            },
+            {
+              "id": "cup-unrelated-en",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-en",
+              "score": 0.15591624679609628
+            }
+          ]
+        },
+        "channelRrf": {
+          "ndcg5": 0.8539316501572937,
+          "ndcg10": 0.9502262648327979,
+          "recall10": 1,
+          "top1Relevant": 1,
+          "cleanRank": 5,
+          "unrelatedDocumentsBeforeClean": 0,
+          "top5": [
+            {
+              "id": "cup-document",
+              "kind": "text",
+              "subject": "cup",
+              "variant": "related-document",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "cup-related",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "related",
+              "score": 0.01639344262295082
+            },
+            {
+              "id": "cup-unrelated-zh",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "unrelated-zh",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "house-document",
+              "kind": "text",
+              "subject": "house",
+              "variant": "related-document",
+              "score": 0.016129032258064516
+            },
+            {
+              "id": "cup-clean",
+              "kind": "image",
+              "subject": "cup",
+              "variant": "clean",
+              "score": 0.015873015873015872
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -761,55 +761,62 @@ describe('InteractiveScheduler', () => {
   });
 
   it('reports the lane holder when queued work cannot be admitted', async () => {
-    const stalls: SchedulerStallInfo[] = [];
-    const scheduler = new InteractiveScheduler({
-      onStall: (info) => stalls.push(info),
-      stallReportMs: 20,
-    });
-    let releaseHolder!: () => void;
-    const hold = new Promise<void>((resolve) => {
-      releaseHolder = resolve;
-    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    try {
+      const stalls: SchedulerStallInfo[] = [];
+      const scheduler = new InteractiveScheduler({
+        onStall: (info) => stalls.push(info),
+        stallReportMs: 20,
+      });
+      let releaseHolder!: () => void;
+      const hold = new Promise<void>((resolve) => {
+        releaseHolder = resolve;
+      });
 
-    // A single interactive owner blocks every other lane: another interactive
-    // request needs `activeInteractive < 1`, and a mutation needs a completely
-    // idle scheduler. That is the shape of a switch waiting on a stuck open.
-    const holder = scheduler.schedule(
-      { requestId: 'holder', lane: 'interactive-control', label: 'browse.session.open', libraryId: 'library-1' },
-      () => hold,
-    );
-    await Promise.resolve();
-    const waiting = scheduler.schedule(
-      { requestId: 'waiting', lane: 'interactive-control', label: 'library.close', libraryId: 'library-1' },
-      () => 'closed',
-    );
-    let mutationStarted = false;
-    const mutation = scheduler.schedule(
-      { requestId: 'mutation', lane: 'mutation', label: 'library.open', libraryId: 'library-2' },
-      () => {
-        mutationStarted = true;
-      },
-    );
+      // A single interactive owner blocks every other lane: another interactive
+      // request needs `activeInteractive < 1`, and a mutation needs a completely
+      // idle scheduler. That is the shape of a switch waiting on a stuck open.
+      const holder = scheduler.schedule(
+        { requestId: 'holder', lane: 'interactive-control', label: 'browse.session.open', libraryId: 'library-1' },
+        () => hold,
+      );
+      await Promise.resolve();
+      const waiting = scheduler.schedule(
+        { requestId: 'waiting', lane: 'interactive-control', label: 'library.close', libraryId: 'library-1' },
+        () => 'closed',
+      );
+      let mutationStarted = false;
+      const mutation = scheduler.schedule(
+        { requestId: 'mutation', lane: 'mutation', label: 'library.open', libraryId: 'library-2' },
+        () => {
+          mutationStarted = true;
+        },
+      );
 
-    await vi.waitFor(() => expect(stalls.length).toBeGreaterThan(0));
-    expect(stalls[0]!.active).toEqual([
-      {
-        label: 'browse.session.open',
-        lane: 'interactive-control',
-        libraryId: 'library-1',
-        runningMs: expect.any(Number),
-      },
-    ]);
-    expect(stalls[0]!.queued.map((entry) => entry.label)).toEqual(['library.close', 'library.open']);
-    expect(stalls[0]!.queued.every((entry) => entry.queuedMs >= 0)).toBe(true);
-    expect(stalls[0]!.waitedMs).toBeGreaterThanOrEqual(20);
-    expect(mutationStarted).toBe(false);
+      await vi.advanceTimersByTimeAsync(20);
+      expect(stalls.length).toBeGreaterThan(0);
+      expect(stalls[0]!.active).toEqual([
+        {
+          label: 'browse.session.open',
+          lane: 'interactive-control',
+          libraryId: 'library-1',
+          runningMs: expect.any(Number),
+        },
+      ]);
+      expect(stalls[0]!.queued.map((entry) => entry.label)).toEqual(['library.close', 'library.open']);
+      expect(stalls[0]!.queued.every((entry) => entry.queuedMs >= 0)).toBe(true);
+      expect(stalls[0]!.waitedMs).toBe(20);
+      expect(mutationStarted).toBe(false);
 
-    releaseHolder();
-    await Promise.all([holder, waiting, mutation]);
-    const reportsAfterDrain = stalls.length;
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    expect(stalls.length).toBe(reportsAfterDrain);
+      releaseHolder();
+      await Promise.all([holder, waiting, mutation]);
+      const reportsAfterDrain = stalls.length;
+      await vi.advanceTimersByTimeAsync(60);
+      expect(stalls.length).toBe(reportsAfterDrain);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not report a stall for a queue that drains normally', async () => {

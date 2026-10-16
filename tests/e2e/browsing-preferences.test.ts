@@ -920,7 +920,7 @@ test("maintains consistent preferences, accessible names, zoom behavior, and avo
       );
       await expect(scopedCard).toBeVisible({ timeout: 10_000 });
       await expect(scopedCard).toHaveAttribute("aria-label", targetName);
-      await expect(scopedCard).toHaveAttribute("title", targetName);
+      await expect(scopedCard).toHaveAttribute("data-hover-tip", targetName);
       if (expectNameHidden) {
         await expect(scopedCard).not.toContainText(targetName);
       }

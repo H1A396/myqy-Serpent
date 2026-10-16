@@ -3,17 +3,21 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { parseAssetMarkdown } from "../plugins/plugin-community-readme";
+import type { SerpentShellApi } from "../shared/external-url";
 import type { SerpentLibraryApi } from "../shared/library-api";
 import { TEXT_VIEWER_MAX_BYTES, countTextLines } from "../shared/text-media";
 import { LibraryOperationError, messageForPublicError, toMessage } from "./error-utils";
 import { Icon } from "./Icons";
 import { iconActionAttrs } from "./icon-action-attrs";
 import { useLocale, useT } from "./i18n";
+import { PluginReadmeView } from "./PluginReadmeView";
 import { applyTextViewerTextareaLayout } from "./text-viewer-layout";
 import { invalidateTextAssetPreviewCache } from "./TextAssetPreviewTile";
 
@@ -21,6 +25,8 @@ export type TextViewerControlsProps = {
   api: SerpentLibraryApi;
   libraryId: string;
   assetId: string;
+  /** `.md` / `.markdown` can switch between the source editor and rendered preview. */
+  markdown?: boolean;
   onClose: () => void;
   onPresentationReady?: () => void;
   onSaved?: () => void;
@@ -37,6 +43,16 @@ export type TextViewerControlsHandle = {
  * IPC — never via unbounded serpent://source fetch.
  */
 let persistTextViewerWrap = true;
+let persistMarkdownPreview = true;
+
+export function resetTextViewerModeForTests(): void {
+  persistTextViewerWrap = true;
+  persistMarkdownPreview = true;
+}
+
+function shellApi(): SerpentShellApi | undefined {
+  return (window as Window & { serpent?: { shell?: SerpentShellApi } }).serpent?.shell;
+}
 
 export const TextViewerControls = forwardRef<
   TextViewerControlsHandle,
@@ -46,6 +62,7 @@ export const TextViewerControls = forwardRef<
     api,
     libraryId,
     assetId,
+    markdown = false,
     onClose,
     onPresentationReady,
     onSaved,
@@ -64,7 +81,12 @@ export const TextViewerControls = forwardRef<
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [wrap, setWrap] = useState(persistTextViewerWrap);
+  const [markdownMode, setMarkdownMode] = useState(markdown && persistMarkdownPreview);
   const [actionError, setActionError] = useState<string | null>(null);
+  const markdownBlocks = useMemo(
+    () => (markdown && markdownMode ? parseAssetMarkdown(content) : []),
+    [content, markdown, markdownMode],
+  );
   const onSavedRef = useRef(onSaved);
   const contentRef = useRef(content);
   const baselineRef = useRef(baseline);
@@ -96,7 +118,9 @@ export const TextViewerControls = forwardRef<
     savingRef.current = saving;
   }, [saving]);
 
-  const resizeTextarea = useCallback(() => {
+  const sourceVisible = !loading && !(markdown && markdownMode);
+
+  const syncSourceLayout = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     applyTextViewerTextareaLayout(textarea, wrap);
@@ -138,29 +162,32 @@ export const TextViewerControls = forwardRef<
 
   const dirty = content !== baseline;
   const lineCount = useMemo(() => countTextLines(content), [content]);
+  const showLineNumbers = sourceVisible && !wrap;
   const gutter = useMemo(
     () =>
-      Array.from({ length: lineCount }, (_, index) => String(index + 1)).join(
-        "\n",
-      ),
-    [lineCount],
+      showLineNumbers
+        ? Array.from({ length: lineCount }, (_, index) => String(index + 1)).join("\n")
+        : "",
+    [lineCount, showLineNumbers],
   );
 
-  useEffect(() => {
-    resizeTextarea();
-  }, [content, lineCount, loading, wrap, resizeTextarea]);
+  useLayoutEffect(() => {
+    if (!sourceVisible) return;
+    syncSourceLayout();
+  }, [sourceVisible, syncSourceLayout]);
 
   useEffect(() => {
-    if (loading) return;
+    if (!sourceVisible) return;
     const textarea = textareaRef.current;
     const stage = textarea?.closest(".preview-text-scroll");
     if (!textarea || !(stage instanceof HTMLElement)) return;
+    if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      resizeTextarea();
+      syncSourceLayout();
     });
     observer.observe(stage);
     return () => observer.disconnect();
-  }, [loading, resizeTextarea]);
+  }, [sourceVisible, syncSourceLayout]);
 
   useEffect(() => {
     if (!loading) onPresentationReady?.();
@@ -287,6 +314,35 @@ export const TextViewerControls = forwardRef<
           ) : null}
         </div>
         <div className="preview-text-actions">
+          {markdown ? (
+            <>
+              <button
+                aria-pressed={!markdownMode}
+                className={`preview-text-action${markdownMode ? "" : " is-active"}`}
+                onClick={() => {
+                  persistMarkdownPreview = false;
+                  setMarkdownMode(false);
+                }}
+                type="button"
+                {...iconActionAttrs(t("preview.textSource"))}
+              >
+                <Icon name="code" size={14} />
+              </button>
+              <button
+                aria-pressed={markdownMode}
+                className={`preview-text-action${markdownMode ? " is-active" : ""}`}
+                onClick={() => {
+                  persistMarkdownPreview = true;
+                  setMarkdownMode(true);
+                }}
+                type="button"
+                {...iconActionAttrs(t("preview.textMarkdown"))}
+              >
+                <Icon name="eye" size={14} />
+              </button>
+            </>
+          ) : null}
+          {markdown && markdownMode ? null : (
           <button
             aria-pressed={wrap}
             className={`preview-text-action${wrap ? " is-active" : ""}`}
@@ -299,6 +355,7 @@ export const TextViewerControls = forwardRef<
           >
             <Icon name="wrap-text" size={14} />
           </button>
+          )}
           {editable ? (
             <button
               className="preview-text-action"
@@ -323,21 +380,49 @@ export const TextViewerControls = forwardRef<
         </div>
       </div>
       <div className="preview-text-scroll">
+        {markdown && markdownMode ? (
+          <div className="preview-markdown">
+            <PluginReadmeView
+              blocks={markdownBlocks}
+              empty={t("preview.textMarkdownEmpty")}
+              imageLabel={t("preview.textMarkdownImage")}
+              onOpenUrl={(href) => {
+                void shellApi()?.openExternalUrl(href);
+              }}
+            />
+          </div>
+        ) : (
         <div className={`preview-text-line-layer${wrap ? " is-wrap" : ""}`}>
-          <pre aria-hidden="true" className="preview-text-gutter">
-            {gutter}
-          </pre>
-          <textarea
-            aria-label={t("preview.textEditorAria")}
-            autoFocus={editable}
-            className="preview-text-input"
-            onChange={(event) => setContent(event.target.value)}
-            readOnly={!editable}
-            ref={textareaRef}
-            spellCheck={false}
-            value={content}
-          />
+          {wrap ? (
+            <textarea
+              aria-label={t("preview.textEditorAria")}
+              autoFocus={editable}
+              className="preview-text-input is-wrap"
+              onChange={(event) => setContent(event.target.value)}
+              readOnly={!editable}
+              ref={textareaRef}
+              spellCheck={false}
+              value={content}
+            />
+          ) : (
+            <>
+              <pre aria-hidden="true" className="preview-text-gutter">
+                {gutter}
+              </pre>
+              <textarea
+                aria-label={t("preview.textEditorAria")}
+                autoFocus={editable}
+                className="preview-text-input"
+                onChange={(event) => setContent(event.target.value)}
+                readOnly={!editable}
+                ref={textareaRef}
+                spellCheck={false}
+                value={content}
+              />
+            </>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

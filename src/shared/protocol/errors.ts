@@ -9,6 +9,8 @@ export const PUBLIC_ERROR_MESSAGES = {
     'The selected location is not a usable folder for a library. Choose an existing writable folder — not a file, and not a disconnected drive.',
   INVALID_FOLDER_NAME: 'Choose a folder name that is safe on macOS and Windows.',
   INVALID_APPEARANCE: 'Choose an icon or color from the available options.',
+  FOLDER_COVER_UNSUPPORTED: 'Choose an image file to use as the cover.',
+  FOLDER_COVER_NO_SPACE: 'There is not enough free space to keep this cover with the library.',
   FOLDER_ALREADY_EXISTS: 'A folder with this name already exists in the selected location.',
   FOLDER_NAME_CONFLICT: 'A folder or file with this name already exists in the selected location.',
   FOLDER_NOT_EMPTY: 'Only folders with no assets, child folders, or unmanaged files can be deleted by this operation.',
@@ -124,6 +126,14 @@ export const PUBLIC_ERROR_MESSAGES = {
     'Serpent could not reach the sync server. Check the address, username, password, and that the computer is online. A more specific reason is listed when Serpent can classify the failure.',
   SYNC_IN_PROGRESS: 'This library is syncing right now. Try again after the current sync finishes.',
   DISK_FULL: 'The disk does not have enough free space to complete this operation. Free up space and try again.',
+  EMBEDDING_MODEL_INVALID:
+    'This semantic model could not be saved. Check the name, weight tier, model folder, and runtime path.',
+  EMBEDDING_INSTALL_FAILED:
+    'Serpent could not finish installing this semantic model. If the model files are already downloaded, the local runtime download from GitHub likely failed. Check the network and try again.',
+  EMBEDDING_SERVICE_INVALID:
+    'This embedding service could not be saved. Check the name, address, and model name.',
+  SEMANTIC_IMAGE_TOO_LARGE:
+    'This picture is still too large for semantic search after resizing, so it cannot be encoded.',
 } as const;
 
 export type PublicErrorCode = keyof typeof PUBLIC_ERROR_MESSAGES;

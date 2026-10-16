@@ -247,8 +247,37 @@ test('organizes, finds, trashes, and restores an imported asset through the UI',
     const versionBeforeRapidEdit = versionAfterSourceClear;
     await descriptionInput.fill('快速连续修改的描述');
     await window.getByRole('button', { name: '5 星' }).click();
-    await expect.poll(readMetadataVersion).toBe(versionBeforeRapidEdit + 2);
-    await expect(window.getByText('版本冲突', { exact: true })).toHaveCount(0);
+    // Description blur and the rating click are one gesture. Both commits must
+    // land, a repeated identical write must not consume a third version, and
+    // the two saves must not surface a version conflict.
+    await expect.poll(async () => {
+      const version = await readMetadataVersion();
+      const metadata = await window.evaluate(async (selectedAssetId) => {
+        const api = (globalThis as typeof globalThis & { serpent: { library: {
+          getAssetMetadata(input: { libraryId: string; assetId: string }): Promise<{
+            ok: boolean;
+            value?: { description: string | null; rating: number };
+          }>;
+          listOpen(): Promise<{ ok: boolean; value?: Array<{ libraryId: string }> }>;
+        } } }).serpent.library;
+        const open = await api.listOpen();
+        const libraryId = open.value?.[0]?.libraryId;
+        if (!libraryId || !selectedAssetId) throw new Error('No selected asset');
+        const result = await api.getAssetMetadata({ libraryId, assetId: selectedAssetId });
+        return result.value ?? null;
+      }, assetId);
+      return {
+        versionDelta: version - versionBeforeRapidEdit,
+        description: metadata?.description ?? null,
+        rating: metadata?.rating ?? null,
+        conflict: await window.getByText('版本冲突', { exact: true }).count(),
+      };
+    }).toEqual({
+      versionDelta: 2,
+      description: '快速连续修改的描述',
+      rating: 5,
+      conflict: 0,
+    });
 
     // Search description text (not the filename) so the snippet line adds
     // context instead of duplicating the primary display name.
@@ -461,6 +490,9 @@ test('multi-select performs batch organization, trash, restore, and permanent de
     await expect
       .poll(() => window.locator('.asset-card').count(), { timeout: 15_000 })
       .toBe(0);
+    // Tag filters overlay folder and collection scope. Clear the chip before
+    // opening the collection, or the untagged members stay hidden.
+    await window.getByRole('button', { name: '全部清除' }).click();
 
     await window.getByRole('button', { name: /批量合集/ }).first().click();
     const batchCollectionScopeToggle = window.getByRole('button', {
@@ -652,8 +684,8 @@ test('collection recursion toggle immediately refreshes the visible collection s
     await window.getByRole('button', { name: '添加合集' }).click();
     await window.getByPlaceholder('新建合集').fill('父合集');
     await window.getByPlaceholder('新建合集').press('Enter');
-    await collectionRow(window, '父合集').click();
-    await window.getByRole('button', { name: '添加合集' }).click();
+    await collectionRow(window, '父合集').click({ button: 'right' });
+    await window.getByRole('menuitem', { name: '新建子合集', exact: true }).click();
     await expect(window.getByPlaceholder('新建合集')).toBeFocused();
     await window.getByPlaceholder('新建合集').fill('子合集');
     await window.getByPlaceholder('新建合集').press('Enter');

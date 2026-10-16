@@ -67,21 +67,30 @@ test("ordinary browsing continuously appends every asset without page controls",
     // bottom scrolling reaches the last asset in the scope.
     const tailName = `asset-${(assetCount - 1).toString().padStart(3, "0")}.txt`;
     const loadEveryAssetInCurrentScope = async () => {
+      const tail = window.locator(".asset-card").filter({ hasText: tailName });
       await expect
         .poll(
           async () => {
             await workspaceCanvas.evaluate((element) =>
               element.scrollTo({ top: element.scrollHeight }),
             );
-            const tail = window.locator(".asset-card").filter({ hasText: tailName });
-            return (await tail.count()) > 0;
+            if ((await tail.count()) === 0) return false;
+            return tail
+              .evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                const canvas = element.closest(".workspace-canvas");
+                if (!(canvas instanceof HTMLElement)) return false;
+                const canvasRect = canvas.getBoundingClientRect();
+                return (
+                  rect.bottom > canvasRect.top + 1 &&
+                  rect.top < canvasRect.bottom - 1
+                );
+              })
+              .catch(() => false);
           },
           { timeout: 30_000 },
         )
         .toBe(true);
-      await expect(
-        window.locator(".asset-card").filter({ hasText: tailName }),
-      ).toBeInViewport();
     };
 
     // Loading the tail is driven by the canvas scroll path, so wait for the
@@ -145,9 +154,18 @@ test("ordinary browsing continuously appends every asset without page controls",
     ).toHaveCount(1);
 
     const sizeControl = window.getByLabel("资产缩略图大小");
-    const maxSizeIndex = Number(await sizeControl.getAttribute("max"));
-    const middleSizeIndex = Math.min(3, maxSizeIndex);
-    await sizeControl.fill(String(middleSizeIndex));
+    async function currentMaxSizeIndex(): Promise<number> {
+      const raw = await sizeControl.getAttribute("max");
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    }
+    async function fillCardSize(requestedIndex: number): Promise<number> {
+      const maxSizeIndex = await currentMaxSizeIndex();
+      const clamped = Math.min(Math.max(0, requestedIndex), maxSizeIndex);
+      await sizeControl.fill(String(clamped));
+      return clamped;
+    }
+    await fillCardSize(3);
     const anchorCard = window.locator(".asset-card").nth(30);
     await anchorCard.scrollIntoViewIfNeeded();
     const anchorAssetId = await anchorCard.getAttribute("data-asset-id");
@@ -160,6 +178,12 @@ test("ordinary browsing continuously appends every asset without page controls",
     await window.mouse.move(anchorPoint.x, anchorPoint.y);
     await window.mouse.wheel(0, -120);
     await expect(sizeControl).toHaveValue(String(sizeBeforeWheel));
+    await anchorCard.scrollIntoViewIfNeeded();
+    const zoomBox = await anchorCard.boundingBox();
+    await window.mouse.move(
+      zoomBox!.x + zoomBox!.width / 2,
+      zoomBox!.y + zoomBox!.height / 2,
+    );
     await window.keyboard.down("Control");
     await window.mouse.wheel(0, -120);
     await window.keyboard.up("Control");
@@ -172,26 +196,46 @@ test("ordinary browsing continuously appends every asset without page controls",
     ).toBeInViewport();
 
     const firstCard = window.locator(".asset-card").first();
-    await sizeControl.fill("0");
+    await fillCardSize(0);
     const initialWidth = (await firstCard.boundingBox())!.width;
-    await sizeControl.fill(String(maxSizeIndex));
+    await fillCardSize(Number.POSITIVE_INFINITY);
     await expect
       .poll(async () => (await firstCard.boundingBox())!.width)
       .toBeGreaterThan(initialWidth);
     await window.getByRole("button", { name: "瀑布流视图" }).click();
     await expect(window.locator(".asset-grid")).toHaveClass(/is-masonry/);
     const masonryCanvas = window.locator(".workspace-canvas");
-    await masonryCanvas.evaluate((element) => element.scrollTo(0, 0));
+    // Card-size zoom restores scroll for about half a second. Let that
+    // finish before scrolling to the top, or the anchor pass detaches the
+    // first virtual card mid-action.
+    await expect(masonryCanvas).not.toHaveClass(/is-reflow-restoring/);
     // The reflow anchor keeps the previous viewport stable while grid →
-    // masonry changes the column geometry. Explicitly bring the first card
-    // back into view before checking the first-row layout instead of racing
-    // that restoration effect with a raw scrollTop assertion.
-    await firstCard.scrollIntoViewIfNeeded();
-    const [canvasBox, masonryFirstBox] = await Promise.all([
-      window.locator(".workspace-canvas").boundingBox(),
-      firstCard.boundingBox(),
-    ]);
-    expect(masonryFirstBox!.y).toBeGreaterThanOrEqual(canvasBox!.y - 1);
+    // masonry changes the column geometry. Scroll to the top after that
+    // restore finishes. scrollIntoViewIfNeeded detaches the virtual slot
+    // while the window is still recycling. A later boundingBox() can also
+    // be null for a frame on a short viewport, so assert the sample that
+    // already showed the first card inside the canvas.
+    const masonryTopSnapshot: {
+      card: { x: number; y: number; width: number; height: number } | null;
+      canvas: { x: number; y: number; width: number; height: number } | null;
+    } = { card: null, canvas: null };
+    const masonryFirstCard = window.locator(".asset-card").first();
+    await expect.poll(async () => {
+      await masonryCanvas.evaluate((element) => element.scrollTo(0, 0));
+      const [cardBox, canvasBox] = await Promise.all([
+        masonryFirstCard.boundingBox(),
+        masonryCanvas.boundingBox(),
+      ]);
+      masonryTopSnapshot.card = cardBox;
+      masonryTopSnapshot.canvas = canvasBox;
+      return Boolean(cardBox && canvasBox && cardBox.y >= canvasBox.y - 1);
+    }).toBe(true);
+    if (!masonryTopSnapshot.card || !masonryTopSnapshot.canvas) {
+      throw new Error("Masonry top position was not sampled.");
+    }
+    expect(masonryTopSnapshot.card.y).toBeGreaterThanOrEqual(
+      masonryTopSnapshot.canvas.y - 1,
+    );
     const masonryLastCard = window.locator(".asset-card").last();
     const masonryScrollSnapshot: {
       last: { x: number; y: number; width: number; height: number } | null;
@@ -238,8 +282,8 @@ test("ordinary browsing continuously appends every asset without page controls",
       await expect(window.locator(".asset-grid")).toHaveClass(
         new RegExp(view.className),
       );
-      for (const cardSize of [0, maxSizeIndex]) {
-        await sizeControl.fill(String(cardSize));
+      for (const requestedSize of [0, Number.POSITIVE_INFINITY]) {
+        const cardSize = await fillCardSize(requestedSize);
         await expect(sizeControl).toHaveValue(String(cardSize));
         for (const scrollFraction of [0.25, 0.5, 1]) {
           let visibleAsset: {
@@ -273,7 +317,7 @@ test("ordinary browsing continuously appends every asset without page controls",
                       return {
                         assetId: card.getAttribute("data-asset-id"),
                         displayName:
-                          card.querySelector("strong")?.getAttribute("title") ??
+                          card.querySelector("strong")?.getAttribute("data-hover-tip") ??
                           card.getAttribute("aria-label"),
                         isVisible:
                           box.bottom > canvasBox.top &&
@@ -336,18 +380,21 @@ test("ordinary browsing continuously appends every asset without page controls",
           expect(viewerBox).not.toBeNull();
           expect(workspaceBox).not.toBeNull();
           await expect(workspaceCanvas).toBeHidden();
+          // Islands draw a 1px border on .workspace. The viewer fills the
+          // content box, so the border-box delta is about 1px per edge plus
+          // subpixel rounding.
           expect(
             Math.abs(viewerBox!.x - workspaceBox!.x),
-          ).toBeLessThanOrEqual(1);
+          ).toBeLessThanOrEqual(2);
           expect(
             Math.abs(viewerBox!.y - workspaceBox!.y),
-          ).toBeLessThanOrEqual(1);
+          ).toBeLessThanOrEqual(2);
           expect(
             Math.abs(viewerBox!.width - workspaceBox!.width),
-          ).toBeLessThanOrEqual(1);
+          ).toBeLessThanOrEqual(3);
           expect(
             Math.abs(viewerBox!.height - workspaceBox!.height),
-          ).toBeLessThanOrEqual(1);
+          ).toBeLessThanOrEqual(3);
           await expect(
             textViewer.getByRole("button", { name: "重试生成" }),
           ).toHaveCount(0);
@@ -364,12 +411,18 @@ test("ordinary browsing continuously appends every asset without page controls",
       }
     }
 
-    // Switching to a browse scope explicitly clears lingering discovery
-    // controls, so the loaded scope cannot use a stale query.
+    // Discovery belongs to the workspace tab. Same-tab folder navigation
+    // keeps the format chip; the loaded scope still has to be cleared
+    // explicitly before the unfiltered tail assertions.
     await window.getByRole("button", { name: "格式", exact: true }).click();
     await window.getByLabel("格式过滤").fill("png");
     await expect(window.locator(".asset-card")).toHaveCount(0);
     await sidebarFolderRow(window, "分页文件夹").click();
+    await expect(
+      window.getByRole("button", { name: "格式", exact: true }),
+    ).toHaveClass(/is-active/);
+    await window.getByRole("button", { name: "格式", exact: true }).click();
+    await window.getByLabel("格式过滤").fill("");
     await expect(
       window.getByRole("button", { name: "格式", exact: true }),
     ).not.toHaveClass(/is-active/);
@@ -521,6 +574,12 @@ test("ordinary browsing continuously appends every asset without page controls",
     await window.getByRole("button", { name: "格式", exact: true }).click();
     await window.getByLabel("格式过滤").fill("png");
     await expect(window.locator(".asset-card")).toHaveCount(0);
+    // Same-tab navigation keeps discovery chips. Clear the format filter
+    // before timing the collection switch, or the png chip hides every txt.
+    await window.getByLabel("格式过滤").fill("");
+    await expect(
+      window.getByRole("button", { name: "格式", exact: true }),
+    ).not.toHaveClass(/is-active/);
     const collectionSwitchStartedAt = Date.now();
     await window.getByRole("button", { name: /^分页合集/ }).click();
     await expect(window.locator(".asset-card").first()).toBeVisible();

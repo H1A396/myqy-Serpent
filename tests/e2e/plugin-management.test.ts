@@ -78,18 +78,15 @@ test('installs a library plugin through the settings bridge, then trusts and Saf
     await expect(enableToggle).not.toBeChecked();
     await expect(enableToggle).toBeEnabled();
     const enableRow = libraryCard.locator('label.plugin-settings-enable-toggle');
-    const cancelledConsent = window.waitForEvent('dialog').then(async (consent) => {
-      expect(consent.message()).toContain('Palette Tools');
-      await consent.dismiss();
-    });
-    await Promise.all([cancelledConsent, enableRow.click({ force: true })]);
+    await enableRow.click({ force: true });
+    const consentDialog = window.locator('#local-confirmation-dialog');
+    await expect(consentDialog).toContainText('Palette Tools');
+    await consentDialog.locator('.secondary-button').click();
     await expect(enableToggle).not.toBeChecked();
-    const consentDialog = window.waitForEvent('dialog').then(async (consent) => {
-      expect(consent.message()).toContain('Palette Tools');
-      expect(consent.message()).toContain('asset.read');
-      await consent.accept();
-    });
-    await Promise.all([consentDialog, enableRow.click({ force: true })]);
+    await enableRow.click({ force: true });
+    await expect(consentDialog).toContainText('Palette Tools');
+    await expect(consentDialog).toContainText('asset.read');
+    await consentDialog.locator('.ui-button--primary').click();
     await expect(enableToggle).toBeChecked();
     await expect(enableToggle).toBeEnabled();
     await enableRow.click({ force: true });

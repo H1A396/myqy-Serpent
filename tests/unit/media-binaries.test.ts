@@ -14,6 +14,9 @@ import { createHash } from 'node:crypto';
 import { createPackage } from '@electron/asar';
 
 import { afterEach, describe, expect, it } from 'vitest';
+// The media helper is an untyped ESM script; the test only needs the platform gate.
+// @ts-expect-error media-binaries-lib.mjs has no declaration file.
+import { SUPPORTED_PLATFORMS, currentPlatformKey } from '../../scripts/media-binaries-lib.mjs';
 import forgeConfig from '../../forge.config';
 import {
   assertWindowsSystemDependencies,
@@ -233,11 +236,28 @@ describe.skipIf(process.platform === 'win32')('media binary release gate', () =>
         packagedResources,
         'app.asar.unpacked/node_modules/trash/lib/macos-trash',
       ));
+      // verify-package also requires the pinned sqlite-vec extension; copy the
+      // installed binary so its integrity hash matches the pinned manifest.
+      cpSync(
+        path.join(process.cwd(), 'node_modules/sqlite-vec-darwin-arm64/vec0.dylib'),
+        path.join(packagedResources, 'app.asar.unpacked/node_modules/sqlite-vec-darwin-arm64/vec0.dylib'),
+      );
       cpSync(root, path.join(packagedResources, 'resources'), { recursive: true });
+      // verify-package requires a sealed (ad-hoc signed) macOS bundle, so
+      // give the fixture a minimal executable + Info.plist and sign it.
+      const appBundle = path.join(packageRoot, 'Serpent.app');
+      writeFixtureFile(
+        path.join(appBundle, 'Contents', 'Info.plist'),
+        '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>CFBundleExecutable</key><string>Serpent</string><key>CFBundleIdentifier</key><string>dev.serpent.package-test</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>\n',
+      );
+      mkdirSync(path.join(appBundle, 'Contents', 'MacOS'), { recursive: true });
+      cpSync('/usr/bin/true', path.join(appBundle, 'Contents', 'MacOS', 'Serpent'));
+      const signing = spawnSync('codesign', ['--force', '--sign', '-', appBundle], { encoding: 'utf8' });
+      expect(signing.status, signing.stderr).toBe(0);
 
       const result = spawnSync(process.execPath, [packageVerifier], {
         encoding: 'utf8',
-        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot },
+        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot, SERPENT_PACKAGE_PLATFORM: 'darwin-arm64' },
       });
       expect(result.status, result.stderr).toBe(0);
       expect(result.stdout).toContain('Verified packaged runtime files');
@@ -253,7 +273,7 @@ describe.skipIf(process.platform === 'win32')('media binary release gate', () =>
       );
       const substituted = spawnSync(process.execPath, [packageVerifier], {
         encoding: 'utf8',
-        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot },
+        env: { ...process.env, SERPENT_PACKAGE_ROOT: packageRoot, SERPENT_PACKAGE_PLATFORM: 'darwin-arm64' },
       });
       expect(substituted.status).not.toBe(0);
       expect(substituted.stderr).toContain('receipt archiveSha256');
@@ -312,6 +332,21 @@ it('rejects non-x64 PE files and non-allowlisted delay-import DLLs', () => {
   expect(() => peImportsFromBuffer(wrongArchitecture)).toThrow(/not Windows x64/);
 });
 
+it('includes linux-x64 and linux-arm64 in the pinned media platform set', () => {
+  expect([...SUPPORTED_PLATFORMS].sort()).toEqual([
+    'darwin-arm64',
+    'linux-arm64',
+    'linux-x64',
+    'win32-x64',
+  ]);
+  if (process.platform === 'linux' && process.arch === 'x64') {
+    expect(currentPlatformKey()).toBe('linux-x64');
+  }
+  if (process.platform === 'linux' && process.arch === 'arm64') {
+    expect(currentPlatformKey()).toBe('linux-arm64');
+  }
+});
+
 it('installs media validation inside Forge package and make lifecycles', () => {
   expect(forgeConfig.hooks?.prePackage).toBeTypeOf('function');
   expect(forgeConfig.hooks?.postPackage).toBeTypeOf('function');
@@ -351,6 +386,43 @@ it('uses one LibRaw- and zlib-enabled media manifest for macOS and Windows build
   );
   expect(macScript).toContain('MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"');
   expect(windowsScript).toContain("$ManifestRoot = Join-Path $Root 'resources/media-binaries/vcpkg'");
+  const linuxScript = readFileSync(
+    path.join(projectRoot, 'scripts/media-build/linux-x64.sh'),
+    'utf8',
+  );
+  expect(linuxScript).toContain('MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"');
+  expect(linuxScript).toContain('--platform linux-x64');
+  expect(linuxScript).toContain('serpent-x64-linux-static');
+  const linuxArm64Script = readFileSync(
+    path.join(projectRoot, 'scripts/media-build/linux-arm64.sh'),
+    'utf8',
+  );
+  expect(linuxArm64Script).toContain('MANIFEST_ROOT="$ROOT/resources/media-binaries/vcpkg"');
+  expect(linuxArm64Script).toContain('--platform linux-arm64');
+  expect(linuxArm64Script).toContain('serpent-arm64-linux-static');
+  expect(linuxArm64Script).toContain('pkgconf:arm64-linux');
+  expect(linuxArm64Script).toContain('uname -m');
+  expect(linuxArm64Script).toContain('aarch64');
+  const linuxTriplet = readFileSync(
+    path.join(projectRoot, 'resources/media-binaries/vcpkg/triplets/serpent-x64-linux-static.cmake'),
+    'utf8',
+  );
+  expect(linuxTriplet).toMatch(/^set\(VCPKG_CMAKE_SYSTEM_NAME Linux\)$/m);
+  expect(linuxTriplet).toMatch(/^set\(VCPKG_LIBRARY_LINKAGE static\)$/m);
+  const linuxArm64Triplet = readFileSync(
+    path.join(projectRoot, 'resources/media-binaries/vcpkg/triplets/serpent-arm64-linux-static.cmake'),
+    'utf8',
+  );
+  expect(linuxArm64Triplet).toMatch(/^set\(VCPKG_TARGET_ARCHITECTURE arm64\)$/m);
+  expect(linuxArm64Triplet).toMatch(/^set\(VCPKG_CMAKE_SYSTEM_NAME Linux\)$/m);
+  expect(linuxArm64Triplet).toMatch(/^set\(VCPKG_LIBRARY_LINKAGE static\)$/m);
+  const bundleLock = JSON.parse(readFileSync(
+    path.join(projectRoot, 'resources/media-binaries/bundle-lock.json'),
+    'utf8',
+  )) as { bundles: Record<string, { status?: string; reason?: string }> };
+  expect(bundleLock.bundles['linux-x64']?.status).toBe('ready');
+  expect(bundleLock.bundles['linux-arm64']?.status).toBe('build-required');
+  expect(bundleLock.bundles['linux-arm64']?.reason).toContain('serpent-media-linux-arm64.zip');
   expect(macScript).toContain('export VCPKG_ROOT');
   expect(windowsScript).toContain('$env:VCPKG_ROOT = $VcpkgRoot');
   const windowsOiioScript = readFileSync(

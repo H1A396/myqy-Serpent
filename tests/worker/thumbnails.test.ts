@@ -21,6 +21,9 @@ import {
   workerMediaDecodeConcurrency,
 } from '../../src/worker/media-concurrency';
 import { importNoConflict as sharedImportNoConflict } from './import-no-conflict';
+import { videoPosterGeneratorVersion } from '../../src/worker/video-poster-seek';
+
+const CURRENT_VIDEO_POSTER_GENERATOR = videoPosterGeneratorVersion('8.1');
 
 const temporaryRoots: string[] = [];
 const require = createRequire(import.meta.url);
@@ -1424,24 +1427,24 @@ describe('processThumbnailQueue', () => {
     );
     insertVideoPoster.run(
       'ready-current-video-poster', readyAsset.currentRevisionId,
-      'test-video-poster.jpg', 'ffmpeg@8.1', 'ready', now, null,
+      'test-video-poster.jpg', CURRENT_VIDEO_POSTER_GENERATOR, 'ready', now, null,
     );
     // A ready artifact from an older revision must not satisfy the current job.
     insertVideoPoster.run(
       'stale-video-poster', staleRevisionId,
-      'test-video-poster.jpg', 'ffmpeg@8.1', 'ready', now, null,
+      'test-video-poster.jpg', CURRENT_VIDEO_POSTER_GENERATOR, 'ready', now, null,
     );
     // Nor may a ready row that has been invalidated satisfy it.
     insertVideoPoster.run(
       'invalidated-video-poster', invalidatedAsset.currentRevisionId,
-      'test-video-poster.jpg', 'ffmpeg@8.1', 'ready', now, now,
+      'test-video-poster.jpg', CURRENT_VIDEO_POSTER_GENERATOR, 'ready', now, now,
     );
     db.prepare(
       `INSERT INTO revision_artifacts
          (artifact_id, revision_id, kind, mime_type, byte_size, file_path,
           generator_version, status, error_code, generated_at)
        VALUES (?, ?, 'video_poster', 'image/jpeg', 0, 'failed-poster.jpg',
-               'ffmpeg@8.1', 'failed', 'MEDIA_PROCESSING_FAILED', ?)`
+               '${CURRENT_VIDEO_POSTER_GENERATOR}', 'failed', 'MEDIA_PROCESSING_FAILED', ?)`
     ).run('failed-video-poster', invalidatedAsset.currentRevisionId, now);
 
     insertJob.run('ready-video-queued', created.libraryId, readyAsset.assetId,
@@ -1506,7 +1509,7 @@ describe('processThumbnailQueue', () => {
          (artifact_id, revision_id, kind, mime_type, byte_size, file_path,
           generator_version, status, generated_at)
        VALUES (?, ?, 'video_poster', 'image/jpeg', 1024, 'bounded-poster.jpg',
-               'ffmpeg@8.1', 'ready', ?)`,
+               '${CURRENT_VIDEO_POSTER_GENERATOR}', 'ready', ?)`,
     );
     const insertJob = db.prepare(
       `INSERT INTO jobs
@@ -1721,7 +1724,7 @@ describe('processThumbnailQueue', () => {
          (artifact_id, revision_id, kind, mime_type, byte_size, file_path,
           generator_version, status, generated_at)
        VALUES ('missing-video-poster', ?, 'video_poster', 'image/jpeg', 1024,
-               'missing-video-poster.jpg', 'ffmpeg@8.1', 'ready', ?)`,
+               'missing-video-poster.jpg', '${CURRENT_VIDEO_POSTER_GENERATOR}', 'ready', ?)`,
     ).run(asset.currentRevisionId, now);
     db.prepare(
       `INSERT INTO jobs

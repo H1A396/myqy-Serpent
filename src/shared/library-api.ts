@@ -1,3 +1,7 @@
+import type { EmbeddingInstallProgress } from "./embedding/install-progress";
+import type { EmbeddingGemmaTier, EmbeddingIndexSnapshot, EmbeddingModelSummary, SemanticSearchModelId } from './embedding/profile';
+import type { EmbeddingHttpAdapter, EmbeddingServiceDestination, EmbeddingProbeFailure, EmbeddingTextStatus } from './embedding/http-service';
+import type { EmbeddingModality } from './embedding/modalities';
 import type { PublicError, PublicErrorReason } from './protocol/errors';
 import type { LibraryNavigationSummary } from './library-navigation';
 import type { MutationReceipt } from './performance-contract';
@@ -25,6 +29,38 @@ export interface SyncReport {
   conflicts: number;
   remoteDeletes: number;
   localRecycles: number;
+}
+
+/** Raw cosine score paired with the asset that produced it. */
+export interface SemanticSearchAssetScore {
+  assetId: string;
+  score: number;
+}
+
+export interface EmbeddingHttpServiceSummary {
+  id: string;
+  name: string;
+  description: string;
+  adapter: EmbeddingHttpAdapter;
+  destination: EmbeddingServiceDestination;
+  baseUrl: string;
+  modelName: string;
+  textStatus: EmbeddingTextStatus;
+  probeFailure: EmbeddingProbeFailure | null;
+  dimensions: number | null;
+  modalities: EmbeddingModality[];
+  maxImageEdgePx: number;
+  maxImageBytes: number;
+  grantedLibraryIds: string[];
+  hasCredential: boolean;
+  profileKey: string | null;
+}
+
+export interface EmbeddingLibraryBinding {
+  selectionId: string | null;
+  enabled: boolean;
+  /** True when this library has no override and should use Settings default. */
+  inherit: boolean;
 }
 
 import type {
@@ -263,6 +299,19 @@ export interface SerpentLibraryApi {
     target: EntityAppearanceTarget;
     appearance: EntityAppearance | null;
   }): Promise<LibraryApiResult<{ target: EntityAppearanceTarget; appearance: EntityAppearance | null }>>;
+  setFolderCover(input: {
+    libraryId: string;
+    folderIds: string[];
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
+  setFolderCoverFromAsset(input: {
+    libraryId: string;
+    folderIds: string[];
+    assetId: string;
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
+  clearFolderCover(input: {
+    libraryId: string;
+    folderIds: string[];
+  }): Promise<LibraryApiResult<{ folderIds: string[]; hasCustomCover: boolean }>>;
   /** Create a physical directory inside a linked-folder root or virtual child. */
   createLinkedFolderDirectory(input: {
     libraryId: string;
@@ -544,6 +593,24 @@ export interface SerpentLibraryApi {
   copyAssets(input: { libraryId: string; assetIds: string[]; targetFolderId: string | null; conflictStrategy?: 'keep-both' | 'replace' | 'skip' }): Promise<LibraryApiResult<{ copiedCount: number; skippedCount: number; operationId: string | null; assets: AssetSummary[]; historyEntryId?: string }>>;
   undoCopyAssets(input: { libraryId: string; operationId: string; conflictStrategy?: 'error' | 'keep-both' | 'replace' | 'skip' }): Promise<LibraryApiResult<{ undoneCount: number; skippedCount: number; assets: AssetSummary[] }>>;
   renameAssetFile(input: { libraryId: string; assetId: string; newBaseName?: string; newFileName?: string }): Promise<LibraryApiResult<AssetSummary & { historyEntryId?: string }>>;
+  listZipEntries(input: { libraryId: string; assetId: string }): Promise<LibraryApiResult<{
+    assetId: string;
+    revisionId: string;
+    status: 'ready' | 'unreadable';
+    truncated: boolean;
+    files: Array<{ index: number; name: string; uncompressedSize: number }>;
+  }>>;
+  readZipEntry(input: { libraryId: string; assetId: string; index: number }): Promise<LibraryApiResult<{
+    assetId: string;
+    index: number;
+    name: string;
+    uncompressedSize: number;
+    kind: 'image' | 'text' | 'unavailable';
+    mimeType?: string;
+    bytesBase64?: string;
+    text?: string;
+    truncated?: boolean;
+  }>>;
   readTextAsset(input: { libraryId: string; assetId: string; maxBytes?: number }): Promise<LibraryApiResult<{
     assetId: string;
     revisionId: string;
@@ -566,13 +633,13 @@ export interface SerpentLibraryApi {
     byteSize: number;
     lineCount: number;
   }>>;
-  deleteAssetsPermanent(input: { libraryId: string; assetIds: string[] }): Promise<LibraryApiResult<{ deletedCount: number; skippedCount: number; skippedReasons: Array<{ assetId: string; reason: PublicErrorReason }> }>>;
+  deleteAssetsPermanent(input: { libraryId: string; assetIds: string[] }): Promise<LibraryApiResult<{ deletedCount: number; skippedCount: number; skippedReasons: Array<{ assetId: string; reason: PublicErrorReason }>; semanticCleanupPending?: boolean }>>;
   deleteAssetsFromDisk(input: {
     libraryId: string;
     assetIds: string[];
     /** Confirmation-copy hint only; the worker resolves the real location kinds. */
     locationKind?: 'managed' | 'linked' | 'mixed';
-  }): Promise<LibraryApiResult<{ deletedCount: number }>>;
+  }): Promise<LibraryApiResult<{ deletedCount: number; semanticCleanupPending?: boolean }>>;
   cancelDiskDelete(input: { operationId: string }): Promise<LibraryApiResult<{ operationId: string }>>;
   listTrash(input: { libraryId: string }): Promise<LibraryApiResult<AssetSummary[]>>;
   listTrashedFolders(input: { libraryId: string }): Promise<LibraryApiResult<TrashedFolderSummary[]>>;
@@ -585,7 +652,7 @@ export interface SerpentLibraryApi {
     folders: ManagedFolderSummary[];
     historyEntryId?: string;
   }>>;
-  purgeTrash(input: { libraryId: string }): Promise<LibraryApiResult<{ purgedCount: number; skippedCount: number; failures: Array<{ assetId: string; reason: PublicErrorReason }> }>>;
+  purgeTrash(input: { libraryId: string }): Promise<LibraryApiResult<{ purgedCount: number; skippedCount: number; failures: Array<{ assetId: string; reason: PublicErrorReason }>; semanticCleanupPending?: boolean }>>;
   // Linked delete
   deleteLinkedAssets(input: { libraryId: string; assetIds: string[]; deleteSourceFile: boolean }): Promise<LibraryApiResult<LinkedAssetDeleteResult>>;
   // Relink
@@ -712,6 +779,89 @@ export interface SerpentLibraryApi {
   syncSaveServer(input: { id?: string; baseUrl: string; username?: string; password?: string; allowInsecureTls?: boolean }): Promise<LibraryApiResult<{ id: string }>>;
   /** Serpent-xffq: 删除同步服务器。 */
   syncDeleteServer(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  /** Device-local EmbeddingGemma 2 registration. Does not write a library index. */
+  embeddingListModels(): Promise<LibraryApiResult<EmbeddingModelSummary[]>>;
+  embeddingSaveModel(input: {
+    id?: string;
+    name: string;
+    tier: EmbeddingGemmaTier;
+    modelDirectory: string;
+    runtimePath: string;
+  }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingDeleteModel(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingSetDefaultModel(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingInstallStatus(): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
+  embeddingInstall(input: { modelId: SemanticSearchModelId }): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
+  embeddingUninstall(input: { modelId: SemanticSearchModelId }): Promise<LibraryApiResult<{
+    runtimeInstalled: boolean;
+    runtimeDownloadable: boolean;
+    models: Array<{ modelId: SemanticSearchModelId; installed: boolean }>;
+  }>>;
+  onEmbeddingInstallProgress?(listener: (event: EmbeddingInstallProgress) => void): () => void;
+  embeddingIndexStatus(input: {
+    libraryId: string;
+    modelId: string;
+    run: boolean;
+    restart: boolean;
+    rebuild?: boolean;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot>>;
+  embeddingSearch(input: {
+    libraryId: string;
+    modelId: string;
+    query: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+    showIgnored?: boolean;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
+    assetIds: string[];
+    /** Optional for compatibility with older Main processes. */
+    scores?: SemanticSearchAssetScore[];
+    cancelled?: boolean;
+  }>>;
+  embeddingSimilar(input: {
+    libraryId: string;
+    modelId: string;
+    assetId: string;
+    filters?: FilterClause[];
+    scope?: SearchScope | null;
+  }): Promise<LibraryApiResult<EmbeddingIndexSnapshot & {
+    status: "ready" | "preparing" | "failed" | "unsupported" | "unavailable";
+    sourceAssetId: string;
+    assetIds: string[];
+  }>>;
+  embeddingListServices(): Promise<LibraryApiResult<EmbeddingHttpServiceSummary[]>>;
+  embeddingSaveService(input: {
+    id?: string;
+    name: string;
+    description?: string;
+    adapter?: EmbeddingHttpAdapter;
+    destination: "loopback" | "lan" | "internet";
+    baseUrl: string;
+    modelName: string;
+    apiKey?: string;
+    modalities?: EmbeddingModality[];
+    dimensions?: number | null;
+    maxImageEdgePx?: number;
+    maxImageBytes?: number;
+  }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingDeleteService(input: { id: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingProbeService(input: { id: string }): Promise<LibraryApiResult<{
+    id: string;
+    textStatus: "verified" | "failed";
+    dimensions: number | null;
+    probeFailure: EmbeddingProbeFailure | null;
+  }>>;
+  embeddingGrantService(input: { id: string; libraryId: string }): Promise<LibraryApiResult<{ id: string }>>;
+  embeddingGetBinding(input: { libraryId: string }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
+  embeddingSaveBinding(input: { libraryId: string; selectionId: string | null; inherit?: boolean }): Promise<LibraryApiResult<EmbeddingLibraryBinding>>;
   /** Serpent-xffq: 保存库绑定（服务器 + 可选同步文件夹名，默认库名；enabled=自动同步开关；pollIntervalMs=云端轮询间隔；showCardSyncStatus=卡片同步状态）。 */
   syncSaveBinding(input: { libraryId: string; serverId: string; directoryName?: string; enabled?: boolean; pollIntervalMs?: number; showCardSyncStatus?: boolean }): Promise<LibraryApiResult<void>>;
   /** Serpent-xffq: 读取库绑定。 */

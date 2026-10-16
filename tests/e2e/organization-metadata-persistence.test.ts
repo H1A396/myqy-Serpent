@@ -101,8 +101,8 @@ test("persists organization and metadata across restart and surfaces optimistic-
       .press("Enter");
     await expect(collectionRow(window, "持久合集")).toBeVisible();
 
-    await collectionRow(window, "持久合集").click();
-    await window.getByRole("button", { name: "添加合集" }).click();
+    await collectionRow(window, "持久合集").click({ button: "right" });
+    await window.getByRole("menuitem", { name: "新建子合集", exact: true }).click();
     await window
       .getByPlaceholder("新建合集")
       .fill("持久子合集");

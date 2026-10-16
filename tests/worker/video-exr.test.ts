@@ -538,16 +538,19 @@ describe('video (ffprobe + ffmpeg)', () => {
     const posterCall = capturedSpawnArgs.find(
       (c) => c.command === '/fake/ffmpeg'
         && c.args.includes('-vf')
-        && String(c.args[c.args.indexOf('-vf') + 1]).includes('thumbnail=30'),
+        && String(c.args[c.args.indexOf('-vf') + 1]).includes('scale=640:-2'),
     );
     expect(posterCall).toBeDefined();
-    // Check that the poster filter includes the thumbnail filter
     const vfIdx = posterCall!.args.indexOf('-vf');
     expect(vfIdx).not.toBe(-1);
     const vfValue = posterCall!.args[vfIdx + 1] as string;
-    expect(vfValue).toBe('scale=640:-2:force_original_aspect_ratio=decrease,thumbnail=30');
-    expect(vfValue.indexOf('scale=')).toBeLessThan(vfValue.indexOf('thumbnail='));
+    expect(vfValue).toBe('scale=640:-2:force_original_aspect_ratio=decrease');
+    expect(vfValue).not.toContain('thumbnail=');
     expect(vfValue).not.toContain('fps=');
+    const seekIdx = posterCall!.args.indexOf('-ss');
+    expect(seekIdx).not.toBe(-1);
+    expect(seekIdx).toBeLessThan(posterCall!.args.indexOf('-i'));
+    expect(posterCall!.args[seekIdx + 1]).toBe('7.513');
     expect(posterCall!.args).toContain('-frames:v');
     expect(posterCall!.args).toContain('1');
     expect(posterCall!.args).toContain('-threads:v');
@@ -573,7 +576,7 @@ describe('video (ffprobe + ffmpeg)', () => {
         if (command.includes('ffprobe')) {
           return { stdout: Buffer.from(CANNED_FFPROBE_JSON), stderr: '', exitCode: 0 };
         }
-        if (args.includes('-vf') && String(args[args.indexOf('-vf') + 1]).includes('thumbnail=30')) {
+        if (args.includes('-ss') && args.includes('-frames:v')) {
           posterAttempts += 1;
           return {
             stdout: Buffer.alloc(0),
@@ -2245,7 +2248,9 @@ describe('EXR/TGA (oiiotool)', () => {
     importNoConflict(service, created.libraryId, sourcePath);
     const asset = service.listAssets({ libraryId: created.libraryId, recursive: true })[0]!;
 
-    expect(service.enqueueThumbnailJobs(created.libraryId)).toBe(2);
+    // The return count is generate_thumbnail rows. Metadata is queued beside
+    // the card and is asserted through the job list.
+    expect(service.enqueueThumbnailJobs(created.libraryId)).toBe(1);
     expect(service.listMediaJobs(created.libraryId).jobs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ assetId: asset.assetId, kind: 'generate_thumbnail', status: 'queued' }),
@@ -2332,7 +2337,7 @@ describe('EXR/TGA (oiiotool)', () => {
       metadata: { width: 8256, height: 5504 },
     });
 
-    expect(service.enqueueThumbnailJobs(created.libraryId)).toBe(2);
+    expect(service.enqueueThumbnailJobs(created.libraryId)).toBe(1);
     await service.processThumbnailQueue(created.libraryId, {
       maxJobs: 1,
       jobKinds: ['extract_metadata'],
@@ -2933,13 +2938,22 @@ describe('EXR/TGA (oiiotool)', () => {
     ).run(generated.artifactId);
     db.close();
 
-    // Common TIFF metadata is now admitted as a secondary job alongside the
-    // legacy thumbnail repair check; the thumbnail itself remains current.
+    // Common TIFF metadata is admitted as a secondary job. The enqueue return
+    // counts generate_thumbnail rows only, and this legacy thumbnail stays current.
     expect(service.enqueueThumbnailJobs(created.libraryId, {
       assetIds: [asset.assetId],
       limit: 1,
       priority: 350,
-    })).toBe(1);
+    })).toBe(0);
+    expect(service.listMediaJobs(created.libraryId).jobs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetId: asset.assetId,
+          kind: 'extract_metadata',
+          status: 'queued',
+        }),
+      ]),
+    );
     service.closeAll();
   });
 

@@ -99,7 +99,45 @@ export function useBrowseCommandKeyboard(
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableAssetActionKeyboardTarget(event.target)) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
-      if (previewOpen) return;
+      if (previewOpen) {
+        const viewed = selectedAsset;
+        if (!viewed || viewed.deletedAt) return;
+        const bareDelete = (event.key === "Delete" || event.key === "Backspace")
+          && !event.metaKey
+          && !event.ctrlKey
+          && !event.altKey;
+        const diskDelete = (bareDelete && event.shiftKey)
+          || matchAssetActionKeyboardCommand("asset.delete-from-disk", event, platform);
+        const trashDelete = (bareDelete && !event.shiftKey)
+          || matchAssetActionKeyboardCommand("asset.move-to-trash", event, platform);
+        if (diskDelete && !showTrash && libraryOpen) {
+          if (!shouldForwardBrowseShortcut("disk-delete")) return;
+          event.preventDefault();
+          onDiskDelete([viewed.assetId], []);
+          return;
+        }
+        if (trashDelete) {
+          const plan = planAssetDeleteShortcut({
+            showTrash,
+            activeCollectionId,
+            libraryOpen,
+            selectedAssets: [viewed],
+          });
+          if (plan.type === "none" || plan.type === "trash-linked") return;
+          if (!shouldForwardBrowseShortcut("trash")) return;
+          event.preventDefault();
+          if (plan.type === "permanent-delete") {
+            onPermanentDelete([...plan.assetIds]);
+            return;
+          }
+          if (plan.type === "remove-from-collection") {
+            onRemoveFromCurrentCollection([...plan.assetIds]);
+            return;
+          }
+          if (plan.type === "trash-managed") onTrashManaged([...plan.assetIds]);
+        }
+        return;
+      }
 
       if (
         matchFocusSearchShortcut(event, platform) &&

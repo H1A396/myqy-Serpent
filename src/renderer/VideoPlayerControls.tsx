@@ -535,7 +535,14 @@ export function VideoPlayerControls({
           {t("preview.videoUnsupported")}
         </video>
       </div>
-      <div className="preview-video-controls preview-chrome-fade">
+      <div aria-hidden="true" className="preview-video-progress-rail">
+        <span
+          style={{
+            width: `${duration > 0 ? Math.min(100, Math.max(0, (displayTime / duration) * 100)) : 0}%`,
+          }}
+        />
+      </div>
+      <div className="preview-video-controls preview-chrome-fade is-drawer">
         <button
           className="preview-video-playpause"
           onClick={togglePlayback}

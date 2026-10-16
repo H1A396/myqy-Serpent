@@ -3,11 +3,14 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import {
-  readFileSync,
-  writeFileSync,
+  appendFileSync,
   existsSync,
+  mkdirSync,
+  readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 
 import {
@@ -27,11 +30,13 @@ import type { MessageBoxOptions, NativeImage } from "electron";
 
 import {
   installApplicationMenu,
+  setApplicationMenuCommandChecked,
   setApplicationMenuCommandEnabled,
   setApplicationMenuCommandLabel,
 } from "./application-menu";
 import { applyDevAppIcon, appIconImage } from "./app-icon";
 import { ArtifactPathCache } from "./artifact-path-cache";
+import { createWindowsInstallerCleanupInvocation } from "./windows-installer-cleanup";
 import { SourcePathCache, type SourcePathResolution } from "./source-path-cache";
 import {
   NativeAssetDragCache,
@@ -72,6 +77,25 @@ import {
   type SyncBindingRecord,
 } from "./library-request/sync";
 import { tryHandleAiOwnedRequest } from "./library-request/ai";
+import { tryHandleEmbeddingModelRequest } from "./library-request/embedding-models";
+import { EmbeddingTestIndex } from "./embedding-test-index";
+import { EmbeddingHttpIndex } from "./embedding-http-index";
+import {
+  embeddingSearchRoots,
+  inspectEmbeddingTree,
+  resolveInstalledEmbeddingLayout,
+} from "./embedding-install";
+import {
+  parseEmbeddingBindings,
+  type EmbeddingLibraryBinding,
+} from "./embedding-library-binding";
+import {
+  parseEmbeddingServiceCatalog,
+  type EmbeddingServiceCatalog,
+} from "./embedding-service-registry";
+import type { EmbeddingModelCatalog } from "./embedding-model-catalog";
+import { parseEmbeddingModelCatalog } from "./embedding-model-catalog";
+import { resolveEffectiveEmbeddingSelection } from "../shared/embedding/library-binding";
 import { tryHandlePreviewOwnedRequest } from "./library-request/preview";
 import { tryHandleMediaShellWorkerResult } from "./library-request/media-shell";
 import { maybePrimeNativeDrag } from "./library-request/native-drag";
@@ -117,12 +141,26 @@ import {
 } from "../shared/native-dialog-i18n";
 import {
   createAppUpdateService,
+  type AppUpdateFetch,
   type AppUpdateService,
 } from './app-update-service';
 import type {
   AppUpdateCheckResult,
   AppUpdateInstallResult,
 } from '../shared/app-update';
+import {
+  applyStartupLoginItem,
+  readStartupPreferences,
+  startupPreferencesSnapshot as createStartupPreferencesSnapshot,
+  startupPreferencesFilePath,
+  writeStartupPreferences,
+} from './startup-preferences-store';
+import {
+  shouldHandleSecondaryLaunch,
+  shouldShowMainWindowOnReady,
+  type StartupPreferences,
+  type StartupPreferencesSnapshot,
+} from '../shared/startup-preferences';
 
 import { popupEditContextMenu } from "./edit-context-menu";
 import {
@@ -167,17 +205,21 @@ import {
   APP_UPDATE_INSTALL_CHANNEL,
   APP_UPDATE_CANCEL_CHANNEL,
   APP_UPDATE_PROGRESS_CHANNEL,
+  STARTUP_PREFERENCES_GET_CHANNEL,
+  STARTUP_PREFERENCES_SET_CHANNEL,
   REVEAL_APP_LOG_CHANNEL,
   READ_APP_LOG_CHANNEL,
   SHOW_EDIT_CONTEXT_MENU_CHANNEL,
   SHELL_NOTIFY_CHANNEL,
   COMMAND_COMPLETED_CHANNEL,
   APPLICATION_MENU_ITEM_STATE_CHANNEL,
+  LINKED_MISSING_VISIBILITY_CHANNEL,
   SHELL_SWIPE_CHANNEL,
   WINDOW_FOCUS_CHANNEL,
   NATIVE_EDIT_COPY_CHANNEL,
   PLUGIN_MANAGER_CHANNEL,
   PLUGIN_INSTALL_PROGRESS_CHANNEL,
+  EMBEDDING_INSTALL_PROGRESS_CHANNEL,
   PLUGIN_CONTRIBUTIONS_CHANGED_CHANNEL,
   PLUGIN_INPUT_CAPTURE_EVENT_CHANNEL,
   PLUGIN_INPUT_CAPTURE_SESSIONS_CHANNEL,
@@ -297,6 +339,11 @@ import {
   type AutomationCommandId,
   type AutomationSource,
 } from '../automation/command-registry';
+import {
+  attachLinuxRoundedCorners,
+  linuxRoundedWindowOptions,
+  shouldUseLinuxRoundedCorners,
+} from "./linux-window-corners";
 import {
   shouldHideApplicationMenuBar,
   shouldUseFramelessTitleBar,
@@ -452,9 +499,13 @@ import {
 // Headless E2E hosts may expose no hardware WebGL implementation. Opt those
 // tests into Chromium's explicitly acknowledged software path; production
 // keeps the platform's normal GPU selection and never silently downgrades it.
+// SERPENT_SOFTWARE_GL=1 is the same explicit opt-in for users on GPU-less
+// hosts (Linux VMs / remote desktops without a usable GL driver), so the 3D
+// viewer and model thumbnails can render via SwiftShader. Off by default.
 if (
-  process.env.SERPENT_E2E === "1" &&
-  process.env.SERPENT_E2E_ENABLE_SWIFTSHADER === "1"
+  (process.env.SERPENT_E2E === "1" &&
+    process.env.SERPENT_E2E_ENABLE_SWIFTSHADER === "1") ||
+  process.env.SERPENT_SOFTWARE_GL === "1"
 ) {
   app.commandLine.appendSwitch("enable-unsafe-swiftshader");
   app.commandLine.appendSwitch("use-angle", "swiftshader");
@@ -468,6 +519,18 @@ if (process.env.SERPENT_E2E === "1") {
       ? explicitUserDataPath
       : path.join(tmpdir(), "serpent-e2e-user-data", String(process.pid)),
   );
+  if (process.env.SERPENT_E2E_APP_UPDATE_FIXTURE === "1") {
+    for (const [pathName, environmentName] of [
+      ["downloads", "SERPENT_E2E_DOWNLOADS_PATH"],
+      ["temp", "SERPENT_E2E_TEMP_PATH"],
+    ] as const) {
+      const configuredPath = process.env[environmentName];
+      if (configuredPath && path.isAbsolute(configuredPath)) {
+        mkdirSync(configuredPath, { recursive: true });
+        app.setPath(pathName, configuredPath);
+      }
+    }
+  }
 }
 
 // Dev multi-instance (Serpent-i6xg): isolate userData so SingletonLock / prefs
@@ -502,9 +565,56 @@ const hasSingleInstanceLock = allowMultiInstance
   : app.requestSingleInstanceLock();
 
 let mainWindow: BrowserWindow | undefined;
+const mainProcessSessionId = randomUUID();
 /** Effective UI locale for native dialogs; synced from Renderer (Serpent-bwb). */
 let appLocale: AppLocale = "en";
 let workerClient: LibraryWorkerClient | undefined;
+let embeddingTestIndex: EmbeddingTestIndex | undefined;
+let embeddingHttpIndex: EmbeddingHttpIndex | undefined;
+
+function embeddingIndex(): EmbeddingTestIndex {
+  embeddingTestIndex ??= new EmbeddingTestIndex({
+    configDirectories: [process.cwd(), app.getAppPath()],
+    ...(process.platform === "win32"
+      ? { koffiPath: createRequire(path.join(app.getAppPath(), "package.json")).resolve("koffi") }
+      : {}),
+    requestWorker: (command) => {
+      if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
+      return workerClient.request(command);
+    },
+    installedLayout: (modelId) => resolveInstalledEmbeddingLayout(inspectEmbeddingTree(embeddingSearchRoots({
+      userData: app.getPath("userData"),
+      home: app.getPath("home"),
+    })), modelId),
+    resolveMediaBinaries: resolveHostMediaBinaries,
+  });
+  return embeddingTestIndex;
+}
+
+function embeddingHttp(): EmbeddingHttpIndex {
+  embeddingHttpIndex ??= new EmbeddingHttpIndex({
+    requestWorker: (command) => {
+      if (!workerClient) return Promise.reject(new Error("Library Worker is unavailable."));
+      return workerClient.request(command);
+    },
+    loadService: (id) => parseEmbeddingServiceCatalog(readEmbeddingServices()).services.find((service) => service.id === id) ?? null,
+    readKey: readEmbeddingServiceKey,
+    isLibraryEnabled: (libraryId, serviceId) => {
+      const binding = readEmbeddingBindings()[libraryId];
+      // Renderer selects the global default when the library inherits settings.
+      // Main does not own that preference; an absent per-library binding must
+      // therefore allow the already-routed service request.
+      if (!binding) return true;
+      const defaultModelId = parseEmbeddingModelCatalog(readEmbeddingModels()).defaultModelId ?? "";
+      return resolveEffectiveEmbeddingSelection({
+        globalEnabled: true,
+        defaultModelId,
+        libraryBinding: binding,
+      }) === serviceId;
+    },
+  });
+  return embeddingHttpIndex;
+}
 /** 自动同步调度器（Serpent-bfsb 后续），随 Worker 生命周期启停。 */
 let syncAutoScheduler: SyncAutoScheduler | undefined;
 type ArtifactPathBatchWaiter = {
@@ -681,7 +791,11 @@ function initializePreviewCache(): void {
 /** Slice E: shared offscreen window that renders model thumbnails (Serpent-hnmg). */
 let offscreenThumbnailRenderer: OffscreenThumbnailRenderer | undefined;
 let quitAfterShutdown = false;
+let applicationQuitting = false;
+let applicationShutdownPromise: Promise<void> | null = null;
+let updateHandoff = false;
 let startupComplete = false;
+const UPDATE_HANDOFF_EXIT_MS = 8_000;
 let logger: AppLogger | undefined;
 const VIEWER_TIMING_LOG = process.env.SERPENT_VIEWER_TIMING_LOG === "1";
 let appLogPath: string | undefined;
@@ -1461,6 +1575,76 @@ function writeSyncBindings(bindings: Record<string, SyncBindingRecord>): void {
   writeFileSync(syncBindingsPath(), JSON.stringify(bindings, null, 2), "utf-8");
 }
 
+function embeddingModelsPath(): string {
+  return path.join(app.getPath("userData"), "embedding-models.json");
+}
+
+function readEmbeddingModels(): unknown {
+  try {
+    return JSON.parse(readFileSync(embeddingModelsPath(), "utf-8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingModels(catalog: EmbeddingModelCatalog): void {
+  writeFileSync(embeddingModelsPath(), JSON.stringify(catalog, null, 2), "utf-8");
+}
+
+function embeddingServicesPath(): string {
+  return path.join(app.getPath("userData"), "embedding-services.json");
+}
+
+function readEmbeddingServices(): unknown {
+  try {
+    return JSON.parse(readFileSync(embeddingServicesPath(), "utf-8")) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingServices(catalog: EmbeddingServiceCatalog): void {
+  writeFileSync(embeddingServicesPath(), JSON.stringify(catalog, null, 2), "utf-8");
+}
+
+function embeddingBindingsPath(): string {
+  return path.join(app.getPath("userData"), "embedding-library-bindings.json");
+}
+
+function readEmbeddingBindings(): Record<string, EmbeddingLibraryBinding> {
+  try {
+    return parseEmbeddingBindings(JSON.parse(readFileSync(embeddingBindingsPath(), "utf-8")) as unknown);
+  } catch {
+    return {};
+  }
+}
+
+function writeEmbeddingBindings(bindings: Record<string, EmbeddingLibraryBinding>): void {
+  writeFileSync(embeddingBindingsPath(), JSON.stringify(bindings, null, 2), "utf-8");
+}
+
+function embeddingServiceKeyPath(id: string): string {
+  return path.join(app.getPath("userData"), "embedding-service-keys", `${id}.bin`);
+}
+
+function readEmbeddingServiceKey(id: string): string | null {
+  try {
+    return safeStorage.decryptString(readFileSync(embeddingServiceKeyPath(id)));
+  } catch {
+    return null;
+  }
+}
+
+function writeEmbeddingServiceKey(id: string, apiKey: string): void {
+  const filePath = embeddingServiceKeyPath(id);
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, safeStorage.encryptString(apiKey));
+}
+
+function deleteEmbeddingServiceKey(id: string): void {
+  rmSync(embeddingServiceKeyPath(id), { force: true });
+}
+
 function resolveSyncServerCredentials(serverId: string): {
   baseUrl: string;
   username?: string;
@@ -1582,7 +1766,123 @@ function focusMainWindow(): boolean {
   );
 }
 
+let loopbackRelease: Promise<void> | undefined;
+
+function releaseLoopbackListeners(): Promise<void> {
+  if (loopbackRelease !== undefined) return loopbackRelease;
+  try {
+    extensionServer?.server.close();
+  } catch (error) {
+    logger?.error("extension-server", error);
+  }
+  extensionServer = undefined;
+  const mcpClose = embeddedMcpServer?.close() ?? Promise.resolve();
+  // Fork: web-share is another loopback listener; release it with the others
+  // so update handoffs free its port too.
+  const webShareClose = webShareServer?.close() ?? Promise.resolve();
+  webShareServer = undefined;
+  loopbackRelease = Promise.all([
+    mcpClose.catch((error: unknown) => {
+      logger?.error("automation.mcp.close", error);
+    }),
+    webShareClose.catch((error: unknown) => {
+      logger?.error("web-share.close", error);
+    }),
+  ]).then(() => undefined);
+  return loopbackRelease;
+}
+
+function beginUpdateHandoff(): void {
+  if (updateHandoff) return;
+  updateHandoff = true;
+  applicationQuitting = true;
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.hide();
+  }
+  if (process.platform === "darwin") app.hide();
+  void releaseLoopbackListeners();
+  const exitTimer = setTimeout(() => {
+    app.exit(0);
+  }, UPDATE_HANDOFF_EXIT_MS);
+  exitTimer.unref();
+}
+
+function suppressWindowDuringUpdateHandoff(window: BrowserWindow): void {
+  if (shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
+  if (!window.isDestroyed()) window.hide();
+  window.once("ready-to-show", () => {
+    if (
+      !window.isDestroyed()
+      && !shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })
+    ) {
+      window.hide();
+    }
+  });
+}
+
+function startupPreferencesPath(): string {
+  return startupPreferencesFilePath(app.getPath("userData"));
+}
+
+function getOSLoginItemState(): {
+  openAtLogin: boolean;
+  executableWillLaunchAtLogin?: boolean;
+  status?: string;
+} {
+  const state = app.getLoginItemSettings(
+    process.platform === "win32" ? { args: [] } : undefined,
+  );
+  return {
+    openAtLogin: state.openAtLogin,
+    ...(process.platform === "win32"
+      ? { executableWillLaunchAtLogin: state.executableWillLaunchAtLogin }
+      : { status: state.status }),
+  };
+}
+
+function readStartupPreferencesSnapshot(): StartupPreferencesSnapshot {
+  const preferences = readStartupPreferences(startupPreferencesPath());
+  return createStartupPreferencesSnapshot({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    e2e: process.env.SERPENT_E2E === "1",
+    preferences,
+    getLoginItemState: getOSLoginItemState,
+    onReadError: (error) => logger?.error("startup.login-item", error),
+  });
+}
+
+function storeStartupPreferences(input: unknown): StartupPreferencesSnapshot {
+  const current = readStartupPreferences(startupPreferencesPath());
+  const record = typeof input === "object" && input !== null ? input as {
+    openAtLogin?: unknown;
+  } : {};
+  const preferences: StartupPreferences = {
+    version: 1,
+    openAtLogin: typeof record.openAtLogin === "boolean" ? record.openAtLogin : current.openAtLogin,
+  };
+  const snapshot = applyStartupLoginItem({
+    platform: process.platform,
+    packaged: app.isPackaged,
+    e2e: process.env.SERPENT_E2E === "1",
+    preferences,
+    setLoginItemSettings: (settings) => {
+      app.setLoginItemSettings({
+        openAtLogin: settings.openAtLogin,
+        ...(settings.args === undefined ? {} : { args: [...settings.args] }),
+        ...(settings.enabled === undefined ? {} : { enabled: settings.enabled }),
+      });
+    },
+    getLoginItemState: getOSLoginItemState,
+  });
+  if (!snapshot.registrationFailed) {
+    writeStartupPreferences(startupPreferencesPath(), preferences);
+  }
+  return snapshot;
+}
+
 function handleSecondInstance(): void {
+  if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
   if (
     MAIN_WINDOW_VITE_DEV_SERVER_URL &&
     mainWindow &&
@@ -1598,6 +1898,7 @@ function handleSecondInstance(): void {
 }
 
 function focusSerpentWindow(windowId?: number): boolean {
+  if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return false;
   const target =
     windowId === undefined
       ? mainWindow
@@ -1767,6 +2068,7 @@ async function createMainWindow(): Promise<void> {
     app.dock?.setIcon(devIcon);
   }
 
+  const linuxRoundedCorners = shouldUseLinuxRoundedCorners();
   const window = new BrowserWindow({
     width: isolatedPlacement?.width ?? defaultWidth,
     height: isolatedPlacement?.height ?? defaultHeight,
@@ -1781,7 +2083,7 @@ async function createMainWindow(): Promise<void> {
     ...(process.platform === "darwin"
       ? {
           titleBarStyle: "hiddenInset" as const,
-          trafficLightPosition: { x: 14, y: 14 },
+          trafficLightPosition: { x: 14, y: 16 },
         }
       : shouldUseFramelessTitleBar(process.platform)
         ? {
@@ -1789,6 +2091,7 @@ async function createMainWindow(): Promise<void> {
             titleBarStyle: "hidden" as const,
           }
         : {}),
+    ...(linuxRoundedCorners ? linuxRoundedWindowOptions() : {}),
     webPreferences: {
       preload: path.join(__dirname, "index.js"),
       sandbox: true,
@@ -1798,6 +2101,7 @@ async function createMainWindow(): Promise<void> {
   });
 
   mainWindow = window;
+  if (linuxRoundedCorners) attachLinuxRoundedCorners(window);
   const mainContentsId = window.webContents.id;
   // Keep renderer diagnostics active in both development and packaged builds.
   // A blank window in a packaged build must leave the same evidence as one
@@ -1805,11 +2109,14 @@ async function createMainWindow(): Promise<void> {
   attachRendererDiagnostics(window);
   window.on("ready-to-show", () => {
     // E2E can keep its renderer fully loaded and automatable without putting
-    // a test window over the user's desktop session.
-    if (
-      process.env.SERPENT_E2E !== "1"
-      || process.env.SERPENT_E2E_HIDE_WINDOW !== "1"
-    ) {
+    // a test window over the user's desktop session. An update handoff stays
+    // hidden so a second launch cannot flash a window.
+    if (shouldShowMainWindowOnReady({
+      updateHandoff,
+      applicationQuitting,
+      e2eHideWindow: process.env.SERPENT_E2E === "1"
+        && process.env.SERPENT_E2E_HIDE_WINDOW === "1",
+    })) {
       window.show();
     }
   });
@@ -2325,6 +2632,8 @@ function publishAssetChange(event: AssetChangeEvent): void {
   // library.changed channel and do not evict the viewer's hot path.
   sourcePathCache.clearLibrary(parsed.libraryId);
   evictArtifactPathCache(parsed.libraryId);
+  embeddingTestIndex?.catchUp(parsed.libraryId);
+  embeddingHttpIndex?.catchUp(parsed.libraryId);
   pluginActivationCoordinator?.fanOutDomainEvent(createPluginDomainEvent({
     kind: 'asset.changed',
     libraryId: parsed.libraryId,
@@ -2440,7 +2749,35 @@ async function processAiQueue(libraryId: string): Promise<void> {
   await aiQueueScheduler.trigger(libraryId);
 }
 
+/** Global menu preference: linked-folder assets with a missing source stay listed. */
+let showMissingLinkedFiles = true;
+
 /** Shared post-open hook for dialog opens and startup recent-library restore. */
+function pluginThumbnailExtensionsFor(libraryId: string): string[] {
+  const extensions = new Set<string>();
+  for (const provider of pluginActivationCoordinator?.listActiveProviders(libraryId) ?? []) {
+    if (provider.kind !== 'thumbnail') continue;
+    for (const raw of provider.extensions ?? []) {
+      const extension = raw.replace(/^\./u, '').toLowerCase();
+      if (/^[a-z0-9][a-z0-9+_-]*$/u.test(extension)) extensions.add(extension);
+    }
+  }
+  return [...extensions];
+}
+
+async function syncPluginThumbnailExtensions(): Promise<void> {
+  const client = workerClient;
+  if (!client) return;
+  const listed = await client.request({ type: 'library.list' });
+  if (!listed.ok || listed.type !== 'library.list') return;
+  for (const library of listed.libraries) {
+    client.publishPluginThumbnailExtensions(
+      library.libraryId,
+      pluginThumbnailExtensionsFor(library.libraryId),
+    );
+  }
+}
+
 async function notifyLibraryOpenedSideEffects(input: {
   libraryId: string;
   libraryDirectory: string;
@@ -2460,6 +2797,8 @@ async function notifyLibraryOpenedSideEffects(input: {
   // library is open, tick only jobs explicitly enqueued or retried in this
   // application session; interrupted rows are never auto-recovered.
   pluginJobScheduler?.tick(input.libraryId);
+  await syncPluginThumbnailExtensions();
+  workerClient?.publishShowMissingLinkedFiles(showMissingLinkedFiles);
 }
 
 async function processAiQueueBatch(
@@ -2643,6 +2982,9 @@ async function commandFor(
     case "folder.create.request":
     case "folder.rename.request":
     case "appearance.set.request":
+    case "folder.cover.set.request":
+    case "folder.cover.clear.request":
+    case "folder.cover.set-asset.request":
     case "folder.list.request":
     case "folder.browse-entries.request":
     case "folder.entries-request":
@@ -2661,7 +3003,7 @@ async function commandFor(
     case "folder.paste.request":
     case "folder.clone.request":
     case "folder.move.request": {
-      return executeFolderMainCommand(request);
+      return executeFolderMainCommand(request, { createNativeDialogHost });
     }
     case "asset.list.request": {
       return executeAssetQueryMainCommand(request);
@@ -2771,6 +3113,8 @@ async function commandFor(
     case "asset.copy.request":
     case "asset.copy-undo.request":
     case "asset.rename-file.request":
+    case "asset.zip.list.request":
+    case "asset.zip.read-entry.request":
     case "asset.text.read.request":
     case "asset.text.save.request":
     case "asset.delete-permanent.request":
@@ -2881,6 +3225,24 @@ async function commandFor(
         createNativeDialogHost,
       });
     }
+    case "embedding.models.list.request":
+    case "embedding.models.upsert.request":
+    case "embedding.models.delete.request":
+    case "embedding.models.set-default.request":
+    case "embedding.services.list.request":
+    case "embedding.services.save.request":
+    case "embedding.services.delete.request":
+    case "embedding.services.probe.request":
+    case "embedding.services.grant.request":
+    case "embedding.binding.get.request":
+    case "embedding.binding.save.request":
+    case "embedding.install.status.request":
+    case "embedding.install.start.request":
+    case "embedding.install.delete.request":
+    case "embedding.index.status.request":
+    case "embedding.search.request":
+    case "embedding.similar.request":
+      return undefined;
     default:
       return assertNever(request);
   }
@@ -3021,6 +3383,36 @@ async function handleLibraryRequest(
       },
     });
     if (syncOwnedResult) return syncOwnedResult;
+
+    const embeddingModelResult = await tryHandleEmbeddingModelRequest(request, {
+      readCatalog: readEmbeddingModels,
+      writeCatalog: writeEmbeddingModels,
+      readServices: readEmbeddingServices,
+      writeServices: writeEmbeddingServices,
+      serviceCredentials: {
+        has: (id) => existsSync(embeddingServiceKeyPath(id)),
+        read: readEmbeddingServiceKey,
+        write: writeEmbeddingServiceKey,
+        delete: deleteEmbeddingServiceKey,
+      },
+      userDataPath: () => app.getPath("userData"),
+      homePath: () => app.getPath("home"),
+      readBindings: readEmbeddingBindings,
+      writeBindings: writeEmbeddingBindings,
+      embeddingIndex: embeddingIndex(),
+      embeddingHttpIndex: embeddingHttp(),
+      stopGemmaIndex: () => { void embeddingTestIndex?.close(); },
+      stopHttpIndex: async () => { await embeddingHttpIndex?.close(); },
+      onInstallProgress: (event) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(EMBEDDING_INSTALL_PROGRESS_CHANNEL, event);
+        }
+      },
+      logError: (scope, error, context) => {
+        logger?.error(scope, error, context);
+      },
+    });
+    if (embeddingModelResult) return embeddingModelResult;
 
     const aiOwnedResult = await tryHandleAiOwnedRequest(request, {
       loadAiConfig,
@@ -3871,32 +4263,112 @@ async function normalizeMcpCommandInput(input: {
 
 /**
  * A Windows installer keeps its executable locked while it is running, and
- * the main process exits immediately after handing it off. Use a detached
- * cmd helper as a last-mile cleanup fallback so an installer directory that
- * could not be removed before app.quit() is removed after setup releases it.
+ * the main process exits immediately after handing it off. A detached hidden
+ * PowerShell worker removes the installer directory after setup releases it.
  * The path is generated by the update service under the OS temp directory.
  */
-function scheduleWindowsInstallerCleanup(installerPath: string): void {
+async function scheduleWindowsInstallerCleanup(
+  installerPath: string,
+  installerPid: number,
+): Promise<void> {
   if (process.platform !== "win32") return;
-  const outputDirectory = path.dirname(installerPath);
-  const command = `ping 127.0.0.1 -n 3 >nul & for /l %i in (1,1,30) do @(del /f /q "${installerPath}" >nul 2>&1 && rmdir /s /q "${outputDirectory}" >nul 2>&1 && exit /b 0 || ping 127.0.0.1 -n 2 >nul)`;
+  const cleanup = createWindowsInstallerCleanupInvocation({
+    installerPath,
+    installerPid,
+    logPath: appLogPath,
+  });
+  const spawnOptions = {
+    detached: true,
+    stdio: "ignore" as const,
+    windowsHide: true,
+    env: cleanup.env,
+  };
   try {
     const cleanupProcess = spawn(
-      process.env.ComSpec ?? "cmd.exe",
-      ["/d", "/s", "/c", command],
-      { detached: true, stdio: "ignore", windowsHide: true },
+      cleanup.executable,
+      cleanup.args,
+      spawnOptions,
     );
+    await new Promise<void>((resolve, reject) => {
+      const handleSpawnError = (error: Error) => {
+        cleanupProcess.off("spawn", handleSpawn);
+        reject(error);
+      };
+      const handleSpawn = () => {
+        cleanupProcess.off("error", handleSpawnError);
+        resolve();
+      };
+      cleanupProcess.once("error", handleSpawnError);
+      cleanupProcess.once("spawn", handleSpawn);
+    });
     cleanupProcess.once("error", (error) => {
       logger?.error("app-update.cleanup", error, {
         artifactKind: "windows-installer-cleanup",
       });
     });
     cleanupProcess.unref();
+
+    if (
+      process.env.SERPENT_E2E === "1"
+      && process.env.SERPENT_E2E_APP_UPDATE_FIXTURE === "1"
+      && process.env.SERPENT_E2E_APP_UPDATE_SPAWN_LOG
+    ) {
+      try {
+        appendFileSync(
+          process.env.SERPENT_E2E_APP_UPDATE_SPAWN_LOG,
+          `${JSON.stringify({
+            executable: cleanup.executable,
+            args: cleanup.args,
+            installerPath: cleanup.env.SERPENT_UPDATE_CLEANUP_INSTALLER,
+            ...spawnOptions,
+            env: undefined,
+            spawned: true,
+            pid: cleanupProcess.pid,
+          })}\n`,
+          "utf8",
+        );
+      } catch {
+        // Test instrumentation must not interfere with handing off an installer.
+      }
+    }
   } catch (error) {
     logger?.error("app-update.cleanup", error, {
       artifactKind: "windows-installer-cleanup",
     });
+    throw error;
   }
+}
+
+function createAppUpdateE2eFetch(): AppUpdateFetch | undefined {
+  if (
+    process.env.SERPENT_E2E !== "1"
+    || process.env.SERPENT_E2E_APP_UPDATE_FIXTURE !== "1"
+  ) return undefined;
+  const releasePath = process.env.SERPENT_E2E_UPDATE_RELEASE;
+  const archivePath = process.env.SERPENT_E2E_UPDATE_ARCHIVE;
+  const assetUrl = process.env.SERPENT_E2E_UPDATE_ASSET_URL;
+  if (
+    !releasePath || !path.isAbsolute(releasePath)
+    || !archivePath || !path.isAbsolute(archivePath)
+    || !assetUrl
+  ) return undefined;
+
+  const releaseApiUrl = "https://api.github.com/repos/dolag233/Serpent/releases/latest";
+  return async (input) => {
+    if (input === releaseApiUrl) {
+      return new Response(await readFile(releasePath), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (input === assetUrl) {
+      return new Response(await readFile(archivePath), {
+        status: 200,
+        headers: { "content-type": "application/octet-stream" },
+      });
+    }
+    return new Response(null, { status: 404 });
+  };
 }
 
 async function startApplication(): Promise<void> {
@@ -3935,19 +4407,48 @@ async function startApplication(): Promise<void> {
     tempDirectory: app.getPath('temp'),
     downloadsDirectory: app.getPath('downloads'),
     environment: process.env,
+    fetchImpl: createAppUpdateE2eFetch(),
     openPath: (filePath) => shell.openPath(filePath),
     showItemInFolder: (filePath) => shell.showItemInFolder(filePath),
     launchInstaller: async (installerPath) => {
       if (process.platform === 'win32') {
-        spawn(installerPath, [], { detached: true, stdio: 'ignore' }).unref();
-        scheduleWindowsInstallerCleanup(installerPath);
+        if (
+          process.env.SERPENT_E2E === "1"
+          && process.env.SERPENT_E2E_APP_UPDATE_FIXTURE === "1"
+        ) {
+          // Keep the real updater download, extraction, cleanup worker and app
+          // quit path; only the inert fixture installer process is simulated.
+          await scheduleWindowsInstallerCleanup(installerPath, 730241);
+        } else {
+          const installer = spawn(installerPath, [], {
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: true,
+          });
+          await new Promise<void>((resolve, reject) => {
+            const handleSpawnError = (error: Error) => reject(error);
+            installer.once('error', handleSpawnError);
+            installer.once('spawn', async () => {
+              installer.off('error', handleSpawnError);
+              if (installer.pid === undefined) {
+                reject(new Error('The Windows installer process has no process ID.'));
+                return;
+              }
+              installer.unref();
+              try {
+                await scheduleWindowsInstallerCleanup(installerPath, installer.pid);
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            });
+          });
+        }
       } else {
         const openError = await shell.openPath(installerPath);
         if (openError !== '') throw new Error(openError);
       }
-      setImmediate(() => {
-        app.quit();
-      });
+      beginUpdateHandoff();
     },
     onDownloadProgress: (progress) => {
       mainWindow?.webContents.send(APP_UPDATE_PROGRESS_CHANNEL, progress);
@@ -4012,9 +4513,12 @@ async function startApplication(): Promise<void> {
         app.getPath('userData'),
         'library-metadata-cache',
       ),
+      SERPENT_SEMANTIC_LEGACY_CACHE_ROOT: app.getPath('userData'),
+      SERPENT_MAIN_PROCESS_SESSION_ID: mainProcessSessionId,
     },
   );
   await workerClient.start();
+  workerClient.publishShowMissingLinkedFiles(showMissingLinkedFiles);
   // Serpent-65d837: remove any `.del-*` aside roots that could not be deleted
   // during a previous session (deferred-cleanup store, backoff loop).
   retryPendingLibraryCleanups();
@@ -4991,6 +5495,14 @@ async function startApplication(): Promise<void> {
           logger?.error('plugin.providers.materialize', error, { libraryId });
         });
         embeddedMcpServer?.notifyToolsChanged();
+        void syncPluginThumbnailExtensions().catch((error) => {
+          logger?.error('plugin.thumbnail-extensions', error, { libraryId });
+        });
+      },
+      onProvidersChanged: () => {
+        void syncPluginThumbnailExtensions().catch((error) => {
+          logger?.error('plugin.thumbnail-extensions', error);
+        });
       },
       logger,
     });
@@ -5401,6 +5913,14 @@ async function startApplication(): Promise<void> {
   // Forward thumbnail events to the renderer
   workerClient.onThumbnailEvent((event) => {
     if (
+      event.type === "asset.thumbnail.ready"
+      || (event.type === "asset.thumbnail.batch-ready" && event.ready.length > 0)
+    ) {
+      // Cover-only video semantics skips a clip until its poster exists.
+      // A ready cover is the cue to encode that clip; there is no frame-sampling fallback.
+      embeddingTestIndex?.catchUp(event.libraryId);
+    }
+    if (
       event.type === "asset.thumbnail.ready" ||
       event.type === "asset.thumbnail.failed"
     ) {
@@ -5447,6 +5967,50 @@ async function startApplication(): Promise<void> {
           return new Response("App asset not found", { status: 404 });
         }
         return response;
+      }
+      if (url.hostname === "folder-cover") {
+        const folderLibraryId = decodeURIComponent(url.pathname.replace(/^\/+/, "").split("/")[0] ?? "");
+        const folderId = url.searchParams.get("folder") ?? "";
+        if (
+          !folderLibraryId
+          || !folderId
+          || folderId.length > 4096
+          || folderLibraryId.includes("..")
+          || folderId.includes("\0")
+        ) {
+          return new Response("Invalid folder cover", { status: 400 });
+        }
+        if (isLibraryMediaReadBlocked(folderLibraryId)) {
+          return new Response("Library unavailable", { status: 410 });
+        }
+        if (!workerClient) return new Response("Worker unavailable", { status: 503 });
+        try {
+          const resolved = await workerClient.request({
+            type: "folder.cover.resolve",
+            libraryId: folderLibraryId,
+            folderId,
+          });
+          if (!resolved.ok || resolved.type !== "folder.cover.resolved") {
+            return new Response("Folder cover not found", { status: 404 });
+          }
+          return await createArtifactResponse(
+            resolved.absolutePath,
+            resolved.mimeType,
+            {
+              rangeHeader: request.headers.get("range"),
+              signal: bindLibraryMediaReadSignal(folderLibraryId, request.signal),
+              onStreamError: (error) =>
+                logger?.error("serpent-protocol.folder-cover-stream", error, {
+                  libraryId: folderLibraryId,
+                }),
+            },
+          );
+        } catch (error) {
+          logger?.error("serpent-protocol.folder-cover-read", error, {
+            libraryId: folderLibraryId,
+          });
+          return new Response("Folder cover unreadable", { status: 404 });
+        }
       }
       if (
         url.hostname !== "preview" &&
@@ -6084,6 +6648,31 @@ async function startApplication(): Promise<void> {
     return pluginPackageRequest(input);
   });
 
+  ipcMain.handle(STARTUP_PREFERENCES_GET_CHANNEL, (event): StartupPreferencesSnapshot => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      return readStartupPreferencesSnapshot();
+    }
+    return readStartupPreferencesSnapshot();
+  });
+
+  ipcMain.handle(STARTUP_PREFERENCES_SET_CHANNEL, (event, input: unknown): StartupPreferencesSnapshot => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      logger?.info("ipc.startup-preferences", "Rejected startup preference update.", {
+        code: "unauthorized-sender",
+      });
+      return readStartupPreferencesSnapshot();
+    }
+    try {
+      return storeStartupPreferences(input);
+    } catch (error) {
+      logger?.error("startup.login-item", error);
+      return {
+        ...readStartupPreferencesSnapshot(),
+        registrationFailed: true,
+      };
+    }
+  });
+
   ipcMain.handle(
     APP_UPDATE_CHECK_CHANNEL,
     async (event): Promise<AppUpdateCheckResult> => {
@@ -6112,7 +6701,14 @@ async function startApplication(): Promise<void> {
       if (appUpdateService === undefined) {
         return { ok: false, status: 'error', code: 'service-unavailable' };
       }
-      return appUpdateService.downloadAndInstall();
+      const result = await appUpdateService.downloadAndInstall();
+      if (result.ok && result.action === 'installer-opened') {
+        beginUpdateHandoff();
+        setImmediate(() => {
+          app.quit();
+        });
+      }
+      return result;
     },
   );
 
@@ -6274,6 +6870,14 @@ async function startApplication(): Promise<void> {
 
   // Serpent-q0b1: the renderer syncs native menu item enabled-state (business
   // undo/redo availability). Only commands from the real window are accepted.
+  ipcMain.handle(LINKED_MISSING_VISIBILITY_CHANNEL, (event, input: unknown) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) return;
+    if (typeof input !== "boolean") return;
+    showMissingLinkedFiles = input;
+    workerClient?.publishShowMissingLinkedFiles(input);
+    setApplicationMenuCommandChecked("library.show-missing-linked", input);
+  });
+
   ipcMain.handle(APPLICATION_MENU_ITEM_STATE_CHANNEL, (event, input: unknown) => {
     if (!mainWindow || event.sender !== mainWindow.webContents) {
       return;
@@ -6381,6 +6985,27 @@ async function startApplication(): Promise<void> {
     logger,
   });
 
+  const startupPreferences = readStartupPreferences(startupPreferencesPath());
+  if (startupPreferences.openAtLogin) {
+    try {
+      applyStartupLoginItem({
+        platform: process.platform,
+        packaged: app.isPackaged,
+        e2e: process.env.SERPENT_E2E === "1",
+        preferences: startupPreferences,
+        setLoginItemSettings: (settings) => {
+          app.setLoginItemSettings({
+            openAtLogin: settings.openAtLogin,
+            ...(settings.args === undefined ? {} : { args: [...settings.args] }),
+            ...(settings.enabled === undefined ? {} : { enabled: settings.enabled }),
+          });
+        },
+      });
+    } catch (error) {
+      logger?.error("startup.login-item", error);
+    }
+  }
+
   await createMainWindow();
   try {
     await embeddedMcpServer?.initialize();
@@ -6435,6 +7060,10 @@ app.setName("Serpent");
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
+  app.on("browser-window-created", (_event, window) => {
+    suppressWindowDuringUpdateHandoff(window);
+  });
+
   app.on("second-instance", handleSecondInstance);
 
   app
@@ -6450,6 +7079,7 @@ if (!hasSingleInstanceLock) {
     });
 
   app.on("activate", () => {
+    if (!shouldHandleSecondaryLaunch({ updateHandoff, applicationQuitting })) return;
     if (!startupComplete) return;
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
     else focusMainWindow();
@@ -6460,6 +7090,12 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    void embeddingTestIndex?.close().catch((error) => {
+      logger?.error('embedding.local-index.close', error, { reason: 'application-quit' });
+    });
+    void embeddingHttpIndex?.close().catch((error) => {
+      logger?.error('embedding.http-index.close', error, { reason: 'application-quit' });
+    });
     void cleanupAllExternalSources();
     syncAutoScheduler?.stop();
     syncAutoScheduler = undefined;
@@ -6468,13 +7104,15 @@ if (!hasSingleInstanceLock) {
   });
 
   app.on("before-quit", (event) => {
+    applicationQuitting = true;
     aiQueueScheduler.clearAll();
     criticalConfirmationWindowManager?.dispose();
     criticalConfirmationWindowManager = undefined;
     criticalConfirmationBroker?.dispose();
     criticalConfirmationBroker = undefined;
-    if (quitAfterShutdown || !workerClient) return;
+    if (quitAfterShutdown || (!workerClient && !embeddingTestIndex && !embeddingHttpIndex)) return;
     event.preventDefault();
+    if (applicationShutdownPromise) return;
 
     // Slice E: fail in-flight model thumbnail renders and destroy the window.
     offscreenThumbnailRenderer?.dispose();
@@ -6482,29 +7120,36 @@ if (!hasSingleInstanceLock) {
 
     pluginActivationCoordinator?.dispose('supervisor-shutdown');
 
-    // Close the extension server early; stop accepting new save intents.
-    try {
-      extensionServer?.server.close();
-      extensionServer = undefined;
-    } catch {
-      // Best effort.
-    }
-
-    const mcpClose = embeddedMcpServer?.close() ?? Promise.resolve();
-    const webShareClose = webShareServer?.close() ?? Promise.resolve();
-    void Promise.all([mcpClose, webShareClose])
-      .catch((error: unknown) => {
-        logger?.error("automation.mcp.close", error);
-      })
-      .then(() => workerClient?.shutdown())
-      .finally(() => {
-        quitAfterShutdown = true;
-      // The first app.quit() is intentionally intercepted above while the
-      // worker drains. Once the worker is shut down there is nothing left to
-      // close asynchronously; app.exit() completes the already-authorized
-      // application shutdown instead of re-entering the quit lifecycle and
-      // leaving a hidden Electron process behind on Windows.
+    // Close loopback listeners before the worker drain so an update handoff
+    // does not keep a port open while the installer starts the next process.
+    const mcpClose = releaseLoopbackListeners();
+    // Stop model processes before app.exit(), which bypasses will-quit.
+    applicationShutdownPromise = (async (): Promise<void> => {
+      const results = await Promise.allSettled([
+        mcpClose,
+        embeddingTestIndex?.close(),
+        embeddingHttpIndex?.close(),
+      ]);
+      for (const [index, result] of results.entries()) {
+        if (result.status !== "rejected") continue;
+        const source = ["automation.mcp.close", "embedding.local-index.close", "embedding.http-index.close"][index]
+          ?? "application.shutdown.close";
+        logger?.error(source, result.reason, { reason: "application-quit" });
+      }
+      try {
+        await workerClient?.shutdown();
+      } catch (error) {
+        logger?.error("library.worker.shutdown", error, { reason: "application-quit" });
+      }
+      quitAfterShutdown = true;
+      // The first app.quit() is intentionally intercepted above while owned
+      // processes and the Worker drain. app.exit() then completes that quit.
       app.exit(0);
-      });
+    })();
+    void applicationShutdownPromise.catch((error: unknown) => {
+      logger?.error("application.shutdown", error);
+      quitAfterShutdown = true;
+      app.exit(0);
+    });
   });
 }

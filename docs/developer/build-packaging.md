@@ -4,7 +4,7 @@
 
 ```bash
 npm run package          # 打包应用（含构建）→ out/Serpent-<platform>-<arch>/
-npm run make             # 生成安装包 → out/make/（macOS dmg / Windows zip；Windows 安装器 SerpentSetup.exe 由 Inno Setup 构建）
+npm run make             # 生成安装包 → out/make/（macOS dmg / Windows zip；Linux 用 npm run make:appimage）
 npm run verify:package   # 校验打包产物（ASAR、native 模块、媒体组件）
 ```
 
@@ -38,10 +38,10 @@ npm run release:local
 | 阶段 | 内容 |
 | --- | --- |
 | verify | `rebuild:native` + `verify:mainline`（与 CI 相同门禁） |
-| media | 从受控 URL 下载媒体包（`media:acquire`）+ 校验 |
+| media | 从受控 URL 下载媒体包（`media:acquire`）+ 校验；linux-x64 与 linux-arm64 都与 macOS/Windows 走同一门禁（linux-arm64 在 bundle 晋升前为 `build-required`） |
 | package | `electron-forge package` + `verify:package` |
 | e2e | 对打包产物跑启动测试（`test:e2e:packaged`） |
-| make | 生成安装包 |
+| make | 生成安装包（Linux：优先 `make:appimage:docker`，并重命名为 `Serpent-linux-x86-64-<ver>.AppImage` 或 `Serpent-linux-arm64-<ver>.AppImage`） |
 | checksums | 产物 SHA-256 manifest（带版本头） |
 
 跳过慢阶段的选项：`--skip-verify` / `--skip-media` / `--skip-e2e`。单独跑某阶段：`npm run release:<phase>`（e2e 阶段为 `npm run release:e2e:packaged`）。
@@ -81,7 +81,19 @@ npm run release:local -- --skip-verify --build-media-locally
 
 ### 平台
 
-`forge.config.ts` 强制**原生平台构建**（`darwin-arm64` / `win32-x64` 白名单）——媒体二进制、ufbx、native 模块均为平台相关，不支持交叉打包。Windows 需在 Windows 原生环境跑同一流水线。
+`forge.config.ts` 强制**原生平台构建**——pinned media 白名单为 `darwin-arm64` / `win32-x64` / `linux-x64` / `linux-arm64`；Linux 也必须在本机（或同架构的 `make:appimage:docker` 容器内）打包，不支持交叉打包。各平台各自跑同一发布流水线。
+
+### Linux AppImage
+
+```bash
+npm run make:appimage           # 本机 → out/make/appimage/Serpent-<ver>-x86_64.AppImage 或 Serpent-<ver>-aarch64.AppImage
+npm run make:appimage:docker    # Ubuntu 22.04 / glibc 2.35 基线，容器架构跟随宿主机（推荐发布构建）
+npm run release:make            # 优先 docker，并重命名为 Serpent-linux-x86-64-<ver>.AppImage 或 Serpent-linux-arm64-<ver>.AppImage
+```
+
+- linux-x64 与 linux-arm64 都内置与 macOS/Windows 相同的 pinned media bundle（`ffmpeg` / `ffprobe` / `oiiotool`）。`package` 的 `prePackage` 会执行 `media:ensure`。`bundle-lock.json` 里 linux-x64 目前为 `ready`。linux-arm64 仍是 `build-required`：`media-v0.1.2` 没有 `serpent-media-linux-arm64.zip`，在原生 aarch64 上跑 `scripts/media-build/linux-arm64.sh`、上传 zip 并写回 URL 与 SHA-256 之前，`media:acquire` 会失败，发不出现成 AppImage。本地试跑可用 `SERPENT_MEDIA_SKIP_PROVENANCE=1` 或 `--build-media-locally`。
+- glibc 基线与 x86_64 相同（Ubuntu 22.04 / 2.35）。需要 FUSE（`libfuse2`）；无 FUSE 时 `--appimage-extract-and-run`。X11 / Wayland 限制与 x86_64 相同。
+- Release 上传名与应用内更新器一致：`Serpent-linux-x86-64-<ver>.AppImage` 或 `Serpent-linux-arm64-<ver>.AppImage`（另附同名 `.sha256`）。校验清单为 `SHA256SUMS-linux-x64.txt` / `SHA256SUMS-linux-arm64.txt`。
 
 ### Windows 安装器（Inno Setup）
 
@@ -122,7 +134,8 @@ npm run make:inno
    - `ffmpeg/ffprobe`：BtbN LGPL builds（`registry.npmmirror.com/-/binary/ffmpeg-builds/`
      `ffmpeg-<ver>-win32-x64-lgpl.tar.xz`，或 mac 版），LGPL-only 合规（无 GPL 标记）
    - `oiiotool`：`scripts/media-build/build-oiiotool-win32.ps1`（Windows）/
-     `darwin-arm64.sh`（macOS）——vcpkg 构建（锁定版本工具链 + registry commit）
+     `darwin-arm64.sh`（macOS）/ `linux-x64.sh`（Linux x86_64）/ `linux-arm64.sh`（Linux aarch64，连同 FFmpeg）
+     ——vcpkg 构建（锁定版本工具链 + registry commit）
 2. **打包上传**：
    ```bash
    # 组装 zip（平台层级结构 ffmpeg/<platform>/…）+ sha256
@@ -157,7 +170,7 @@ npm run extension:build   # 构建 dist/extension
 2. **Windows 原生验证**：同一流水线在 Windows 环境跑通 + 安装/卸载旅程
 3. **签名升级**：SignPath 申请 / Apple Developer 账号
 4. **CI/CD**：本地 CICD（2026-08-09 决策：主仓库放弃 GitHub Actions，
-   双平台各自跑 `npm run release:local`；浏览器扩展仓库保留 Actions 发布）。
+   各目标平台各自跑 `npm run release:local`；浏览器扩展仓库保留 Actions 发布）。
    详见 [本地 CICD](https://github.com/dolag233/Serpent/blob/dev/docs/internal/development/local-cicd.md)。
 
 详见研究文档。

@@ -1,6 +1,8 @@
+import { useState } from "react";
+
 import { Icon } from "./Icons";
 import { coverSrc } from "./asset-card-hover-preview";
-import { folderCoverImageSrc } from "./folder-cover";
+import { folderAutomaticCoverSrc, folderCoverImageSrc } from "./folder-cover";
 import { useT } from "./i18n";
 import type { FolderBrowseEntry } from "../shared/asset-types";
 import { CardSurface } from "./ui/surfaces";
@@ -50,9 +52,30 @@ export function FolderCard({
   trashed = false,
 }: FolderCardProps) {
   const t = useT();
-  const isCollage = entry.directAssetCount === 0 && entry.coverArtifactIds.length > 0;
+  const customCover = entry.hasCustomCover ? folderCoverImageSrc(libraryId, entry) : null;
+  const [failedSrcs, setFailedSrcs] = useState<ReadonlySet<string>>(() => new Set());
+  const [failedFor, setFailedFor] = useState(entry.folderId);
+  if (failedFor !== entry.folderId) {
+    setFailedFor(entry.folderId);
+    setFailedSrcs(new Set());
+  }
+  const markFailed = (src: string) => {
+    setFailedSrcs((current) => {
+      if (current.has(src)) return current;
+      const next = new Set(current);
+      next.add(src);
+      return next;
+    });
+  };
+  const customSrc = customCover && !failedSrcs.has(customCover) ? customCover : null;
+  const isCollage = !customSrc && entry.directAssetCount === 0 && entry.coverArtifactIds.length > 0;
   const coverArtifactId = entry.coverArtifactIds[0] ?? null;
-  const sequenceCover = coverArtifactId ? null : folderCoverImageSrc(libraryId, entry);
+  const automaticCover = folderAutomaticCoverSrc(libraryId, entry);
+  const sequenceSrc = !coverArtifactId && automaticCover && !failedSrcs.has(automaticCover)
+    ? automaticCover
+    : null;
+  const autoSrc = coverArtifactId ? coverSrc(libraryId, coverArtifactId) : null;
+  const visibleAutoSrc = autoSrc && !failedSrcs.has(autoSrc) ? autoSrc : null;
 
   return (
     <CardSurface
@@ -70,7 +93,7 @@ export function FolderCard({
       onDragStart={onDragStart}
       onDrop={onDrop}
       onMouseDown={onMouseDown}
-      title={entry.name}
+      data-hover-tip={entry.name}
       type="button"
     >
       <div className="folder-card-cover">
@@ -104,14 +127,25 @@ export function FolderCard({
             />
           </svg>
           <div className="folder-card-pocket">
-            {entry.coverArtifactIds.length === 0 ? (
-              sequenceCover ? (
+            {customSrc ? (
+              <div className="folder-card-cover-photo">
+                <img
+                  alt=""
+                  className="folder-card-cover-image"
+                  loading="eager"
+                  onError={() => markFailed(customSrc)}
+                  src={customSrc}
+                />
+              </div>
+            ) : entry.coverArtifactIds.length === 0 ? (
+              sequenceSrc ? (
                 <div className="folder-card-cover-photo">
                   <img
                     alt=""
                     className="folder-card-cover-image"
                     loading="eager"
-                    src={sequenceCover}
+                    onError={() => markFailed(sequenceSrc)}
+                    src={sequenceSrc}
                   />
                 </div>
               ) : (
@@ -130,6 +164,9 @@ export function FolderCard({
                           alt=""
                           className="folder-card-collage-image"
                           loading="eager"
+                          onError={(event) => {
+                            event.currentTarget.hidden = true;
+                          }}
                           src={coverSrc(libraryId, artifactId)}
                         />
                       ) : null}
@@ -137,7 +174,7 @@ export function FolderCard({
                   );
                 })}
               </div>
-            ) : (
+            ) : visibleAutoSrc ? (
               <div className="folder-card-cover-photo">
                 <img
                   alt=""
@@ -146,15 +183,20 @@ export function FolderCard({
                   // horizontal strip (unlike the virtualized vertical asset
                   // grid) — eager so covers paint as soon as they are ready.
                   loading="eager"
-                  src={coverSrc(libraryId, coverArtifactId!)}
+                  onError={() => markFailed(visibleAutoSrc)}
+                  src={visibleAutoSrc}
                 />
+              </div>
+            ) : (
+              <div className="folder-card-cover-empty">
+                <Icon name="folder" size={28} />
               </div>
             )}
           </div>
         </div>
       </div>
       <div className="folder-card-caption">
-        <strong className="folder-card-name" title={entry.name}>
+        <strong className="folder-card-name" data-hover-tip={entry.name}>
           {entry.name}
         </strong>
         <span className="folder-card-count">

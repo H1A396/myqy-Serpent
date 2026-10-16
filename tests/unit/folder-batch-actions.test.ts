@@ -40,6 +40,27 @@ describe("folder batch planning", () => {
     expect(result.skipCount).toBe(2);
   });
 
+  it("sets a cover on managed folders, linked roots, and linked subdirectories", () => {
+    const listed = plan(
+      ["m-1", "l-root", "lfv:l-root/sub"],
+      "cover",
+    );
+    expect(listed.targets.map((target) => target.folderId)).toEqual([
+      "m-1",
+      "l-root",
+      "lfv:l-root/sub",
+    ]);
+    const fromRootOnly = planFolderBatch({
+      folderIds: ["lfv:l-root/nested/child"],
+      managedFolders,
+      linkedFolders: [{ folderId: "l-root", name: "Linked", relativePath: "" }],
+      action: "cover",
+    });
+    expect(fromRootOnly.targets.map((target) => target.folderId)).toEqual([
+      "lfv:l-root/nested/child",
+    ]);
+  });
+
   it("sets icon/color on managed folders and linked roots only", () => {
     const result = plan(
       ["m-1", "l-root", "lfv:l-root/sub", "missing-folder"],

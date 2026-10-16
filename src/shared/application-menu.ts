@@ -70,6 +70,7 @@ export type ApplicationMenuCommand =
   | "library.import-eagle"
   | "library.export"
   | "library.settings"
+  | "library.show-missing-linked"
   | "window.background-jobs"
   | "window.diagnostics"
   | "about.serpent"
@@ -87,7 +88,9 @@ export type ApplicationMenuCommandEvent = {
 
 export type ApplicationMenuItemTemplate = {
   readonly role?: ApplicationMenuRole;
-  readonly type?: "separator" | "normal" | "submenu";
+  readonly type?: "separator" | "normal" | "submenu" | "checkbox";
+  /** Initial checked state for `type: "checkbox"`. */
+  readonly checked?: boolean;
   readonly label?: string;
   /** Native accelerator for custom commands, when the platform has one. */
   readonly accelerator?: string;
@@ -276,6 +279,12 @@ export function buildApplicationMenuTemplate(
         commandItem("library.export", "toolbar.exportLibrary"),
         { type: "separator" },
         commandItem("library.settings", "settings.librarySettings"),
+        {
+          type: "checkbox",
+          labelKey: "shell.showMissingLinkedFiles",
+          command: "library.show-missing-linked",
+          checked: true,
+        },
         { type: "separator" },
         // Hovering 最近打开 expands the recent-library submenu (macOS native
         // submenu behaviour); each entry opens that library.

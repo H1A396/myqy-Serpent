@@ -24,7 +24,7 @@ If you encounter unexpected errors, performance bottlenecks, or bugs while runni
 
 ### When reporting a bug, please provide:
 
-1. **Environment**: Operating system (macOS / Windows) and version, system architecture (`arm64` / `x64`).
+1. **Environment**: Operating system (macOS / Windows / Linux) and version, system architecture (`arm64` / `x64`).
 2. **Application version**: Serpent version string or Git commit hash.
 3. **Reproduction steps**: Clear, step-by-step instructions so maintainers can reproduce the behavior locally.
 4. **Expected vs. actual behavior**: What you expected to happen versus what actually occurred.
@@ -52,6 +52,7 @@ If you encounter unexpected errors, performance bottlenecks, or bugs while runni
    - Node.js version requirement is **`24.15.0`** (using `nvm`: `nvm use`).
    - On Windows, Visual Studio Build Tools is required (with the Desktop development with C++ workload and Windows SDK, to compile `better-sqlite3`). To build Windows installer packages (`npm run make:inno`), Inno Setup 6 is also required (see [Setup](setup.en.md)).
    - On macOS, Xcode Command Line Tools is required.
+   - On Linux, install `build-essential` / `python3`. `npm start` also needs system `ffmpeg` until the media bundle is acquired (see [Setup](setup.en.md)). The release AppImage packs in the pinned media tools. Docker is recommended for AppImage release builds.
    - Install dependencies and compile native modules:
      ```bash
      npm ci --registry=https://registry.npmjs.org

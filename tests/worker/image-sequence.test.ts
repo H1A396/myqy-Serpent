@@ -437,7 +437,7 @@ describe("image sequence persistence", () => {
     )).toEqual([[1, 2, 3], [5, 6, 7]]);
   });
 
-  it("groups linked frames that already exist when the folder is imported", () => {
+  it("leaves linked frames as separate files when the folder is imported", () => {
     const { library, root, service } = fixture();
     const linkedRoot = path.join(root, "linked-sequence");
     writeFrames(linkedRoot, ["capture_0.png", "capture_1.png", "capture_2.png"]);
@@ -450,9 +450,8 @@ describe("image sequence persistence", () => {
       libraryId: library.libraryId,
       recursive: true,
     });
-    expect(assets).toHaveLength(1);
-    expect(assets[0]!.sequence?.frames.map((frame) => frame.frameNumber))
-      .toEqual([0, 1, 2]);
+    expect(assets).toHaveLength(3);
+    expect(assets.every((asset) => asset.sequence == null)).toBe(true);
   });
 
   it("does not auto-group linked frames that arrive after import", () => {
@@ -493,14 +492,19 @@ describe("image sequence persistence", () => {
       libraryId: library.libraryId,
       sourceRootPath: linkedRoot,
     });
-    const grouped = service.listAssets({
+    const imported = service.listAssets({
       libraryId: library.libraryId,
       recursive: true,
     });
-    expect(grouped).toHaveLength(1);
+    expect(imported).toHaveLength(frames.length);
+    const grouped = service.createImageSequence({
+      libraryId: library.libraryId,
+      assetIds: imported.map((asset) => asset.assetId),
+      fps: 30,
+    });
     service.dissolveImageSequence({
       libraryId: library.libraryId,
-      sequenceId: grouped[0]!.sequence!.sequenceId,
+      sequenceId: grouped.sequence!.sequenceId,
     });
     expect(service.listAssets({
       libraryId: library.libraryId,
@@ -539,14 +543,19 @@ describe("image sequence persistence", () => {
       sourceRootPath: linkedRoot,
     });
 
-    const grouped = service.listAssets({
+    const imported = service.listAssets({
       libraryId: library.libraryId,
       recursive: true,
     });
-    expect(grouped).toHaveLength(1);
+    expect(imported).toHaveLength(3);
+    const grouped = service.createImageSequence({
+      libraryId: library.libraryId,
+      assetIds: imported.map((asset) => asset.assetId),
+      fps: 30,
+    });
     service.dissolveImageSequence({
       libraryId: library.libraryId,
-      sequenceId: grouped[0]!.sequence!.sequenceId,
+      sequenceId: grouped.sequence!.sequenceId,
     });
 
     await sharp({

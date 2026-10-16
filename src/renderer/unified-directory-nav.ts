@@ -146,6 +146,37 @@ export function managedFolderIdsWithChildren(
 }
 
 /**
+ * Drop linked folders whose source directory is gone, plus any row hanging
+ * under one of those folders. Managed folders stay.
+ */
+export function hideOfflineLinkedDirectoryEntries(
+  entries: readonly UnifiedDirectoryNavEntry[],
+): UnifiedDirectoryNavEntry[] {
+  const hidden = new Set<string>();
+  for (const entry of entries) {
+    if (entry.kind === "linked" && entry.status === "offline") {
+      hidden.add(entry.folderId);
+    }
+  }
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const entry of entries) {
+      if (
+        entry.parentFolderId
+        && hidden.has(entry.parentFolderId)
+        && !hidden.has(entry.folderId)
+      ) {
+        hidden.add(entry.folderId);
+        grew = true;
+      }
+    }
+  }
+  if (hidden.size === 0) return [...entries];
+  return entries.filter((entry) => !hidden.has(entry.folderId));
+}
+
+/**
  * Folder ids in the subtree of `rootId` (inclusive). `null` / library-root
  * sentinel means every row in the unified tree.
  */

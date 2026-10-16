@@ -27,6 +27,9 @@ const BOUNDED_WRITE_COMMAND_TYPES = new Set<string>([
   'tag.remove',
   'folder.create',
   'appearance.set',
+  'folder.cover.set',
+  'folder.cover.set-asset',
+  'folder.cover.clear',
   'collection.create',
   'collection.update',
   'collection.reorder',
@@ -91,6 +94,9 @@ export function executeBoundedWriteWorkerCommand(
     case 'asset.metadata.set': {
       const before = libraryService.getAssetMetadata(command);
       const metadata = libraryService.setAssetMetadata(command);
+      if (metadata.entityVersion === before.entityVersion) {
+        return { ok: true, type: 'asset.metadata.updated', metadata };
+      }
       const history = libraryService.recordAssetMetadataHistory({
         libraryId: command.libraryId,
         before,
@@ -276,6 +282,33 @@ export function executeBoundedWriteWorkerCommand(
         type: 'appearance.updated',
         target: result.target,
         appearance: result.appearance,
+      };
+    }
+    case 'folder.cover.set': {
+      const result = libraryService.setFolderCustomCovers(command);
+      return {
+        ok: true,
+        type: 'folder.cover.updated',
+        folderIds: result.folderIds,
+        hasCustomCover: result.hasCustomCover,
+      };
+    }
+    case 'folder.cover.clear': {
+      const result = libraryService.clearFolderCustomCovers(command);
+      return {
+        ok: true,
+        type: 'folder.cover.updated',
+        folderIds: result.folderIds,
+        hasCustomCover: result.hasCustomCover,
+      };
+    }
+    case 'folder.cover.set-asset': {
+      const result = libraryService.setFolderCustomCoverFromAsset(command);
+      return {
+        ok: true,
+        type: 'folder.cover.updated',
+        folderIds: result.folderIds,
+        hasCustomCover: result.hasCustomCover,
       };
     }
     case 'collection.create': {

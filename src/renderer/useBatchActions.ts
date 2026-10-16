@@ -1,9 +1,11 @@
+import { requestConfirmation } from "./local-confirmation";
 import type { CollectionSummary, LinkedFolderSummary, TagSummary } from "../shared/asset-types";
 import type { SerpentLibraryApi } from "../shared/library-api";
 import type { RendererLibrarySummary } from "../shared/protocol/responses";
 import { LibraryOperationError, toMessage } from "./error-utils";
 import { formatBatchTagNotice } from "./batch-tag-notice";
 import { translateForLocale, useLocale } from "./i18n";
+import { appendSemanticCleanupNotice } from "./semantic-cleanup-notice";
 
 export interface UseBatchActionsParams {
   api: SerpentLibraryApi | null;
@@ -37,7 +39,10 @@ export interface UseBatchActionsResult {
   batchAssignTagToSelection: (tagId: string, assetIds: string[]) => Promise<void>;
   batchRemoveTagFromSelection: (tagId: string, assetIds: string[]) => Promise<void>;
   batchAddSelectionToCollection: (collectionId: string, assetIds: string[]) => Promise<void>;
-  batchRemoveSelectionFromCollection: (collectionId: string, assetIds: string[]) => Promise<void>;
+  batchRemoveSelectionFromCollection: (
+    collectionId: string,
+    assetIds: string[],
+  ) => Promise<boolean>;
   trashManagedAssets: (assetIds: string[]) => Promise<string | undefined>;
   deleteManagedAssetsFromDisk: (
     assetIds: string[],
@@ -181,8 +186,11 @@ export function useBatchActions({
     }
   }
 
-  async function batchRemoveSelectionFromCollection(collectionId: string, assetIds: string[]) {
-    if (!api || !library || assetIds.length === 0) return;
+  async function batchRemoveSelectionFromCollection(
+    collectionId: string,
+    assetIds: string[],
+  ): Promise<boolean> {
+    if (!api || !library || assetIds.length === 0) return false;
     setUiState("loading");
     try {
       const directMembers = await api.listCollectionAssets({
@@ -200,7 +208,7 @@ export function useBatchActions({
       );
       if (affectedAssetIds.length === 0) {
         setError(translateForLocale(locale, "toast.batchRemoveNotDirect"));
-        return;
+        return false;
       }
       const result = await api.removeCollectionAssets({
         libraryId: library.libraryId,
@@ -226,6 +234,7 @@ export function useBatchActions({
             }),
         result.value.historyEntryId,
       );
+      return true;
     } catch (caught) {
       setError(
         toMessage(
@@ -234,6 +243,7 @@ export function useBatchActions({
           locale,
         ),
       );
+      return false;
     } finally {
       setUiState("ready");
     }
@@ -336,9 +346,10 @@ export function useBatchActions({
         throw new LibraryOperationError(result.error);
       }
       setNotice(
-        translateForLocale(locale, "toast.assetsDeletedFromDisk", {
+        appendSemanticCleanupNotice(translateForLocale(locale, "toast.assetsDeletedFromDisk", {
           count: result.value.deletedCount,
-        }),
+        }), result.value.semanticCleanupPending === true,
+        translateForLocale(locale, "toast.semanticCleanupPending")),
       );
       await refreshCollections(operationLibraryId);
       if (!isCurrentLibrary(operationLibraryId)) return;
@@ -366,7 +377,7 @@ export function useBatchActions({
   ) {
     if (!api || !library || assetIds.length === 0) return;
     if (
-      !confirm(
+      !await requestConfirmation(
         translateForLocale(locale, "toast.copyToExternalConfirm", {
           count: assetIds.length,
           name: folder.displayName,
@@ -374,6 +385,7 @@ export function useBatchActions({
       )
     )
       return;
+    if (!isCurrentLibrary(library.libraryId)) return;
     setUiState("importing");
     try {
       const result = await api.copyAssetsToLinkedFolder({

@@ -4,12 +4,25 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { currentPlatformKey } from '../media-binaries-lib.mjs';
+import { currentPlatformKey as mediaPlatformKey } from '../media-binaries-lib.mjs';
+
+/**
+ * Platform key for release artifacts / checksums.
+ * Same set as the media bundles: darwin-arm64, win32-x64, linux-x64, linux-arm64.
+ */
+export function releasePlatformKey() {
+  return mediaPlatformKey();
+}
+
+/** @deprecated Prefer releasePlatformKey(); media-only callers should import media-binaries-lib. */
+export function currentPlatformKey() {
+  return releasePlatformKey();
+}
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 // .msi 是 WiX 安装器产物（2026-08-08 起替换 Squirrel 的 Setup.exe/.nupkg）。
-const DISTRIBUTABLE_EXTENSIONS = new Set(['.exe', '.dmg', '.zip', '.nupkg', '.msi']);
+const DISTRIBUTABLE_EXTENSIONS = new Set(['.exe', '.dmg', '.zip', '.nupkg', '.msi', '.appimage']);
 const DISTRIBUTABLE_BASENAMES = new Set(['RELEASES']);
 
 export function runNpmScript(scriptName, extraEnv = {}, pipelineEnv = {}) {
@@ -49,6 +62,14 @@ export function resolvePackagedExecutable(packageRoot = defaultPackageRoot()) {
 
   if (process.platform === 'win32') {
     const executable = path.join(packageRoot, 'Serpent.exe');
+    if (!existsSync(executable)) {
+      throw new Error(`Packaged executable not found: ${executable}`);
+    }
+    return executable;
+  }
+
+  if (process.platform === 'linux') {
+    const executable = path.join(packageRoot, 'Serpent');
     if (!existsSync(executable)) {
       throw new Error(`Packaged executable not found: ${executable}`);
     }
