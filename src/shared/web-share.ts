@@ -144,58 +144,6 @@ export type WebShareVisitorSummary = z.infer<typeof webShareVisitorSummarySchema
 /** Bound on how many visitors the settings panel loads in one response. */
 export const WEB_SHARE_VISITOR_LIST_LIMIT = 500;
 
-/** Auto-start the Cloudflare tunnel together with the read-only share. */
-export const WEB_SHARE_DEFAULT_AUTO_TUNNEL = true;
-
-/** Bound on the operator-supplied tunnel/hostname/path strings. */
-export const WEB_SHARE_TUNNEL_STRING_MAX = 1024;
-
-export const WEB_SHARE_TUNNEL_ERROR_CODES = [
-  'WEB_SHARE_TUNNEL_NOT_INSTALLED',
-  'WEB_SHARE_TUNNEL_NO_CONFIG',
-  'WEB_SHARE_TUNNEL_NO_HOSTNAME',
-  'WEB_SHARE_TUNNEL_SPAWN_FAILED',
-  'WEB_SHARE_TUNNEL_EXITED',
-  'WEB_SHARE_TUNNEL_INSTALL_FAILED',
-  'WEB_SHARE_TUNNEL_INSTALL_UNSUPPORTED',
-] as const;
-export const webShareTunnelErrorCodeSchema = z.enum(WEB_SHARE_TUNNEL_ERROR_CODES);
-export type WebShareTunnelErrorCode = z.infer<typeof webShareTunnelErrorCodeSchema>;
-
-/**
- * Lifecycle of the managed Cloudflare tunnel. `running` only carries the
- * public URL the operator configured; the tunnel itself is best-effort and
- * never blocks the loopback share.
- */
-export const webShareTunnelStateSchema = z.discriminatedUnion('status', [
-  z.strictObject({ status: z.literal('off') }),
-  z.strictObject({ status: z.literal('starting') }),
-  z.strictObject({ status: z.literal('running'), publicUrl: z.string().min(1).max(2048) }),
-  z.strictObject({
-    status: z.literal('error'),
-    code: webShareTunnelErrorCodeSchema,
-    message: z.string().min(1).max(500),
-  }),
-]);
-export type WebShareTunnelState = z.infer<typeof webShareTunnelStateSchema>;
-
-/** Resolved cloudflared/tunnel facts the settings panel displays. */
-export const webShareTunnelInfoSchema = z.strictObject({
-  /** Whether a usable cloudflared executable was found. */
-  installed: z.boolean(),
-  /** Effective executable path (override or auto-detected), if found. */
-  cloudflaredPath: z.string().max(WEB_SHARE_TUNNEL_STRING_MAX).nullable(),
-  /** `cloudflared --version` output, when it ran. */
-  version: z.string().max(256).nullable(),
-  /** Effective public hostname (override or parsed from the tunnel config). */
-  hostname: z.string().max(255).nullable(),
-  /** Whether a cloudflared config file was found for discovery. */
-  configFound: z.boolean(),
-  /** The Serpent-managed ingress config path (never the user's own file). */
-  managedConfigPath: z.string().max(WEB_SHARE_TUNNEL_STRING_MAX).nullable(),
-});
-export type WebShareTunnelInfo = z.infer<typeof webShareTunnelInfoSchema>;
-
 export const webShareServerPreferencesSchema = z.strictObject({
   enabled: z.boolean(),
   port: z.number().int().min(WEB_SHARE_MIN_PORT).max(WEB_SHARE_MAX_PORT),
@@ -220,14 +168,6 @@ export const webShareServerPreferencesSchema = z.strictObject({
   downloadQuality: z.number().int().min(1).max(100),
   /** Progressive ("continuous") JPEG for the download; off = baseline. */
   downloadProgressive: z.boolean(),
-  /** Auto-start the Cloudflare tunnel when the share is enabled. */
-  autoTunnel: z.boolean(),
-  /** Explicit cloudflared executable; `null` = auto-detect. */
-  cloudflaredPath: z.string().max(WEB_SHARE_TUNNEL_STRING_MAX).nullable(),
-  /** Tunnel name or UUID to run; `null` = read from the cloudflared config. */
-  tunnelName: z.string().max(255).nullable(),
-  /** Public hostname routed to the tunnel; `null` = read from the config. */
-  tunnelHostname: z.string().max(255).nullable(),
 });
 export type WebShareServerPreferences = z.infer<typeof webShareServerPreferencesSchema>;
 
@@ -277,12 +217,6 @@ export const webShareSettingsSnapshotSchema = z.strictObject({
   derivativeProgress: webShareDerivativeProgressSchema.nullable(),
   /** Libraries currently open on this device (same projection as the web API). */
   libraries: z.array(webShareLibrarySummarySchema).max(64),
-  /** Managed Cloudflare tunnel lifecycle. */
-  tunnel: webShareTunnelStateSchema,
-  /** Resolved cloudflared/tunnel facts for the panel. */
-  tunnelInfo: webShareTunnelInfoSchema,
-  /** True while an install command is running. */
-  tunnelInstalling: z.boolean(),
 });
 export type WebShareSettingsSnapshot = z.infer<typeof webShareSettingsSnapshotSchema>;
 
@@ -310,17 +244,6 @@ export const webShareSettingsRequestSchema = z.discriminatedUnion('type', [
     quality: z.number().int().min(1).max(100),
   }),
   z.strictObject({ type: z.literal('set-download-progressive'), enabled: z.boolean() }),
-  // Managed Cloudflare tunnel (auto cloud forwarding).
-  z.strictObject({ type: z.literal('set-auto-tunnel'), enabled: z.boolean() }),
-  z.strictObject({
-    type: z.literal('set-tunnel-config'),
-    cloudflaredPath: z.string().max(WEB_SHARE_TUNNEL_STRING_MAX).nullable().optional(),
-    tunnelName: z.string().max(255).nullable().optional(),
-    tunnelHostname: z.string().max(255).nullable().optional(),
-  }),
-  z.strictObject({ type: z.literal('restart-tunnel') }),
-  z.strictObject({ type: z.literal('detect-cloudflared') }),
-  z.strictObject({ type: z.literal('install-cloudflared') }),
   z.strictObject({ type: z.literal('regenerate-thumbnails') }),
   z.strictObject({ type: z.literal('delete-thumbnails') }),
   // Pre-generate / delete one viewer LOD tier for the shared library.

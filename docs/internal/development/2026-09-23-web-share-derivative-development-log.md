@@ -290,3 +290,4 @@
 
 **验证**：typecheck/lint 通过；隧道管理器 15 例、服务集成 5 例、存储持久化/兼容 3 例全绿。真实 CLI 契约探针（用真实 config 生成托管配置）确认 `--config … run` 可注册连接（`Registered tunnel connection`）。真实运行实测：开启分享后 Serpent 自动拉起 `cloudflared`，经公网域名 `GET /api/health` 返回 200。
 - **未执行**：设置页 GUI 点击（本环境无 Computer Use）、安装按钮实际安装、packaged、Windows/macOS 观感。
+- **后续（2026-10-16）**：该功能已整体移除（管理器、服务集成、IPC、契约、设置页卡片、i18n 与测试全部回退）。原因：本机改用外部 CHMLFRP 等隧道客户端托管公网映射，Serpent 不再内置管理 cloudflared；设置页「启用网页分享」提示文案同步恢复为面向外部隧道客户端的表述。详见对应移除提交。

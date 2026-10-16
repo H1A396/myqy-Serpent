@@ -4,7 +4,6 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import {
-  WEB_SHARE_DEFAULT_AUTO_TUNNEL,
   WEB_SHARE_DEFAULT_DOWNLOAD_PROGRESSIVE,
   WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
   WEB_SHARE_DEFAULT_PORT,
@@ -34,10 +33,6 @@ const persistedWebShareSettingsSchema = z.strictObject({
     thumbnailMaxKb: z.number().int().min(4).max(2048).optional(),
     downloadQuality: z.number().int().min(1).max(100).optional(),
     downloadProgressive: z.boolean().optional(),
-    autoTunnel: z.boolean().optional(),
-    cloudflaredPath: z.string().max(1024).nullable().optional(),
-    tunnelName: z.string().max(255).nullable().optional(),
-    tunnelHostname: z.string().max(255).nullable().optional(),
   }),
   /** Absent until the operator sets a share password. */
   password: passwordRecordSchema.nullable().optional(),
@@ -55,10 +50,6 @@ const DEFAULT_PREFERENCES: WebShareServerPreferences = {
   thumbnailMaxKb: WEB_SHARE_DEFAULT_THUMBNAIL_MAX_KB,
   downloadQuality: WEB_SHARE_DEFAULT_DOWNLOAD_QUALITY,
   downloadProgressive: WEB_SHARE_DEFAULT_DOWNLOAD_PROGRESSIVE,
-  autoTunnel: WEB_SHARE_DEFAULT_AUTO_TUNNEL,
-  cloudflaredPath: null,
-  tunnelName: null,
-  tunnelHostname: null,
 };
 
 const SESSION_SECRET_BYTES = 32;

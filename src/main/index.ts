@@ -237,7 +237,6 @@ import {
   type McpSettingsRequest,
 } from '../shared/mcp';
 import { WebShareServer, WebShareServerError } from '../myqy-web-share/server/web-share-server';
-import { CloudflareTunnelManager } from '../myqy-web-share/server/cloudflare-tunnel';
 import { WorkerBackedWebShareData } from '../myqy-web-share/server/web-share-data';
 import { WorkerBackedWebShareMedia } from '../myqy-web-share/server/web-share-media';
 import {
@@ -5214,10 +5213,6 @@ async function startApplication(): Promise<void> {
           : existsSync(path.join(devWebRoot, 'index.html'))
             ? devWebRoot
             : null;
-      const webShareTunnel = new CloudflareTunnelManager({
-        userDataPath: app.getPath('userData'),
-        logger,
-      });
       webShareServer = new WebShareServer({
         userDataPath: app.getPath('userData'),
         data: new WorkerBackedWebShareData(workerClient),
@@ -5225,7 +5220,6 @@ async function startApplication(): Promise<void> {
         mediaGuard: (libraryId) => !isLibraryMediaReadBlocked(libraryId),
         staticRootDir,
         logger,
-        tunnel: webShareTunnel,
       });
       webShareServer.onSnapshot((snapshot) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -5276,20 +5270,6 @@ async function startApplication(): Promise<void> {
         if (request.type === 'set-thumbnail-max-kb') return response({ ok: true, snapshot: server.setThumbnailMaxKb(request.maxKb) });
         if (request.type === 'set-download-quality') return response({ ok: true, snapshot: server.setDownloadQuality(request.quality) });
         if (request.type === 'set-download-progressive') return response({ ok: true, snapshot: server.setDownloadProgressive(request.enabled) });
-        if (request.type === 'set-auto-tunnel') return response({ ok: true, snapshot: await server.setAutoTunnel(request.enabled) });
-        if (request.type === 'set-tunnel-config') {
-          return response({
-            ok: true,
-            snapshot: await server.setTunnelConfig({
-              cloudflaredPath: request.cloudflaredPath,
-              tunnelName: request.tunnelName,
-              tunnelHostname: request.tunnelHostname,
-            }),
-          });
-        }
-        if (request.type === 'restart-tunnel') return response({ ok: true, snapshot: await server.restartTunnel() });
-        if (request.type === 'detect-cloudflared') return response({ ok: true, snapshot: await server.refreshTunnelInfo() });
-        if (request.type === 'install-cloudflared') return response({ ok: true, snapshot: await server.installTunnel() });
         if (request.type === 'delete-thumbnails') {
           void deleteWebShareThumbnails(server);
           return response({ ok: true, snapshot: server.snapshot() });
