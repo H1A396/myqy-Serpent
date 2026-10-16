@@ -76,15 +76,15 @@ npm run make             # build platform installers (macOS dmg / Windows zip; L
 
 The full build, packaging and release flow is in the [developer docs](docs/developer/build-packaging.en.md).
 
-### Linux (x64)
+### Linux (x64 / arm64)
 
 Linux follows the Windows-style shell: a frameless window with Serpent's own title bar (minimize / maximize / close, drag, double-click to maximize, edge resize), the in-app main menu (≡) instead of a native menu bar, and Windows 11-style rounded corners when a compositor is running (square corners otherwise).
 
 Differences from Windows (current implementation):
 
 - **No system tray**: the close button quits the app (it does not hide to the notification area like on Windows).
-- **Media tools**: `npm start` does not ship a media bundle. Until `media:ensure` has run, it uses `ffmpeg` / `ffprobe` / `oiiotool` from `PATH` (`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` override). The linux-x64 pinned bundle is ready in `bundle-lock.json` and is packed into the release AppImage. linux-arm64 still has no bundle.
-- **Display**: tested on Debian 13 (X11 / xfwm4) and under a nested Wayland compositor; native Wayland sessions still need dedicated acceptance — day-to-day use is X11 / XWayland.
+- **Media tools**: `npm start` does not ship a media bundle. Until `media:ensure` has run, it uses `ffmpeg` / `ffprobe` / `oiiotool` from `PATH` (`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` override). The linux-x64 pinned bundle is ready in `bundle-lock.json` and is packed into the release AppImage. linux-arm64 uses the same path, but its zip is not promoted yet, so a release package cannot be produced.
+- **Display**: tested on Debian 13 (X11 / xfwm4) and under a nested Wayland compositor; native Wayland sessions still need dedicated acceptance — day-to-day use is X11 / XWayland. x86_64 and aarch64 share this.
 
 Prerequisites (Debian/Ubuntu):
 
@@ -105,12 +105,12 @@ Environment switches:
 #### AppImage (Linux)
 
 ```bash
-npm run make:appimage           # host build → out/make/appimage/Serpent-<version>-x86_64.AppImage
-npm run make:appimage:docker    # Ubuntu 22.04 (glibc 2.35 baseline), needs docker
-chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+npm run make:appimage           # host build → out/make/appimage/Serpent-<version>-x86_64.AppImage or -aarch64.AppImage
+npm run make:appimage:docker    # Ubuntu 22.04 (glibc 2.35 baseline); container arch follows the host; needs docker
+chmod +x out/make/appimage/Serpent-*.AppImage && ./out/make/appimage/Serpent-*.AppImage
 ```
 
-The release pipeline `npm run release:make` prefers `make:appimage:docker` and renames the artifact to the Release name `Serpent-linux-x86-64-<version>.AppImage` (same naming contract as macOS/Windows assets).
+The release pipeline `npm run release:make` prefers `make:appimage:docker` and renames the artifact to `Serpent-linux-x86-64-<version>.AppImage` or `Serpent-linux-arm64-<version>.AppImage` (same naming contract as macOS/Windows assets). Both architectures share the glibc baseline, FUSE requirement, and X11/Wayland limits. aarch64 cannot produce a release package until its media zip is promoted.
 
 The release AppImage bundles the pinned media tools (`ffmpeg` / `ffprobe` / `oiiotool`) and does not require them on the system PATH. `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` still override. Running it needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`. When unprivileged user namespaces are unavailable (some containers; Ubuntu 24.04 AppArmor policy), the launcher falls back to `--no-sandbox`.
 

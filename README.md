@@ -74,15 +74,15 @@ npm run make             # 按平台生成安装包（macOS dmg / Windows zip；
 
 完整的构建、打包、发布流程见[开发者文档](docs/developer/build-packaging.md)。
 
-### Linux（x64）
+### Linux（x64 / arm64）
 
 Linux 沿用 Windows 风格的界面：无边框窗口 + Serpent 自绘标题栏（最小化 / 最大化 / 关闭、拖动、双击最大化、边缘缩放），用应用内主菜单（≡）代替原生菜单栏；有合成器时显示 Windows 11 风格圆角，没有合成器时自动退回直角。
 
 与 Windows 的差异（当前实现）：
 
 - **无系统托盘**：关闭按钮会退出应用（不会像 Windows 那样隐藏到通知区域）。
-- **媒体工具**：`npm start` 不会自带媒体包。未执行 `media:ensure` 时，从 `PATH` 使用 `ffmpeg` / `ffprobe` / `oiiotool`（可用 `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 覆盖）。linux-x64 的 pinned bundle 已在 `bundle-lock.json` 中就绪，并打进发布用 AppImage。linux-arm64 仍无该包。
-- **显示协议**：已在 Debian 13（X11 / xfwm4）和嵌套 Wayland 合成器下测试；原生 Wayland 会话仍待专项验收，日常以 X11 / XWayland 为主。
+- **媒体工具**：`npm start` 不会自带媒体包。未执行 `media:ensure` 时，从 `PATH` 使用 `ffmpeg` / `ffprobe` / `oiiotool`（可用 `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 覆盖）。linux-x64 的 pinned bundle 已在 `bundle-lock.json` 中就绪，并打进发布用 AppImage。linux-arm64 使用同一路径，但 zip 尚未晋升，发不出现成包。
+- **显示协议**：已在 Debian 13（X11 / xfwm4）和嵌套 Wayland 合成器下测试；原生 Wayland 会话仍待专项验收，日常以 X11 / XWayland 为主。x86_64 与 aarch64 相同。
 
 依赖（Debian/Ubuntu）：
 
@@ -103,12 +103,12 @@ sudo apt install build-essential python3 ffmpeg    # better-sqlite3 需要编译
 #### AppImage（Linux）
 
 ```bash
-npm run make:appimage           # 在本机构建 → out/make/appimage/Serpent-<version>-x86_64.AppImage
-npm run make:appimage:docker    # 在 Ubuntu 22.04（glibc 2.35 基线）中构建，需要 docker
-chmod +x out/make/appimage/Serpent-*-x86_64.AppImage && ./out/make/appimage/Serpent-*-x86_64.AppImage
+npm run make:appimage           # 在本机构建 → out/make/appimage/Serpent-<version>-x86_64.AppImage 或 -aarch64.AppImage
+npm run make:appimage:docker    # 在 Ubuntu 22.04（glibc 2.35 基线）中构建，容器架构跟随宿主机，需要 docker
+chmod +x out/make/appimage/Serpent-*.AppImage && ./out/make/appimage/Serpent-*.AppImage
 ```
 
-发布管线 `npm run release:make` 会优先 `make:appimage:docker`，并把产物重命名为 Release 规范名 `Serpent-linux-x86-64-<version>.AppImage`（与 macOS/Windows 资产命名一致）。
+发布管线 `npm run release:make` 会优先 `make:appimage:docker`，并把产物重命名为 `Serpent-linux-x86-64-<version>.AppImage` 或 `Serpent-linux-arm64-<version>.AppImage`（与 macOS/Windows 资产命名一致）。两条架构的 glibc 基线、FUSE 和 X11/Wayland 限制相同。aarch64 要等媒体 zip 晋升后才能打出发布包。
 
 发布用 AppImage 内置 pinned 媒体工具（`ffmpeg` / `ffprobe` / `oiiotool`），不要求这些程序已经在系统 PATH 上。`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 仍可覆盖。运行需要 FUSE（`libfuse2`）；没有 FUSE 时加 `--appimage-extract-and-run`。系统不允许非特权 user namespace 时（部分容器、Ubuntu 24.04 的 AppArmor 策略），启动器会自动改用 `--no-sandbox`。
 

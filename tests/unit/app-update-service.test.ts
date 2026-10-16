@@ -117,12 +117,27 @@ describe('Serpent app update release contract', () => {
       name: 'Serpent-linux-x86-64-0.1.3.AppImage',
       assetKind: 'portable',
     });
-    // Linux only ships AppImage today; installed distribution still maps to portable.
+    const linuxArm64AppImage = resolveAppUpdateTarget({
+      platform: 'linux',
+      arch: 'arm64',
+      distribution: 'portable',
+    });
+    expect(linuxArm64AppImage).toEqual({ platform: 'linux', arch: 'arm64', distribution: 'portable' });
+    expect(updateAssetName('0.1.3', linuxArm64AppImage!)).toEqual({
+      name: 'Serpent-linux-arm64-0.1.3.AppImage',
+      assetKind: 'portable',
+    });
+    // Linux only ships AppImage; installed distribution still maps to portable.
     expect(resolveAppUpdateTarget({
       platform: 'linux',
       arch: 'x64',
       distribution: 'installed',
     })).toEqual({ platform: 'linux', arch: 'x64', distribution: 'portable' });
+    expect(resolveAppUpdateTarget({
+      platform: 'linux',
+      arch: 'arm64',
+      distribution: 'installed',
+    })).toEqual({ platform: 'linux', arch: 'arm64', distribution: 'portable' });
     expect(resolveAppUpdateTarget({
       platform: 'darwin',
       arch: 'x64',

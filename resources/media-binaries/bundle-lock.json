@@ -22,6 +22,10 @@
       "sha256": "a04bc5e7fd8413cebf79acad6d4f33231c877b7e21a2655cea07ef3af4d5cc0c",
       "size": 42906702,
       "manifestSha256": "b0044b68eb30ea2873c331875a43cb5f4ec93eb724d99458c08ba34344319d13"
+    },
+    "linux-arm64": {
+      "status": "build-required",
+      "reason": "No promoted serpent-media-linux-arm64.zip. media-v0.1.2 has no linux-arm64 asset. Build natively with scripts/media-build/linux-arm64.sh on Linux aarch64, upload the zip, then set status to ready with url, sha256, size, and manifestSha256."
     }
   }
 }

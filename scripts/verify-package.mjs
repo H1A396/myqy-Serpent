@@ -198,22 +198,18 @@ if (!mainSource.includes(`AUTOMATION_API_VERSION`) || !mainSource.includes(Strin
   );
 }
 
-// linux-arm64 still has no pinned media bundle. linux-x64 ships the same
-// ffmpeg / oiiotool release as macOS and Windows.
-if (!(packagePlatform === 'linux' && packageArch !== 'x64')) {
-  const mediaResourcesPath = path.join(resourcesPath, 'resources');
-  const mediaPlatform = currentPlatformKey();
-  verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
-  if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
-    console.warn(
-      'Skipping packaged release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
-        'This is only valid for local build trials, not production release.',
-    );
-  } else {
-    verifyReleaseProvenance({ root: mediaResourcesPath, platform: mediaPlatform });
-  }
+// linux-x64 and linux-arm64 ship the same ffmpeg / oiiotool contract as
+// macOS and Windows. linux-arm64 stays fail-closed until bundle-lock is ready.
+const mediaResourcesPath = path.join(resourcesPath, 'resources');
+const mediaPlatform = currentPlatformKey();
+verifyBundle({ root: mediaResourcesPath, platform: mediaPlatform });
+if (process.env.SERPENT_MEDIA_SKIP_PROVENANCE === '1') {
+  console.warn(
+    'Skipping packaged release provenance check (SERPENT_MEDIA_SKIP_PROVENANCE=1). ' +
+      'This is only valid for local build trials, not production release.',
+  );
 } else {
-  console.log('Skipping media bundle verification on this Linux architecture (no pinned bundle).');
+  verifyReleaseProvenance({ root: mediaResourcesPath, platform: mediaPlatform });
 }
 
 if (packagePlatform === 'darwin') {

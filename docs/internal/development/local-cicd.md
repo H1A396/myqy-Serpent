@@ -49,8 +49,9 @@ npm run release:local                    # verify → media → package → e2e 
   `node_modules/electron`，跑完执行 `npm run rebuild:native`（否则
   `npm run test` 报 better_sqlite3 NODE_MODULE_VERSION 不匹配）。
 - **平台职责**：Windows 产物在 Windows 验证，macOS 产物在 macOS 验证，
-  Linux AppImage 在 Linux 验证（平台门禁拒绝交叉打包）。linux-x64 使用已晋升的 pinned
-  media bundle；linux-arm64 仍无该包。发布前各目标平台各自跑一遍 `release:local`。
+  Linux AppImage 在同架构 Linux 上验证（平台门禁拒绝交叉打包）。linux-x64 使用已晋升的
+  pinned media bundle；linux-arm64 走同一门禁，zip 晋升前 `release:media` 会阻断。
+  发布前各目标平台各自跑一遍 `release:local`。
 
 ## 平台发布分工（无 GA 后）
 

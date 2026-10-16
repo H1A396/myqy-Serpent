@@ -25,8 +25,8 @@
 ### Linux
 
 - Compiler toolchain and Python (`better-sqlite3`): on Debian/Ubuntu, `sudo apt install build-essential python3`
-- **Media tools**: the linux-x64 pinned bundle is ready in `bundle-lock.json`. `npm ci` does not install it. Until `media:ensure` or `release:media` has run, `npm start` still uses `ffmpeg` / `ffprobe` from `PATH`, with optional `openimageio-tools` (`oiiotool`) for EXR/RAW/PSD. The release AppImage packs that bundle in, so it depends less on the system PATH. linux-arm64 still has no bundle.
-- AppImage release builds should use Docker (`npm run make:appimage:docker` targets Ubuntu 22.04 / glibc 2.35); without Docker use host `npm run make:appimage`
+- **Media tools**: the linux-x64 pinned bundle is ready in `bundle-lock.json`. linux-arm64 uses the same acquire/verify path, but its lock entry is still `build-required` (no promoted zip yet). `npm ci` does not install the media bundle. Until `media:ensure` or `release:media` has run, `npm start` still uses `ffmpeg` / `ffprobe` from `PATH`, with optional `openimageio-tools` (`oiiotool`) for EXR/RAW/PSD. The release AppImage packs that bundle in.
+- AppImage release builds should use Docker (`npm run make:appimage:docker` targets Ubuntu 22.04 / glibc 2.35 and follows the host architecture, the same baseline for x86_64 and aarch64); without Docker use host `npm run make:appimage`. FUSE and X11/Wayland limits are the same on both architectures.
 - Useful env vars: `SERPENT_SOFTWARE_GL=1` (software WebGL without a GPU), `SERPENT_LINUX_ROUNDED_CORNERS=0|1` (force square/rounded corners), `SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` (override PATH lookup)
 
 ## First build

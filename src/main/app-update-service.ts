@@ -263,13 +263,17 @@ export function resolveAppUpdateTarget(input: {
   }
   if (input.platform === 'darwin' && input.arch !== 'arm64') return undefined;
   if (input.platform === 'win32' && input.arch !== 'x64') return undefined;
-  if (input.platform === 'linux' && input.arch !== 'x64') return undefined;
+  if (input.platform === 'linux' && input.arch !== 'x64' && input.arch !== 'arm64') return undefined;
   if (input.platform === 'darwin') {
     return { platform: 'darwin', arch: 'arm64', distribution: input.distribution };
   }
   if (input.platform === 'linux') {
-    // AppImage is the only Linux release artifact today (portable).
-    return { platform: 'linux', arch: 'x64', distribution: 'portable' };
+    // AppImage is the only Linux release artifact (portable), for x64 and arm64.
+    return {
+      platform: 'linux',
+      arch: input.arch === 'arm64' ? 'arm64' : 'x64',
+      distribution: 'portable',
+    };
   }
   return {
     platform: 'win32',
@@ -294,8 +298,9 @@ export function updateAssetName(
         };
   }
   if (target.platform === 'linux') {
+    const archLabel = target.arch === 'arm64' ? 'arm64' : 'x86-64';
     return {
-      name: `Serpent-linux-x86-64-${version}.AppImage`,
+      name: `Serpent-linux-${archLabel}-${version}.AppImage`,
       assetKind: 'portable',
     };
   }

@@ -40,10 +40,10 @@ Phases: `verify` → `media` → `package` → `e2e` → `make` → `checksums`
 | Phase | What it does |
 | --- | --- |
 | verify | `rebuild:native` + `verify:mainline` (same gates as CI) |
-| media | download the controlled media bundle (`media:acquire`) + verify; **linux-x64 matches macOS/Windows** (linux-arm64 is still skipped) |
+| media | download the controlled media bundle (`media:acquire`) + verify; linux-x64 and linux-arm64 use the same gate as macOS/Windows (linux-arm64 stays `build-required` until its bundle is promoted) |
 | package | `electron-forge package` + `verify:package` |
 | e2e | packaged startup tests (`test:e2e:packaged`) |
-| make | build installers (Linux: prefer `make:appimage:docker`, rename to `Serpent-linux-x86-64-<ver>.AppImage`) |
+| make | build installers (Linux: prefer `make:appimage:docker`, rename to `Serpent-linux-x86-64-<ver>.AppImage` or `Serpent-linux-arm64-<ver>.AppImage`) |
 | checksums | SHA-256 manifests (versioned header) |
 
 Skip slow phases with `--skip-verify` / `--skip-media` / `--skip-e2e`. Run one phase with `npm run release:<phase>` (the e2e phase is `npm run release:e2e:packaged`).
@@ -83,20 +83,19 @@ npm run release:local -- --skip-verify --build-media-locally
 
 ### Platforms
 
-`forge.config.ts` enforces **native-platform builds** — the pinned-media allowlist is `darwin-arm64` / `win32-x64` / `linux-x64`; Linux must also be packaged on a Linux host (or inside `make:appimage:docker`). Cross-packaging is not supported. Each platform runs the same release pipeline locally.
+`forge.config.ts` enforces **native-platform builds** — the pinned-media allowlist is `darwin-arm64` / `win32-x64` / `linux-x64` / `linux-arm64`; Linux must also be packaged on a Linux host (or inside a same-architecture `make:appimage:docker`). Cross-packaging is not supported. Each platform runs the same release pipeline locally.
 
 ### Linux AppImage
 
 ```bash
-npm run make:appimage           # host → out/make/appimage/Serpent-<ver>-x86_64.AppImage
-npm run make:appimage:docker    # Ubuntu 22.04 / glibc 2.35 baseline (preferred for release)
-npm run release:make            # prefers docker and renames to Serpent-linux-x86-64-<ver>.AppImage
+npm run make:appimage           # host → out/make/appimage/Serpent-<ver>-x86_64.AppImage or Serpent-<ver>-aarch64.AppImage
+npm run make:appimage:docker    # Ubuntu 22.04 / glibc 2.35 baseline; container arch follows the host (preferred for release)
+npm run release:make            # prefers docker and renames to Serpent-linux-x86-64-<ver>.AppImage or Serpent-linux-arm64-<ver>.AppImage
 ```
 
-- linux-x64 ships the same pinned media bundle as macOS/Windows (`ffmpeg` / `ffprobe` / `oiiotool`). That platform is currently `ready` in `bundle-lock.json`. `package` runs `media:ensure` in `prePackage`. If the lock returns to an unpromoted state, build `scripts/media-build/linux-x64.sh` on Linux x86_64, upload `artifacts/media-binaries/serpent-media-linux-x64.zip` to the Serpent-Build release, and write the URL plus SHA-256 back into `bundle-lock.json`. Local trials can set `SERPENT_MEDIA_SKIP_PROVENANCE=1`.
-- linux-arm64 still has no pinned bundle.
-- Needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`.
-- Release upload name matches the in-app updater: `Serpent-linux-x86-64-<ver>.AppImage` (plus a sibling `.sha256`).
+- linux-x64 and linux-arm64 ship the same pinned media bundle contract as macOS/Windows (`ffmpeg` / `ffprobe` / `oiiotool`). `package` runs `media:ensure` in `prePackage`. linux-x64 is `ready` in `bundle-lock.json`. linux-arm64 is still `build-required`: `media-v0.1.2` has no `serpent-media-linux-arm64.zip`. Until `scripts/media-build/linux-arm64.sh` runs on native aarch64 and the URL plus SHA-256 are written back, `media:acquire` fails closed and a release AppImage cannot be produced. Local trials can set `SERPENT_MEDIA_SKIP_PROVENANCE=1` or pass `--build-media-locally`.
+- The glibc baseline matches x86_64 (Ubuntu 22.04 / 2.35). Needs FUSE (`libfuse2`); without FUSE use `--appimage-extract-and-run`. X11 / Wayland limits match x86_64.
+- Release upload names match the in-app updater: `Serpent-linux-x86-64-<ver>.AppImage` or `Serpent-linux-arm64-<ver>.AppImage` (plus a sibling `.sha256`). Checksum manifests are `SHA256SUMS-linux-x64.txt` / `SHA256SUMS-linux-arm64.txt`.
 
 ### Windows installer (Inno Setup)
 
@@ -137,7 +136,7 @@ SHA-256); main-repo `release:media` downloads and verifies them:
    - `ffmpeg/ffprobe`: BtbN LGPL builds (`registry.npmmirror.com/-/binary/ffmpeg-builds/`
      `ffmpeg-<ver>-win32-x64-lgpl.tar.xz`, or the macOS variant), LGPL-only (no GPL markers)
    - `oiiotool`: `scripts/media-build/build-oiiotool-win32.ps1` (Windows) /
-     `darwin-arm64.sh` (macOS) / `linux-x64.sh` (Linux x86_64, together with FFmpeg)
+     `darwin-arm64.sh` (macOS) / `linux-x64.sh` (Linux x86_64) / `linux-arm64.sh` (Linux aarch64, together with FFmpeg)
      — vcpkg build (pinned toolchain + registry commit)
 2. **Package and upload**:
    ```bash

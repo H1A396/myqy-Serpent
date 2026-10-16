@@ -6,8 +6,8 @@
 
 ## Linux AppImage 无法启动或没有视频预览
 
-- **权限**：`chmod +x Serpent-linux-x86-64-<版本>.AppImage` 后再运行。
-- **FUSE**：需要 `libfuse2`；没有 FUSE 时使用 `./Serpent-….AppImage --appimage-extract-and-run`。
+- **权限**：`chmod +x` 后再运行。x86_64 文件名是 `Serpent-linux-x86-64-<版本>.AppImage`，aarch64 是 `Serpent-linux-arm64-<版本>.AppImage`。
+- **FUSE**：两条架构都需要 `libfuse2`；没有 FUSE 时使用 `./Serpent-….AppImage --appimage-extract-and-run`。
 - **视频预览**：发布用 AppImage 已内置 `ffmpeg` / `ffprobe` / `oiiotool`，不必先安装发行版的 `ffmpeg`。若仍没有视频预览，检查 `SERPENT_FFMPEG_PATH` 是否指到了不存在的文件，然后完全退出再启动。从源码运行且没有媒体包时，才需要安装发行版的 `ffmpeg`。
 - **3D 查看器黑屏（无 GPU）**：启动前设置 `SERPENT_SOFTWARE_GL=1`。
 - **关闭即退出**：Linux 没有系统托盘；关闭窗口会结束进程（与 Windows「关闭到托盘」不同）。

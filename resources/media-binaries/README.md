@@ -3,7 +3,7 @@
 This directory contains only trust metadata. Large executables are never copied
 from a developer's `PATH` and are intentionally ignored by Git.
 
-Supported release bundle keys are `darwin-arm64`, `win32-x64`, and `linux-x64`.
+Supported release bundle keys are `darwin-arm64`, `win32-x64`, `linux-x64`, and `linux-arm64`.
 A prepared resource tree has this shape:
 
 ```text
@@ -23,8 +23,9 @@ resources/
 ## Release flow
 
 1. Run `scripts/media-build/darwin-arm64.sh` on native macOS arm64,
-   `scripts/media-build/win32-x64.ps1` on Windows x64, or
-   `scripts/media-build/linux-x64.sh` on Linux x86_64. A clean runner clones the
+   `scripts/media-build/win32-x64.ps1` on Windows x64,
+   `scripts/media-build/linux-x64.sh` on Linux x86_64, or
+   `scripts/media-build/linux-arm64.sh` on Linux aarch64. A clean runner clones the
    vcpkg registry at the commit in `source-lock.json`, bootstraps that checkout,
    and builds the exact manifest under `vcpkg/` with custom static triplets.
    Remote binary caches are disabled; sources are verified by the SHA-512 values
@@ -89,6 +90,11 @@ Chocolatey, `ffmpeg-static`, or an unverified binary download.
   marks `linux-x64` as `ready` (it is ready now). If the entry is not `ready`,
   `media:ensure` stays fail-closed. A local trial can build the tree and run
   `SERPENT_MEDIA_SKIP_PROVENANCE=1 npm run media:ensure`.
+- Linux arm64: build natively with `scripts/media-build/linux-arm64.sh` (static
+  triplet `serpent-arm64-linux-static`) on aarch64. The asset name is
+  `serpent-media-linux-arm64.zip`. `bundle-lock.json` currently marks
+  `linux-arm64` as `build-required` because no promoted zip exists.
+  `media:ensure` stays fail-closed until that entry is `ready`.
 
 The vcpkg commit, port source SHA-512 values, triplets and overlay transform are
 locked, but deterministic inputs do not imply bit-for-bit reproducible C/C++

@@ -21,11 +21,11 @@
 
 ## 3. 打包流程
 
-优先用发布管线（本机构建，禁止交叉平台打包——`forge.config.ts` 的 `nativeMediaPlatform` 强制 `darwin-arm64` / `win32-x64` 本机；Linux AppImage 也必须在 Linux 本机或 `make:appimage:docker` 内构建）：
+优先用发布管线（本机构建，禁止交叉平台打包——`forge.config.ts` 的 `nativeMediaPlatform` 强制 `darwin-arm64` / `win32-x64` / `linux-x64` / `linux-arm64` 本机；Linux AppImage 也必须在同架构的 Linux 本机或 `make:appimage:docker` 内构建）：
 
 ```bash
 npm run release:verify     # rebuild:native + verify:mainline（CI 同款门禁）
-npm run release:media      # media:acquire + media:verify（linux-x64 与 macOS/Windows 一样校验 pinned bundle；仅 linux-arm64 跳过）
+npm run release:media      # media:acquire + media:verify（linux-x64 与 linux-arm64 都与 macOS/Windows 一样校验 pinned bundle；linux-arm64 在晋升前会因 build-required 阻断）
 npm run release:package    # package + verify:package
 npm run release:e2e        # test:e2e:packaged（针对打包产物）
 npm run release:make       # macOS/Windows: electron-forge make；Linux: AppImage（优先 docker）
@@ -57,6 +57,7 @@ Forge 默认产物名（如 `Serpent-0.1.1-arm64.dmg`、`Serpent-darwin-arm64-0.
 | Windows x64 | 便携版 | `Serpent-win-x86-64-<ver>-portable.zip` |
 | Windows x64 | 安装包 | `Serpent-win-x86-64-<ver>-setup.zip`（Inno 安装器 `SerpentSetup.exe` 打包为 zip 上传；安装器由 `npm run make:inno` 产出 `out/make/inno/SerpentSetup.exe`） |
 | Linux x64 | AppImage | `Serpent-linux-x86-64-<ver>.AppImage`（`npm run release:make` 在 Linux 上优先跑 `make:appimage:docker`，把 `Serpent-<ver>-x86_64.AppImage` 重命名为该规范名） |
+| Linux arm64 | AppImage | `Serpent-linux-arm64-<ver>.AppImage`（同一管线把 `Serpent-<ver>-aarch64.AppImage` 重命名为该规范名；媒体包晋升前不能产出） |
 
 每个产物配套 SHA-256 文件：`shasum -a 256 <file> | awk '{print $1}' > <file>.sha256`。
 
@@ -66,8 +67,8 @@ Windows 安装器（Inno Setup，2026-08-08 决策替代 WiX MSI）：
 
 Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
 - 发布管线 `release:make` 在 Linux 上优先 `npm run make:appimage:docker`（无 docker 时回退 `make:appimage`）。
-- linux-x64 内置与 macOS/Windows 相同的 pinned 媒体工具（`ffmpeg` / `ffprobe` / `oiiotool`），减少对系统 PATH 的依赖。`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 仍可覆盖。linux-arm64 不在当前发布范围内，也没有该 bundle。
-- 需要 FUSE（`libfuse2`）；无 FUSE 时用 `--appimage-extract-and-run`。
+- linux-x64 与 linux-arm64 都内置与 macOS/Windows 相同的 pinned 媒体工具（`ffmpeg` / `ffprobe` / `oiiotool`），减少对系统 PATH 的依赖。`SERPENT_FFMPEG_PATH` / `SERPENT_OIIO_PATH` 仍可覆盖。glibc 基线都是 Ubuntu 22.04 / 2.35。linux-arm64 的 zip 尚未晋升（`bundle-lock.json` 为 `build-required`），现成 AppImage 还不能构建。
+- 两条架构都需要 FUSE（`libfuse2`）；无 FUSE 时用 `--appimage-extract-and-run`。X11 / 嵌套 Wayland 的验收范围相同，原生 Wayland 仍待专项验收。
 
 ### 自动更新资产契约（2026-08-20）
 
@@ -77,7 +78,7 @@ Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
 
 - 已安装版：macOS 选择 `*-package.dmg`；Windows 选择 `*-setup.zip`，下载校验后打开 DMG 或解压并打开 `SerpentSetup.exe`。Inno 安装完成后会在应用目录写入 `.serpent-installed` 标记；旧安装仍以 `unins*.exe` 兼容识别。
 - 便携版：macOS/Windows 选择各自 `*-portable.zip`，下载校验后显示文件位置；不能覆盖正在运行的便携目录，用户退出后解压并启动新版本。
-- Linux：选择 `Serpent-linux-x86-64-<ver>.AppImage`（便携），下载校验后显示文件位置；用户 `chmod +x` 后运行。
+- Linux：按架构选择 `Serpent-linux-x86-64-<ver>.AppImage` 或 `Serpent-linux-arm64-<ver>.AppImage`（便携），下载校验后显示文件位置；用户 `chmod +x` 后运行。
 - 资产名是运行时选择器的一部分，不能只改 Release 上传名而不改客户端。每个平台和分发形态必须同时上传目标资产与 `.sha256`。
 - GitHub Release 必须是公开、稳定、已发布的 SemVer Release；`/releases/latest` 不会返回 draft/prerelease。当前 `v0.1.2` 已验证包含 macOS DMG/portable ZIP、Windows setup/portable ZIP 及对应校验文件，但没有 `latest*.yml`、`RELEASES` 或 `RELEASES.json`。
 
@@ -125,9 +126,10 @@ gh release upload v<ver> \
   Serpent-win-x86-64-<ver>-portable.zip Serpent-win-x86-64-<ver>-portable.zip.sha256 \
   Serpent-win-x86-64-<ver>-setup.zip Serpent-win-x86-64-<ver>-setup.zip.sha256
 
-# 上传资产（Linux 2 个：AppImage + sha256）
+# 上传资产（Linux x64：AppImage + sha256；arm64 媒体包晋升后再加对应两个文件）
 gh release upload v<ver> \
-  Serpent-linux-x86-64-<ver>.AppImage Serpent-linux-x86-64-<ver>.AppImage.sha256
+  Serpent-linux-x86-64-<ver>.AppImage Serpent-linux-x86-64-<ver>.AppImage.sha256 \
+  Serpent-linux-arm64-<ver>.AppImage Serpent-linux-arm64-<ver>.AppImage.sha256
 
 # 必传：更新日志元信息（version 必须等于 <ver>，见 §4「更新日志元信息（强制）」）
 gh release upload v<ver> release-meta.json release-meta-<ver>.json
@@ -150,7 +152,7 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 
 **Linux**：
 - 发布构建优先 `make:appimage:docker`（Ubuntu 22.04 / glibc 2.35），避免在较新发行版上打出高 glibc 依赖。
-- 发布用 AppImage 内置 pinned 媒体工具。验收不必再依赖系统 `ffmpeg`，除非用环境变量改到了外部路径。linux-arm64 无此包。
+- 发布用 AppImage 内置 pinned 媒体工具。验收不必再依赖系统 `ffmpeg`，除非用环境变量改到了外部路径。linux-arm64 使用同一合同，但在媒体 zip 晋升前没有可发布的包。
 
 ## 8. 发布检查清单（逐条对照，禁止凭印象执行）
 
@@ -164,7 +166,7 @@ gh release upload v<ver> release-meta.json release-meta-<ver>.json
 - [ ] **`release-meta.json` 与 `release-meta-<ver>.json` 已上传，且 `version` 等于 tag 版本**（§4 强制项）
 - [ ] Release 正文只面向用户：不写构建/打包/平台流程或内部约束（如「本页只含某平台产物」）
 - [ ] `gh release create v<ver> --title "Serpent <ver>" --notes-file <本地临时草稿.md> --target main`（gh 全路径调用；草稿不提交进仓库）
-- [ ] 资产上传齐全（macOS 4 / Windows 4 / Linux 2 + release-meta 2），release 页核对标题/notes/资产/`--target main`
+- [ ] 资产上传齐全（macOS 4 / Windows 4 / Linux x64 2，arm64 媒体包已晋升时再加 2 + release-meta 2），release 页核对标题/notes/资产/`--target main`
 - [ ] tag `v<ver>` 指向 main 发布基线（`git tag v<ver> <main-commit>` + `git push origin v<ver>`）
 - [ ] `npm run rebuild:native` 已恢复 dev 环境（FTS5 probe OK）
 - [ ] 切回 dev 分支
