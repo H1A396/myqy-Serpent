@@ -79,6 +79,7 @@ Linux AppImage（Ubuntu 22.04 / glibc 2.35 基线）：
 - 已安装版：macOS 选择 `*-package.dmg`；Windows 选择 `*-setup.zip`，下载校验后打开 DMG 或解压并打开 `SerpentSetup.exe`。Inno 安装完成后会在应用目录写入 `.serpent-installed` 标记；旧安装仍以 `unins*.exe` 兼容识别。
 - 便携版：macOS/Windows 选择各自 `*-portable.zip`，下载校验后显示文件位置；不能覆盖正在运行的便携目录，用户退出后解压并启动新版本。
 - Linux：按架构选择 `Serpent-linux-x86-64-<ver>.AppImage` 或 `Serpent-linux-arm64-<ver>.AppImage`（便携），下载校验后显示文件位置；用户 `chmod +x` 后运行。
+- 更新产物按平台生命周期清理：失败或校验未通过的下载及解压目录立即清除；成功打开的 macOS DMG、Windows/macOS 便携 ZIP 和 Linux AppImage 保留给用户安装或替换。Windows 已安装版的临时 `SerpentSetup.exe` 由单个隐藏 PowerShell 清理进程在安装器退出后移除；进程内使用计时器等待并重试文件删除，不通过命令 shell 或 `ping` 延时。若清理在重试期限内仍失败，追加不含本地路径的错误记录到应用日志。
 - 资产名是运行时选择器的一部分，不能只改 Release 上传名而不改客户端。每个平台和分发形态必须同时上传目标资产与 `.sha256`。
 - GitHub Release 必须是公开、稳定、已发布的 SemVer Release；`/releases/latest` 不会返回 draft/prerelease。当前 `v0.1.2` 已验证包含 macOS DMG/portable ZIP、Windows setup/portable ZIP 及对应校验文件，但没有 `latest*.yml`、`RELEASES` 或 `RELEASES.json`。
 
