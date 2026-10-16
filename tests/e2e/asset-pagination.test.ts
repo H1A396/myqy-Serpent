@@ -212,21 +212,30 @@ test("ordinary browsing continuously appends every asset without page controls",
     // The reflow anchor keeps the previous viewport stable while grid →
     // masonry changes the column geometry. Scroll to the top after that
     // restore finishes. scrollIntoViewIfNeeded detaches the virtual slot
-    // while the window is still recycling.
+    // while the window is still recycling. A later boundingBox() can also
+    // be null for a frame on a short viewport, so assert the sample that
+    // already showed the first card inside the canvas.
+    const masonryTopSnapshot: {
+      card: { x: number; y: number; width: number; height: number } | null;
+      canvas: { x: number; y: number; width: number; height: number } | null;
+    } = { card: null, canvas: null };
+    const masonryFirstCard = window.locator(".asset-card").first();
     await expect.poll(async () => {
       await masonryCanvas.evaluate((element) => element.scrollTo(0, 0));
       const [cardBox, canvasBox] = await Promise.all([
-        window.locator(".asset-card").first().boundingBox(),
+        masonryFirstCard.boundingBox(),
         masonryCanvas.boundingBox(),
       ]);
-      if (!cardBox || !canvasBox) return false;
-      return cardBox.y >= canvasBox.y - 1;
+      masonryTopSnapshot.card = cardBox;
+      masonryTopSnapshot.canvas = canvasBox;
+      return Boolean(cardBox && canvasBox && cardBox.y >= canvasBox.y - 1);
     }).toBe(true);
-    const [canvasBox, masonryFirstBox] = await Promise.all([
-      window.locator(".workspace-canvas").boundingBox(),
-      window.locator(".asset-card").first().boundingBox(),
-    ]);
-    expect(masonryFirstBox!.y).toBeGreaterThanOrEqual(canvasBox!.y - 1);
+    if (!masonryTopSnapshot.card || !masonryTopSnapshot.canvas) {
+      throw new Error("Masonry top position was not sampled.");
+    }
+    expect(masonryTopSnapshot.card.y).toBeGreaterThanOrEqual(
+      masonryTopSnapshot.canvas.y - 1,
+    );
     const masonryLastCard = window.locator(".asset-card").last();
     const masonryScrollSnapshot: {
       last: { x: number; y: number; width: number; height: number } | null;

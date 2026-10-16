@@ -236,10 +236,13 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
           })),
         )
         .toEqual({ accent: "#8b5cf6", actionAccent: "#8b5cf6" });
+      // settings.advancedColors is 「自定义主题」. The disclosure button's
+      // accessible name also includes the hint, and the header sits below the
+      // theme grid inside the scrolling settings body (collapsed by default).
       const themeColorDisclosure = settingsDialog.getByRole("button", {
-        name: "高级颜色配置",
-        exact: true,
+        name: /^自定义主题/,
       });
+      await themeColorDisclosure.scrollIntoViewIfNeeded();
       await expect(themeColorDisclosure).toHaveAttribute(
         "aria-expanded",
         "false",
@@ -252,9 +255,9 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
         "aria-expanded",
         "true",
       );
-      await expect(
-        settingsDialog.locator(".app-settings-custom-theme-grid"),
-      ).toBeVisible();
+      const themeColorGrid = settingsDialog.locator(".app-settings-custom-theme-grid");
+      await themeColorGrid.scrollIntoViewIfNeeded();
+      await expect(themeColorGrid).toBeVisible();
       await window.keyboard.press("Escape");
       await expect(settingsDialog).toHaveCount(0);
     }
