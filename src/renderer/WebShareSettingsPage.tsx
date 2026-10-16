@@ -170,6 +170,7 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
 
   return (
     <>
+      <h3 className="app-settings-group-title">{t("settings.webShareGroupService")}</h3>
       <SettingsCard>
         <div className="app-settings-toggle-row">
           <span className="app-settings-row-copy">
@@ -194,10 +195,50 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             {statusLabel}
           </span>
         </div>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-row app-settings-row-inline">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareConnectionTitle")}</strong>
+            <span>{addressLine}</span>
+          </span>
+        </div>
+        <div className="app-settings-row-copy">
+          <span>{t("settings.webShareTunnelHint")}</span>
+        </div>
+        <div className="app-settings-card-divider" />
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-port">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webSharePort")}</strong>
+            <span>{t("settings.webSharePortHint")}</span>
+          </span>
+          <input
+            aria-label={t("settings.webSharePort")}
+            className="settings-number-input"
+            disabled={busy || running}
+            id="web-share-port"
+            max={65535}
+            min={1024}
+            onBlur={() => {
+              const next = Number(portDraft);
+              if (Number.isInteger(next) && next >= 1024 && next <= 65535) {
+                void request({ type: "set-port", port: next });
+              } else if (snapshot) {
+                setPortDraft(String(snapshot.preferences.port));
+              }
+            }}
+            onChange={(event) => setPortDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            type="number"
+            value={portDraft}
+          />
+        </label>
         {error ? <p className="settings-error-message">{error}</p> : null}
         {notice ? <p className="settings-success-message">{notice}</p> : null}
       </SettingsCard>
 
+      <h3 className="app-settings-group-title">{t("settings.webShareGroupAccess")}</h3>
       <SettingsCard>
         <div className="app-settings-action-row web-share-password-row">
           <div className="app-settings-row-copy">
@@ -236,8 +277,22 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             </button>
           ) : null}
         </div>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-toggle-row">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareAllowDownload")}</strong>
+            <span>{t("settings.webShareAllowDownloadHint")}</span>
+          </span>
+          <Switch
+            aria-label={t("settings.webShareAllowDownload")}
+            checked={snapshot?.preferences.allowDownload ?? true}
+            disabled={busy}
+            onCheckedChange={(next) => void request({ type: "set-allow-download", enabled: next })}
+          />
+        </div>
       </SettingsCard>
 
+      <h3 className="app-settings-group-title">{t("settings.webShareGroupContent")}</h3>
       <SettingsCard>
         <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-library">
           <span className="app-settings-row-copy">
@@ -270,21 +325,9 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
             <span>{t("settings.webShareNoLibrary")}</span>
           </div>
         ) : null}
-        <div className="app-settings-card-divider" />
-        <div className="app-settings-toggle-row">
-          <span className="app-settings-row-copy">
-            <strong>{t("settings.webShareAllowDownload")}</strong>
-            <span>{t("settings.webShareAllowDownloadHint")}</span>
-          </span>
-          <Switch
-            aria-label={t("settings.webShareAllowDownload")}
-            checked={snapshot?.preferences.allowDownload ?? true}
-            disabled={busy}
-            onCheckedChange={(next) => void request({ type: "set-allow-download", enabled: next })}
-          />
-        </div>
       </SettingsCard>
 
+      <h3 className="app-settings-group-title">{t("settings.webShareGroupQuality")}</h3>
       <SettingsCard>
         <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-thumbnail-edge">
           <span className="app-settings-row-copy">
@@ -376,50 +419,6 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       </SettingsCard>
 
       <SettingsCard>
-        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-download-quality">
-          <span className="app-settings-row-copy">
-            <strong>{t("settings.webShareDownloadQuality")}</strong>
-            <span>{t("settings.webShareDownloadQualityHint")}</span>
-          </span>
-          <input
-            aria-label={t("settings.webShareDownloadQuality")}
-            className="settings-number-input"
-            disabled={busy}
-            id="web-share-download-quality"
-            max={100}
-            min={1}
-            onBlur={() => {
-              const next = Number(downloadQualityDraft);
-              if (Number.isInteger(next) && next >= 1 && next <= 100) {
-                void request({ type: "set-download-quality", quality: next });
-              } else if (snapshot) {
-                setDownloadQualityDraft(String(snapshot.preferences.downloadQuality));
-              }
-            }}
-            onChange={(event) => setDownloadQualityDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-            }}
-            type="number"
-            value={downloadQualityDraft}
-          />
-        </label>
-        <div className="app-settings-card-divider" />
-        <div className="app-settings-toggle-row">
-          <span className="app-settings-row-copy">
-            <strong>{t("settings.webShareDownloadProgressive")}</strong>
-            <span>{t("settings.webShareDownloadProgressiveHint")}</span>
-          </span>
-          <Switch
-            aria-label={t("settings.webShareDownloadProgressive")}
-            checked={snapshot?.preferences.downloadProgressive ?? false}
-            disabled={busy}
-            onCheckedChange={(next) => void request({ type: "set-download-progressive", enabled: next })}
-          />
-        </div>
-      </SettingsCard>
-
-      <SettingsCard>
         <div className="app-settings-row-copy">
           <strong>{t("settings.webShareDerivativeTitle")}</strong>
           <span>{t("settings.webShareDerivativeHint")}</span>
@@ -465,46 +464,50 @@ export function WebShareSettingsPage({ api }: WebShareSettingsPageProps): ReactN
       </SettingsCard>
 
       <SettingsCard>
-        <div className="app-settings-row app-settings-row-inline">
+        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-download-quality">
           <span className="app-settings-row-copy">
-            <strong>{t("settings.webShareConnectionTitle")}</strong>
-            <span>{addressLine}</span>
-          </span>
-        </div>
-        <div className="app-settings-row-copy">
-          <span>{t("settings.webShareTunnelHint")}</span>
-        </div>
-        <div className="app-settings-card-divider" />
-        <label className="app-settings-row app-settings-row-inline" htmlFor="web-share-port">
-          <span className="app-settings-row-copy">
-            <strong>{t("settings.webSharePort")}</strong>
-            <span>{t("settings.webSharePortHint")}</span>
+            <strong>{t("settings.webShareDownloadQuality")}</strong>
+            <span>{t("settings.webShareDownloadQualityHint")}</span>
           </span>
           <input
-            aria-label={t("settings.webSharePort")}
+            aria-label={t("settings.webShareDownloadQuality")}
             className="settings-number-input"
-            disabled={busy || running}
-            id="web-share-port"
-            max={65535}
-            min={1024}
+            disabled={busy}
+            id="web-share-download-quality"
+            max={100}
+            min={1}
             onBlur={() => {
-              const next = Number(portDraft);
-              if (Number.isInteger(next) && next >= 1024 && next <= 65535) {
-                void request({ type: "set-port", port: next });
+              const next = Number(downloadQualityDraft);
+              if (Number.isInteger(next) && next >= 1 && next <= 100) {
+                void request({ type: "set-download-quality", quality: next });
               } else if (snapshot) {
-                setPortDraft(String(snapshot.preferences.port));
+                setDownloadQualityDraft(String(snapshot.preferences.downloadQuality));
               }
             }}
-            onChange={(event) => setPortDraft(event.target.value)}
+            onChange={(event) => setDownloadQualityDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
             }}
             type="number"
-            value={portDraft}
+            value={downloadQualityDraft}
           />
         </label>
+        <div className="app-settings-card-divider" />
+        <div className="app-settings-toggle-row">
+          <span className="app-settings-row-copy">
+            <strong>{t("settings.webShareDownloadProgressive")}</strong>
+            <span>{t("settings.webShareDownloadProgressiveHint")}</span>
+          </span>
+          <Switch
+            aria-label={t("settings.webShareDownloadProgressive")}
+            checked={snapshot?.preferences.downloadProgressive ?? false}
+            disabled={busy}
+            onCheckedChange={(next) => void request({ type: "set-download-progressive", enabled: next })}
+          />
+        </div>
       </SettingsCard>
 
+      <h3 className="app-settings-group-title">{t("settings.webShareGroupVisitors")}</h3>
       <SettingsCard>
         <div className="app-settings-action-row">
           <div className="app-settings-row-copy">
