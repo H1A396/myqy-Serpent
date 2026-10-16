@@ -217,7 +217,7 @@ test("library switcher, breadcrumbs, and workspace history", async () => {
         ".app-settings-theme-accent-swatch",
       );
       await expect(themeAccentSwatches).toHaveCount(8);
-      await settingsDialog.getByRole("radio", { name: "VS Code" }).click();
+      await settingsDialog.getByRole("radio", { name: "VS Code", exact: true }).click();
       await settingsDialog
         .locator('[data-theme-accent="purple"]')
         .click();

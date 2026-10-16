@@ -41,6 +41,58 @@ async function getViewportSize(page: Page) {
   }));
 }
 
+/**
+ * Outside-click dismissal. `.item-count` sits in the workspace bar, but a tall
+ * asset menu clamped to a short viewport (macOS work area) covers that bar.
+ * The click must land outside the menu box, on a non-interactive target, so
+ * the document mousedown listener is what closes the menu.
+ */
+async function clickOutsideContextMenu(window: Page) {
+  const menu = window.getByRole("menu");
+  const menuBox = await menu.boundingBox();
+  expect(menuBox, "context menu bounds").not.toBeNull();
+  const point = await window.evaluate((box) => {
+    if (!box) return null;
+    const outside = (x: number, y: number) =>
+      x < box.x - 1 ||
+      x > box.x + box.width + 1 ||
+      y < box.y - 1 ||
+      y > box.y + box.height + 1;
+    const interactive = (node: Element | null) =>
+      Boolean(
+        node?.closest(
+          'button, a, input, textarea, select, [role="button"], [role="menuitem"], [role="menu"]',
+        ),
+      );
+    const candidates: Array<{ x: number; y: number }> = [];
+    const count = document.querySelector(".item-count");
+    if (count) {
+      const rect = count.getBoundingClientRect();
+      candidates.push({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+    }
+    const width = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    candidates.push(
+      { x: 16, y: height - 16 },
+      { x: width - 16, y: height - 16 },
+      { x: width / 2, y: height - 16 },
+      { x: width - 16, y: 72 },
+    );
+    for (const candidate of candidates) {
+      if (!outside(candidate.x, candidate.y)) continue;
+      const hit = document.elementFromPoint(candidate.x, candidate.y);
+      if (!hit || interactive(hit)) continue;
+      return candidate;
+    }
+    return null;
+  }, menuBox);
+  expect(point, "inert point outside the context menu").not.toBeNull();
+  await window.mouse.click(point!.x, point!.y);
+}
+
 // ---------------------------------------------------------------------------
 // Test 1 — Close on outside click, Escape, scroll, and window resize
 // ---------------------------------------------------------------------------
@@ -70,8 +122,7 @@ test("context menu closes on outside click, Escape, scroll, and window resize", 
     // Right-click on the asset card to open context menu
     await assetCard.click({ button: "right" });
     await expect(window.getByRole("menu")).toBeVisible({ timeout: 5_000 });
-    // Click on a safe area — the item-count label in the workspace bar is outside the menu
-    await window.locator(".item-count").click();
+    await clickOutsideContextMenu(window);
     await expect(window.getByRole("menu")).not.toBeVisible({ timeout: 5_000 });
 
     // --- Escape closes ---

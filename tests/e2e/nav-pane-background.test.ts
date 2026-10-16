@@ -8,6 +8,10 @@ import { resolveElectronExecutablePath } from "./electron-test-helpers";
 
 test.describe.configure({ timeout: 180_000 });
 
+// sidebar-commands: macOS uses Finder; Windows and Linux use the file-explorer label.
+const revealInFileManagerName =
+  process.platform === "darwin" ? "在 Finder 中打开" : "在文件浏览器中打开";
+
 /**
  * Serpent-6e3b10 / Serpent-b29bc4: the blank area **of the folder section** —
  * the indentation gutter left of the rows — returns to the library root on
@@ -243,7 +247,7 @@ test("right-clicking the blank area opens the library-root folder menu", async (
 
     // Root-appropriate entries…
     await expect(
-      menu.getByRole("menuitem", { name: "在文件浏览器中打开" }),
+      menu.getByRole("menuitem", { name: revealInFileManagerName }),
     ).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "新建文件夹" })).toBeVisible();
     await expect(
@@ -325,7 +329,7 @@ test("right-clicking the blank area opens the library-root folder menu", async (
       rowMenu.locator(".context-menu-selection-summary", { hasText: /^根目录$/u }),
     ).toBeVisible();
     await expect(
-      rowMenu.getByRole("menuitem", { name: "在文件浏览器中打开" }),
+      rowMenu.getByRole("menuitem", { name: revealInFileManagerName }),
     ).toBeVisible();
     await expect(
       rowMenu.getByRole("menuitem", { name: "新建文件夹" }),
